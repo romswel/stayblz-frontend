@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8eaed"/>
+      <stop offset="0.55" stop-color="#cfd4d9"/>
+      <stop offset="1" stop-color="#b9c0c7"/>
+    </linearGradient>
+    <linearGradient id="turf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2e7a55"/>
+      <stop offset="1" stop-color="#164a31"/>
+    </linearGradient>
+    <linearGradient id="track" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4d8a68"/>
+      <stop offset="1" stop-color="#2a6448"/>
+    </linearGradient>
+    <radialGradient id="haze" cx="0.72" cy="0.30" r="0.55">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <g id="horse">
+      <!-- full-stretch galloping horse + jockey, facing right, ~400w x 220h -->
+      <!-- torso -->
+      <path d="M245 75 C260 70 272 76 278 90 C284 102 284 114 278 124 C268 136 250 142 230 142 C200 146 170 146 145 140 C128 136 116 128 110 116 C104 104 104 92 110 84 C120 74 140 70 160 72 C185 66 215 68 245 75 Z"/>
+      <!-- neck -->
+      <path d="M240 78 C252 62 268 44 288 32 L310 24 C304 42 296 58 286 74 C272 88 256 90 244 86 Z"/>
+      <!-- head -->
+      <path d="M288 32 C296 22 308 18 320 22 L352 44 C346 52 336 54 326 50 L306 46 C298 44 292 40 288 32 Z"/>
+      <path d="M304 24 L310 8 L320 20 Z"/>
+      <!-- front legs -->
+      <path d="M250 110 L262 106 C280 120 298 136 314 152 L352 178 L346 188 L306 162 C288 148 268 130 250 116 Z"/>
+      <path d="M236 116 L246 112 C264 136 282 160 298 182 L314 202 L306 210 L288 190 C272 168 254 142 236 122 Z"/>
+      <!-- hind legs -->
+      <path d="M130 110 L120 104 C98 122 76 140 56 156 L18 168 L24 180 L64 166 C88 150 110 132 132 116 Z"/>
+      <path d="M138 122 L128 118 C110 140 92 162 76 182 L44 200 L50 210 L86 192 C104 170 122 146 140 126 Z"/>
+      <!-- tail -->
+      <path d="M108 86 C82 70 54 60 26 62 C36 74 52 82 70 88 C58 88 44 90 32 96 C50 102 72 102 92 98 C98 94 104 90 108 86 Z"/>
+      <!-- jockey -->
+      <path d="M196 72 C198 54 208 40 224 34 L236 38 C230 48 226 60 224 72 L234 84 C218 88 204 86 194 80 Z"/>
+      <circle cx="240" cy="30" r="11"/>
+      <path d="M230 24 C238 16 250 16 258 24 L252 32 C244 26 236 26 230 28 Z"/>
+      <path d="M226 48 C240 52 254 60 266 70 L260 80 C248 70 234 62 220 58 Z"/>
+    </g>
+  </defs>
+
+  <!-- sky -->
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <rect width="1600" height="900" fill="url(#haze)"/>
+
+  <!-- distant hills / treeline -->
+  <path d="M0 470 C180 440 330 452 470 462 C640 474 760 448 930 452 C1120 456 1260 436 1400 446 C1480 452 1550 460 1600 456 L1600 560 L0 560 Z" fill="#8f9aa0" opacity="0.55"/>
+  <path d="M0 500 C220 480 420 496 640 492 C860 488 1040 470 1240 480 C1380 487 1520 496 1600 490 L1600 580 L0 580 Z" fill="#6e7b81" opacity="0.5"/>
+
+  <!-- turf infield -->
+  <rect x="0" y="540" width="1600" height="360" fill="url(#turf)"/>
+
+  <!-- running track band -->
+  <path d="M0 560 L1600 560 L1600 760 L0 760 Z" fill="url(#track)"/>
+  <!-- mowing stripes -->
+  <path d="M0 600 L1600 596 L1600 606 L0 610 Z" fill="#ffffff" opacity="0.05"/>
+  <path d="M0 660 L1600 654 L1600 666 L0 672 Z" fill="#ffffff" opacity="0.05"/>
+  <path d="M0 720 L1600 712 L1600 726 L0 734 Z" fill="#ffffff" opacity="0.05"/>
+
+  <!-- far rail -->
+  <rect x="0" y="556" width="1600" height="6" rx="3" fill="#f2f3f5" opacity="0.9"/>
+  <g fill="#f2f3f5" opacity="0.8">
+    <rect x="60" y="556" width="5" height="26"/><rect x="260" y="556" width="5" height="26"/>
+    <rect x="460" y="556" width="5" height="26"/><rect x="660" y="556" width="5" height="26"/>
+    <rect x="860" y="556" width="5" height="26"/><rect x="1060" y="556" width="5" height="26"/>
+    <rect x="1260" y="556" width="5" height="26"/><rect x="1460" y="556" width="5" height="26"/>
+  </g>
+
+  <!-- horses: staggered field -->
+  <g fill="#3a4048" opacity="0.85">
+    <use href="#horse" transform="translate(240 470) scale(0.56)"/>
+  </g>
+  <g fill="#2c3138" opacity="0.92">
+    <use href="#horse" transform="translate(540 506) scale(0.72)"/>
+  </g>
+  <g fill="#23262b">
+    <use href="#horse" transform="translate(900 505) scale(0.95)"/>
+  </g>
+
+  <!-- dust kicks -->
+  <g fill="#dfe3e7" opacity="0.35">
+    <ellipse cx="300" cy="600" rx="46" ry="10"/>
+    <ellipse cx="640" cy="656" rx="60" ry="12"/>
+    <ellipse cx="1020" cy="716" rx="84" ry="16"/>
+  </g>
+
+  <!-- near rail -->
+  <rect x="0" y="770" width="1600" height="10" rx="5" fill="#f7f8f9"/>
+  <g fill="#e6e8ea">
+    <rect x="120" y="770" width="10" height="130"/>
+    <rect x="420" y="770" width="10" height="130"/>
+    <rect x="720" y="770" width="10" height="130"/>
+    <rect x="1020" y="770" width="10" height="130"/>
+    <rect x="1320" y="770" width="10" height="130"/>
+  </g>
+  <rect x="0" y="822" width="1600" height="8" rx="4" fill="#eff0f2"/>
+</svg>
