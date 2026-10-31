@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'stayblz.token';
+const TOKEN_KEY = "stayblz.token";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -19,32 +19,49 @@ export class ApiError extends Error {
 
 // Set VITE_API_URL in production (e.g. https://stayblz-api.onrender.com);
 // leave unset in development to use the Vite proxy.
-const API_BASE = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/+$/, '');
+const API_BASE = import.meta.env.PROD
+  ? ""
+  : (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/+$/, "");
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers
-    }
+      ...options.headers,
+    },
   });
   let data: unknown;
   try {
     data = await res.json();
   } catch {
-    throw new ApiError(res.status, 'The server returned an invalid response. Please try again.');
+    throw new ApiError(
+      res.status,
+      "The server returned an invalid response. Please try again.",
+    );
   }
   if (!res.ok) {
-    throw new ApiError(res.status, (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') ? data.error : 'Something went wrong.');
+    throw new ApiError(
+      res.status,
+      data &&
+      typeof data === "object" &&
+      "error" in data &&
+      typeof data.error === "string"
+        ? data.error
+        : "Something went wrong.",
+    );
   }
   return data as T;
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, options?: { signal?: AbortSignal }) =>
+    request<T>(path, options),
   post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+    request<T>(path, {
+      method: "POST",
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }),
 };

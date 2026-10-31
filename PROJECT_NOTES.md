@@ -22,7 +22,12 @@ Existing application source remains in place; this setup does not rebuild the ap
 Separate loading from empty data. Ignore late responses after a newer selection. Never imply a successful save without persistence.
 
 ## Next agreed step
-Release this mock-stage bug-fix pass, then choose the next feature with the user.
+2026-11-01: User authorized the landing release. Added full-width layout, stable panel heights, published-data previews without fixtures, account handoff prompts, a logo hover animation, and a shared dark stylesheet toggled by the header logo. Production calls use the same-origin Vercel API proxy.
+- Release checks: production build and 15 mocked-API Chromium tests passed; widths 320 through 2560 px and theme persistence were checked.
+- Existing production admin login is retained. Verified signup/profile/password-reset code is prepared separately and will not replace production auth until SMTP, redirects, and admin setup are ready. Registration stays visibly unavailable in this release.
+- Public-data storage SQL is a local draft, not applied. Unavailable/empty data does not use sample rows. No private rows were changed or exposed.
+
+Finish SMTP/redirect configuration and the reviewed admin invitation before activating verified accounts. User explicitly authorized commit/push/deployment for this release; no force pushes or remote data deletion.
 
 ## Maintenance
 After meaningful work, update only the sections affected.

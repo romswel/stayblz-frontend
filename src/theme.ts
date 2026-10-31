@@ -1,20 +1,41 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from "react";
 
-export type Theme = 'dark' | 'light';
-const KEY = 'stayblz.theme';
+export type Theme = "dark" | "light";
+const KEY = "stayblz.theme";
 
-function initial(): Theme {
-  const saved = localStorage.getItem(KEY);
-  return saved === 'light' ? 'light' : 'dark';
+const listeners = new Set<() => void>();
+function read(): Theme {
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
 }
-
+function apply(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem(KEY, theme);
+  } catch {
+    /* Theme still works with storage disabled. */
+  }
+  listeners.forEach((notify) => notify());
+}
+window.addEventListener("storage", (event) => {
+  if (
+    event.key === KEY &&
+    (event.newValue === "dark" || event.newValue === "light")
+  )
+    apply(event.newValue);
+});
 export function useTheme(): [Theme, () => void] {
-  const [theme, setTheme] = useState<Theme>(initial);
-
+  const theme = useSyncExternalStore<Theme>(
+    (callback) => {
+      listeners.add(callback);
+      return () => {
+        listeners.delete(callback);
+      };
+    },
+    read,
+    () => "light",
+  );
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem(KEY, theme);
   }, [theme]);
-
-  return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))];
+  return [theme, () => apply(read() === "dark" ? "light" : "dark")];
 }

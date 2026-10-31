@@ -1,0 +1,91 @@
+/* Shared theme entry point. Existing authenticated pages already use root tokens.
+   Landing overrides are scoped here; toggling changes one attribute, not stylesheets. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] .landing {
+  --ld-bg: #09120f;
+  --ld-forest: #102017;
+  --ld-paper: #e8e8d8;
+  --ld-muted: #b6c1ac;
+  --ld-line: #344735;
+}
+html[data-theme="dark"] .landing :is(.ld-paper, .ld-data-panel) {
+  background: #16251d;
+  color: #e2e8d5;
+}
+html[data-theme="dark"] .landing .ld-table th {
+  background: #1f3023;
+  color: #b8c5a8;
+}
+html[data-theme="dark"] .landing .ld-table td {
+  border-color: #354733;
+}
+html[data-theme="dark"]
+  .landing
+  :is(.ld-table-toolbar, .ld-table-foot, .ld-news-record, .ld-diary-row) {
+  border-color: #354733;
+}
+html[data-theme="dark"]
+  .landing
+  :is(.ld-table tbody tr:hover td, .ld-diary-row:hover) {
+  background: #263b28;
+}
+html[data-theme="dark"]
+  .landing
+  :is(
+    .ld-table-name,
+    .ld-figure,
+    .ld-note-toggle,
+    .ld-diary-row,
+    .ld-note-expanded p
+  ) {
+  color: #e3d0a0;
+}
+html[data-theme="dark"]
+  .landing
+  :is(
+    .ld-table td small,
+    .ld-table-foot > span,
+    .ld-news-record > p,
+    .ld-date-block small,
+    .ld-diary-row > span:nth-child(2) small
+  ) {
+  color: #b7c6a5;
+}
+html[data-theme="dark"] .landing .ld-tabs button {
+  color: #b9c5ab;
+}
+html[data-theme="dark"] .landing .ld-tabs button[aria-pressed="true"] {
+  color: #ecd4a1;
+}
+html[data-theme="dark"] .landing .ld-tabs button::after {
+  background: #c5a468;
+}
+html[data-theme="dark"] .landing :is(.ld-track-filter select, .ld-surface) {
+  background: #293e29;
+  border-color: #546443;
+  color: #d1ddbd;
+}
+html[data-theme="dark"] .landing .ld-row-arrow {
+  border-color: #66774c;
+  color: #ddc48d;
+}
+html[data-theme="dark"] .landing .ld-row-arrow:hover {
+  background: #3b5031;
+}
+html[data-theme="dark"] .landing :is(.ld-empty, .ld-news-record .ld-kicker) {
+  color: #c4b581;
+}
+html[data-theme="dark"] .landing .ld-rank {
+  color: #b5c0a2;
+}
+html[data-theme="dark"] .landing .ld-rank-first {
+  color: #ddc48d;
+}
+html[data-theme="dark"] .landing .ld-panel-scroll {
+  scrollbar-color: #65764b #15251c;
+}

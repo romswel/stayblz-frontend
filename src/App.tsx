@@ -1,19 +1,19 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { useAuth } from './auth';
-import Layout from './components/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Messages from './pages/Messages';
-import Inventory from './pages/Inventory';
-import HorseTracker from './pages/HorseTracker';
-import Entries from './pages/Entries';
-import Results from './pages/Results';
-import Workouts from './pages/Workouts';
-import SpeedFigures from './pages/SpeedFigures';
-import Statistics from './pages/Statistics';
-import Stakes from './pages/Stakes';
-import VirtualStable from './pages/VirtualStable';
-import Betting from './pages/Betting';
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./auth";
+import Layout from "./components/Layout";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Messages from "./pages/Messages";
+import Inventory from "./pages/Inventory";
+import HorseTracker from "./pages/HorseTracker";
+import Entries from "./pages/Entries";
+import Results from "./pages/Results";
+import Workouts from "./pages/Workouts";
+import SpeedFigures from "./pages/SpeedFigures";
+import Statistics from "./pages/Statistics";
+import Stakes from "./pages/Stakes";
+import VirtualStable from "./pages/VirtualStable";
+import Betting from "./pages/Betting";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -25,7 +25,9 @@ export default function App() {
   if (!user) {
     return (
       <Routes>
+        <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Login />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -33,6 +35,9 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Login />} />
       <Route element={<Layout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/messages" element={<Messages />} />
