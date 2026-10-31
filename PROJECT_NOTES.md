@@ -39,7 +39,9 @@ Separate loading from empty data. Ignore late responses after a newer selection.
 - Fixed late pagination overwriting a different category, malformed full-view response crashes, logout failure reporting, and session-restore races. Production credentials are not saved in localStorage.
 - User confirmed SMTP and provider redirect URLs are ready. Next: deploy the reviewed account changes, send the authorized admin invitation, and verify account setup. No personal email/password is recorded in this notebook. No remote schema changes or data deletion occurred.
 
-Public-data table application/content publishing remains separate. Do not claim SMTP inbox delivery, admin activation, or actual production account QA until verified.
+Follow-up account release `0bb6780` was pushed and Vercel reported success. Live Chromium checks verified signup fields, shared theme switching, preserved View All prompts across login/signup, no mobile overflow at 375 px, no browser exceptions, and the same-origin API proxy. Final local checks: 25 browser tests and production build passed; npm audit reported zero vulnerabilities.
+
+The matching backend account release is live. The admin invitation was accepted by the provider and the user confirmed inbox receipt; password setup/email activation is still the user's next step, not yet verified. Do not record personal email/password here. Public-data table application/content publishing remains separate and unapplied; no sample data is shown.
 
 ## Maintenance
 After meaningful work, update only the sections affected.
