@@ -88,6 +88,13 @@
 }
 
 * { box-sizing: border-box; }
+.account-profile { padding: 24px; margin-bottom: 24px; max-width: 850px; }
+.account-profile h2 { margin-bottom: 12px; }
+.account-profile p { margin: 12px 0; line-height: 1.7; }
+.account-profile .btn { margin: 12px 12px 0 0; }
+.profile-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,240px),1fr)); gap: 18px; }
+.profile-fields label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.profile-fields :is(input,select) { width: 100%; min-width: 0; padding: 12px; background: var(--input-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; font-size: 16px; }
 html, body, #root { height: 100%; }
 
 body {

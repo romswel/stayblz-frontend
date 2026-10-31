@@ -14,6 +14,9 @@ import Statistics from "./pages/Statistics";
 import Stakes from "./pages/Stakes";
 import VirtualStable from "./pages/VirtualStable";
 import Betting from "./pages/Betting";
+import AuthConfirm from "./pages/AuthConfirm";
+import Profile from "./pages/Profile";
+import PublishedRacing from "./pages/PublishedRacing";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -28,6 +31,7 @@ export default function App() {
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Login />} />
+        <Route path="/auth/confirm" element={<AuthConfirm />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -38,19 +42,126 @@ export default function App() {
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Login />} />
+      <Route path="/auth/confirm" element={<AuthConfirm />} />
       <Route element={<Layout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/messages" element={<Messages />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/tracker" element={<HorseTracker />} />
-        <Route path="/entries" element={<Entries />} />
-        <Route path="/results" element={<Results />} />
-        <Route path="/workouts" element={<Workouts />} />
-        <Route path="/speed-figures" element={<SpeedFigures />} />
-        <Route path="/statistics" element={<Statistics />} />
-        <Route path="/stakes" element={<Stakes />} />
-        <Route path="/virtual-stable" element={<VirtualStable />} />
-        <Route path="/betting" element={<Betting />} />
+        <Route
+          path="/dashboard"
+          element={user.role === "superadmin" ? <Dashboard /> : <Profile />}
+        />
+        <Route path="/account" element={<Profile />} />
+        <Route
+          path="/messages"
+          element={
+            user.role === "superadmin" ? (
+              <Messages />
+            ) : (
+              <Navigate to="/account" replace />
+            )
+          }
+        />
+        <Route
+          path="/inventory"
+          element={
+            user.role === "superadmin" ? (
+              <Inventory />
+            ) : (
+              <Navigate to="/account" replace />
+            )
+          }
+        />
+        <Route
+          path="/tracker"
+          element={
+            user.role === "superadmin" ? (
+              <HorseTracker />
+            ) : (
+              <Navigate to="/account" replace />
+            )
+          }
+        />
+        <Route
+          path="/entries"
+          element={
+            user.role === "superadmin" ? (
+              <Entries />
+            ) : (
+              <PublishedRacing title="Racecards" kinds={["racecards"]} />
+            )
+          }
+        />
+        <Route
+          path="/results"
+          element={
+            user.role === "superadmin" ? (
+              <Results />
+            ) : (
+              <PublishedRacing title="Results" kinds={["results"]} />
+            )
+          }
+        />
+        <Route
+          path="/workouts"
+          element={
+            user.role === "superadmin" ? (
+              <Workouts />
+            ) : (
+              <PublishedRacing title="Workouts" kinds={["workouts"]} />
+            )
+          }
+        />
+        <Route
+          path="/speed-figures"
+          element={
+            user.role === "superadmin" ? (
+              <SpeedFigures />
+            ) : (
+              <PublishedRacing title="Speed figures" kinds={["horses"]} />
+            )
+          }
+        />
+        <Route
+          path="/statistics"
+          element={
+            user.role === "superadmin" ? (
+              <Statistics />
+            ) : (
+              <PublishedRacing
+                title="Statistics"
+                kinds={["horses", "jockeys", "trainers"]}
+              />
+            )
+          }
+        />
+        <Route
+          path="/stakes"
+          element={
+            user.role === "superadmin" ? (
+              <Stakes />
+            ) : (
+              <PublishedRacing title="Stakes" kinds={["stakes"]} />
+            )
+          }
+        />
+        <Route
+          path="/virtual-stable"
+          element={
+            user.role === "superadmin" ? (
+              <VirtualStable />
+            ) : (
+              <Navigate to="/account" replace />
+            )
+          }
+        />
+        <Route
+          path="/betting"
+          element={
+            user.role === "superadmin" ? (
+              <Betting />
+            ) : (
+              <Navigate to="/account" replace />
+            )
+          }
+        />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>

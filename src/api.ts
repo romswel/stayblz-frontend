@@ -1,12 +1,23 @@
 const TOKEN_KEY = "stayblz.token";
+let memoryToken: string | null = null;
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  if (memoryToken) return memoryToken;
+  try {
+    return import.meta.env.DEV ? localStorage.getItem(TOKEN_KEY) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function setToken(token: string | null): void {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  memoryToken = token;
+  try {
+    if (token && import.meta.env.DEV) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* Production sessions use HttpOnly cookies. */
+  }
 }
 
 export class ApiError extends Error {
@@ -23,16 +34,41 @@ const API_BASE = import.meta.env.PROD
   ? ""
   : (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/+$/, "");
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+let refreshPending: Promise<boolean> | null = null;
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  renewed = false,
+): Promise<T> {
   const token = getToken();
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
+  if (
+    res.status === 401 &&
+    !path.startsWith("/api/auth/") &&
+    !renewed &&
+    !options.signal?.aborted
+  ) {
+    if (!refreshPending)
+      refreshPending = fetch(`${API_BASE}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((response) => response.ok)
+        .catch(() => false)
+        .finally(() => {
+          refreshPending = null;
+        });
+    if (await refreshPending) return request<T>(path, options, true);
+  }
   let data: unknown;
   try {
     data = await res.json();
@@ -64,4 +100,6 @@ export const api = {
       method: "POST",
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
+  patch: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
 };

@@ -1,6 +1,6 @@
 # Stayblz landing design
 
-2026-11-01. Local design implementation; no publication or backend auth changes.
+2026-11-01. Landing release completed; verified-account rollout follows after provider setup and admin invitation.
 
 ## Identity and direction
 
@@ -19,7 +19,9 @@ The new database schema is prepared locally in the backend's `migrations/2026110
 
 Motion includes a slow hero drift, scroll reveals, staggered table rows, tab indicators, loading/refresh feedback, and hover arrows. Reduced-motion users get static content.
 
-Registration fields are a design preview with submission disabled, pending the next auth phase. Existing sign-in calls are preserved. Page-scoped styles preserve the authenticated app theme.
+Registration now validates first/last name, country, racing role, email and matching strong passwords. Supabase owns password hashing and email confirmation. The app waits for verified email before a normal account session is issued. Confirmation, resend, password reset, profile edits, and same-origin HttpOnly cookie sessions are implemented. New members cannot read shared stable tables; the server-managed superadmin retains that access. Page-scoped styles preserve the authenticated app layout.
+
+View-all actions navigate to the account route, preserve their destination, and explicitly say to log in or sign up. Header-logo hover plays a horse nod/spark animation. Clicking or keyboard-activating the logo changes the shared theme attribute. `src/themes/dark.css` is loaded once; toggling does not fetch a stylesheet or mount another application.
 
 ## Assets
 
@@ -34,7 +36,7 @@ Hero created with the built-in imagegen tool. Final prompt:
 ## Verification
 
 - TypeScript and Vite production build.
-- Chromium regression suite, including 8 landing interaction tests (14 tests total).
+- Chromium regression suite covers the landing, account forms, confirmation, recovery, profiles, theme, and existing app regressions.
 - Layout at 320/375/640/768/1024/1440/1920/2560 px in login and sign-up modes; page itself does not scroll horizontally, while data tables have their own labeled, keyboard-focusable scrollers.
 - Screenshots inspected on desktop and mobile. Reduced-motion support disables entrance animations.
 - Mocked API/session tests cover dynamic server records, derived counts, stable panel dimensions, filtering, empty/error/retry states, restored users, invalid login, destination continuation, and registration never posting credentials. Test fixture records only exist in tests.

@@ -3,6 +3,10 @@ export interface User {
   username: string;
   displayName: string;
   role: string;
+  email?: string;
+  emailVerified?: boolean;
+  passwordSetupRequired?: boolean;
+  profile?: {firstName: string;lastName: string;country: string;racingRole: string};
 }
 
 export interface Message {
