@@ -5,6 +5,7 @@ import { api } from "../api";
 import { confirmAccount, isPasswordRecovery } from "../confirmation";
 import Brand from "../components/Brand";
 import "./landing.css";
+import "./AuthConfirm.css";
 
 export default function AuthConfirm() {
   const { acceptUser } = useAuth();
@@ -65,79 +66,152 @@ export default function AuthConfirm() {
       setBusy(false);
     }
   }
+  const title = {
+    working: "Checking your link…",
+    password: "Set your password",
+    done: "Password saved",
+    verified: "Email verified",
+    error: "Check your confirmation link",
+  }[step];
+  const description = {
+    working: "One moment while we confirm your account.",
+    password: "Choose a password for your Stayblz account.",
+    done: "Your new password is ready. Log in to continue.",
+    verified: "Your email is confirmed. You’re ready to continue.",
+    error: "Return to login to request a fresh confirmation email.",
+  }[step];
   return (
     <div className="landing ld-confirm-page">
-      <div className="ld-confirm-card">
-        <Brand />
-        <span className="ld-kicker">STAYBLZ ACCOUNT</span>
-        <h1>
-          {step === "working"
-            ? "Checking your link…"
-            : step === "password"
-              ? "Set your password"
-              : step === "done"
-                ? "Password saved"
-                : step === "verified"
-                  ? "Email verified"
-                  : "Check your confirmation link"}
-        </h1>
-        {error && (
-          <p className="ld-auth-error" role="alert">
-            {error}
-          </p>
-        )}
-        {step === "password" && (
-          <form onSubmit={save}>
-            <label className="ld-field">
-              New password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={12}
-                maxLength={128}
-                pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}"
-                required
-              />
-            </label>
-            <p className="ld-password-help">
-              12–128 characters, uppercase, lowercase, and a number.
+      <header className="ld-confirm-header">
+        <Link className="ld-brand" to="/" aria-label="Stayblz home">
+          <Brand />
+          <span>
+            <strong>STAYBLZ</strong>
+            <small>THE RACING LEDGER</small>
+          </span>
+        </Link>
+        <Link className="ld-confirm-home" to="/">
+          Back to overview <span aria-hidden="true">↗</span>
+        </Link>
+      </header>
+      <main className="ld-confirm-layout">
+        <aside className="ld-confirm-editorial" aria-label="Stayblz racing">
+          <img
+            src="/images/racing-editorial.jpg"
+            alt="Racehorse and jockey on the track in evening light"
+          />
+          <div className="ld-confirm-photo-copy">
+            <span className="ld-kicker">THE RACING LEDGER</span>
+            <p>
+              Know the horse.
+              <br />
+              <em>Read the race.</em>
             </p>
-            <label className="ld-field">
-              Confirm password
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={12}
-                maxLength={128}
-                required
-              />
-            </label>
-            <button
-              className="ld-button ld-button-gold ld-submit"
-              disabled={busy}
-            >
-              {busy ? "Saving…" : "Save password"}
-            </button>
-          </form>
-        )}
-        {step === "verified" && (
-          <>
-            <p>You can now access your account.</p>
-            <Link className="ld-button ld-button-gold" to="/dashboard">
-              Continue to dashboard
+            <span className="ld-confirm-caption">
+              STAYBLZ / ON & OFF THE TRACK
+            </span>
+          </div>
+        </aside>
+        <section
+          className="ld-confirm-card"
+          aria-labelledby="confirmation-title"
+          aria-busy={step === "working"}
+        >
+          <div className="ld-confirm-meta">
+            <span className="ld-kicker">YOUR ACCOUNT</span>
+            <span>STAYBLZ</span>
+          </div>
+          <div
+            className={`ld-confirm-emblem ld-confirm-emblem-${step}`}
+            aria-hidden="true"
+          >
+            <svg viewBox="0 0 48 48" fill="none">
+              <circle className="ld-confirm-ring" cx="24" cy="24" r="21" />
+              {step === "error" ? (
+                <path d="M24 13v14m0 7v1" />
+              ) : step === "password" ? (
+                <>
+                  <rect x="15" y="22" width="18" height="15" rx="2" />
+                  <path d="M18 22v-6a6 6 0 0 1 12 0v6m-6 6v4" />
+                </>
+              ) : step === "working" ? (
+                <path d="M24 13v12l7 4" />
+              ) : (
+                <path className="ld-confirm-check" d="m14 24 7 7 14-15" />
+              )}
+            </svg>
+          </div>
+          <div className="ld-confirm-heading" role="status" aria-live="polite">
+            <h1 id="confirmation-title">{title}</h1>
+            <p>{description}</p>
+          </div>
+          {error && (
+            <p className="ld-auth-error" role="alert">
+              {error}
+            </p>
+          )}
+          {step === "password" && (
+            <form onSubmit={save}>
+              <label className="ld-field">
+                New password
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={12}
+                  maxLength={128}
+                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}"
+                  required
+                />
+              </label>
+              <p className="ld-password-help">
+                12–128 characters, uppercase, lowercase, and a number.
+              </p>
+              <label className="ld-field">
+                Confirm password
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={12}
+                  maxLength={128}
+                  required
+                />
+              </label>
+              <button
+                className="ld-button ld-button-gold ld-submit"
+                disabled={busy}
+              >
+                {busy ? "Saving…" : "Save password"}
+              </button>
+            </form>
+          )}
+          {step === "verified" && (
+            <>
+              <Link className="ld-button ld-button-gold" to="/dashboard">
+                Continue to dashboard <span aria-hidden="true">↗</span>
+              </Link>
+            </>
+          )}
+          {(step === "done" || step === "error") && (
+            <Link className="ld-button ld-button-gold" to="/login">
+              Back to login
             </Link>
-          </>
-        )}
-        {(step === "done" || step === "error") && (
-          <Link className="ld-button ld-button-gold" to="/login">
-            Back to login
-          </Link>
-        )}
-      </div>
+          )}
+          <div className="ld-confirm-footnote">
+            <span aria-hidden="true">◇</span>{" "}
+            {step === "error"
+              ? "Confirmation links can expire or be used only once."
+              : "Your account. Your racing view."}
+          </div>
+        </section>
+      </main>
+      <footer className="ld-confirm-footer">
+        <span>STAYBLZ</span>
+        <span>Know the horse. Read the race.</span>
+      </footer>
     </div>
   );
 }

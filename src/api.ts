@@ -22,9 +22,18 @@ export function setToken(token: string | null): void {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  code?: string;
+  retryAfterSeconds: number;
+  constructor(
+    status: number,
+    message: string,
+    code?: string,
+    retryAfterSeconds = 0,
+  ) {
     super(message);
     this.status = status;
+    this.code = code;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -79,6 +88,26 @@ async function request<T>(
     );
   }
   if (!res.ok) {
+    const details =
+      data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+    const rawRetryHeader = res.headers.get("Retry-After");
+    const retryHeader =
+      rawRetryHeader && !/^\d+$/.test(rawRetryHeader.trim())
+        ? (Date.parse(rawRetryHeader) - Date.now()) / 1000
+        : Number(rawRetryHeader);
+    const retryBody =
+      typeof details.retryAfterSeconds === "number"
+        ? details.retryAfterSeconds
+        : 0;
+    const retry = Math.min(
+      86400,
+      Math.max(
+        0,
+        Number.isFinite(retryHeader) ? retryHeader : 0,
+        Number.isFinite(retryBody) ? retryBody : 0,
+        res.status === 429 ? 60 : 0,
+      ),
+    );
     throw new ApiError(
       res.status,
       data &&
@@ -87,6 +116,8 @@ async function request<T>(
       typeof data.error === "string"
         ? data.error
         : "Something went wrong.",
+      typeof details.code === "string" ? details.code : undefined,
+      Math.ceil(retry),
     );
   }
   return data as T;

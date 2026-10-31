@@ -199,35 +199,6 @@
   font-size: 13px;
   overflow-wrap: anywhere;
 }
-.ld-confirm-page {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 25px;
-}
-.ld-confirm-card {
-  width: min(100%, 480px);
-  padding: 35px;
-  border: 1px solid #526445;
-  background: #192e24;
-  border-radius: 5px;
-}
-.ld-confirm-card > .ld-brand-symbol {
-  display: block;
-  margin-bottom: 25px;
-}
-.ld-confirm-card h1 {
-  font:
-    32px/1.2 Georgia,
-    serif;
-  margin: 12px 0 20px;
-}
-.ld-confirm-card > p {
-  margin: 15px 0;
-}
-.ld-confirm-card > .ld-button {
-  margin-top: 20px;
-}
 .ld-brand-symbol {
   color: var(--ld-gold);
   flex-shrink: 0;

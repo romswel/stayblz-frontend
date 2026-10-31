@@ -1,7 +1,7 @@
-import { forwardRef, useState, type FormEvent } from "react";
+import { forwardRef, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth";
-import { api } from "../../api";
+import { api, ApiError } from "../../api";
 import { countries } from "./countries";
 
 interface Props {
@@ -30,6 +30,47 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
   const [verification, setVerification] = useState(false);
+  const [retrySeconds, setRetrySeconds] = useState(0);
+  const [retryUntil, setRetryUntil] = useState(0);
+  const [retryScope, setRetryScope] = useState<"email" | "login">("email");
+  const emailRateLimited = retrySeconds > 0 && retryScope === "email";
+  const submitRateLimited =
+    retrySeconds > 0 &&
+    retryScope === (forgot || mode === "signup" ? "email" : "login");
+  useEffect(() => {
+    if (!retryUntil) return;
+    const update = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((retryUntil - Date.now()) / 1000),
+      );
+      setRetrySeconds(remaining);
+      if (!remaining) setRetryUntil(0);
+    };
+    update();
+    const timer = window.setInterval(update, 1000);
+    window.addEventListener("focus", update);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", update);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [retryUntil]);
+  function reportError(
+    reason: unknown,
+    fallback: string,
+    scope: "email" | "login",
+  ) {
+    setNotice("");
+    setError(reason instanceof Error ? reason.message : fallback);
+    if (reason instanceof ApiError && reason.status === 429) {
+      const seconds = Math.max(1, reason.retryAfterSeconds);
+      setRetrySeconds(seconds);
+      setRetryUntil(Date.now() + seconds * 1000);
+      setRetryScope(scope);
+    }
+  }
   function changeMode(next: "login" | "signup") {
     onModeChange(next);
     setError("");
@@ -41,7 +82,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || submitRateLimited) return;
     setError("");
     setNotice("");
     if (mode === "signup" && !forgot && password !== confirmPassword) {
@@ -53,7 +94,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       if (forgot) {
         const response = await api.post<{ message: string }>(
           "/api/auth/forgot-password",
-          { email },
+          { email: email.trim() },
         );
         setNotice(response.message);
       } else if (mode === "signup") {
@@ -65,7 +106,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
           lastName,
           country,
           racingRole,
-          email,
+          email: email.trim(),
           password,
           confirmPassword,
         });
@@ -82,30 +123,30 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
         navigate(destination, { replace: true });
       }
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "The request failed. Please try again.",
+      reportError(
+        reason,
+        "The request failed. Please try again.",
+        forgot || mode === "signup" ? "email" : "login",
       );
     } finally {
       setBusy(false);
     }
   }
   async function resend() {
-    if (busy) return;
+    if (busy || emailRateLimited) return;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const response = await api.post<{ message: string }>("/api/auth/resend", {
-        email: email || username.trim(),
+        email:
+          verification || mode === "signup" || forgot
+            ? email.trim()
+            : username.trim(),
       });
       setNotice(response.message);
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Email could not be requested.",
-      );
+      reportError(reason, "Email could not be requested.", "email");
     } finally {
       setBusy(false);
     }
@@ -195,9 +236,13 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                   type="button"
                   className="ld-button ld-button-gold ld-submit"
                   onClick={resend}
-                  disabled={busy}
+                  disabled={busy || emailRateLimited}
                 >
-                  {busy ? "Requesting…" : "Resend confirmation email"}
+                  {busy
+                    ? "Requesting…"
+                    : emailRateLimited
+                      ? `Try again in ${retrySeconds}s`
+                      : "Resend confirmation email"}
                 </button>
                 <button
                   className="ld-auth-link"
@@ -383,15 +428,17 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                 <button
                   className="ld-button ld-button-gold ld-submit"
                   type="submit"
-                  disabled={busy}
+                  disabled={busy || submitRateLimited}
                 >
-                  {busy
-                    ? "Please wait…"
-                    : forgot
-                      ? "Send reset email"
-                      : mode === "login"
-                        ? "Sign in"
-                        : "Create account"}
+                  {submitRateLimited
+                    ? `Try again in ${retrySeconds}s`
+                    : busy
+                      ? "Please wait…"
+                      : forgot
+                        ? "Send reset email"
+                        : mode === "login"
+                          ? "Sign in"
+                          : "Create account"}
                   <span aria-hidden="true">↗</span>
                 </button>
               </form>
@@ -415,7 +462,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                       <button
                         className="ld-auth-link"
                         onClick={resend}
-                        disabled={busy}
+                        disabled={busy || emailRateLimited}
                       >
                         Resend verification email
                       </button>

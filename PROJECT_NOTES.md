@@ -44,6 +44,16 @@ Follow-up account release `0bb6780` was pushed and Vercel reported success. Live
 The matching backend account release is live. The admin invitation was accepted by the provider and the user confirmed inbox receipt; password setup/email activation is still the user's next step, not yet verified. Do not record personal email/password here. Public-data table application/content publishing remains separate and unapplied; no sample data is shown.
 
 ## Maintenance
+2026-11-01: User authorized review and production push from the original repositories without backups/worktrees. Reviewed every changed/untracked file, fixed query-only provider callback errors, and added HTTP-date Retry-After handling. Release validation: 33 Chromium tests, TypeScript/Vite build, diff checks, and npm audit (zero vulnerabilities) passed. Credential-pattern scan found no embedded credentials in release files. Production must be checked against the pushed commit/assets; real verified login/logout and completed recovery remain outside the automated evidence.
+
+2026-11-01: Expanded the confirmation/recovery page into a full-width photo/status layout with larger type and controls, animated status icons, mobile stacking, and reduced-motion support. Existing confirmation and password behavior is preserved. All 31 browser tests and the production build passed; inspected desktop/mobile screenshots and checked overflow at widths 320/375/768/1024/1440/2560.
+- Removed the obsolete .release/frontend Git worktree after checking it was clean, had no unique commits, and was already an ancestor of main. All current work remains in the original stayblz-frontend repository. Fetch confirmed main matches origin/main; no pull/merge was needed. No commits, pushes, or deployments in this pass.
+
+2026-11-01: Local-only email verification follow-up. The latest user instruction supersedes the earlier SMTP-ready assumption: use the existing Supabase built-in sender for authorized organization testing; no provider configuration or deployment changes.
+- Added safe delivery/recipient/rate error handling, Retry-After cooldowns based on elapsed time, and expired provider-link handling with URL cleanup. Email throttling does not disable verified password login, and resend uses the currently entered recipient.
+- Validation: all 30 browser tests passed, including mocked signup/resend/recovery/callback cases; TypeScript/Vite production build and diff checks passed.
+- A separate authorized real signup was accepted (202); unverified login was denied (403) and private access denied (401). The owner subsequently completed the real email link, and a read-only provider lookup confirmed verification. One real recovery request returned 429 over_email_send_rate_limit with the safe error message; no retries. Live verified password login/logout and completed recovery remain unverified. No admin account password/profile was changed. Changes remain uncommitted and unpushed.
+
 After meaningful work, update only the sections affected.
 Record actual checks and their limits. Do not mark proposals as completed work.
 Never include secrets, private data, or copied historical plans.

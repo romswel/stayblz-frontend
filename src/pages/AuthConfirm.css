@@ -1,0 +1,306 @@
+.landing.ld-confirm-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--ld-gutter);
+}
+.ld-confirm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  min-height: 104px;
+  border-bottom: 1px solid var(--ld-line);
+}
+.ld-confirm-home {
+  color: var(--ld-muted) !important;
+  font-size: 12px;
+  padding: 12px 0;
+}
+.ld-confirm-home:hover {
+  color: var(--ld-gold) !important;
+}
+.ld-confirm-home span {
+  margin-left: 12px;
+}
+.ld-confirm-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  width: 100%;
+  flex: 1;
+  margin: 32px 0;
+  min-height: 620px;
+  border: 1px solid var(--ld-line);
+  animation: confirm-arrive 0.65s ease-out both;
+}
+.ld-confirm-editorial {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 100%;
+  background: #111d17;
+}
+.ld-confirm-editorial > img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 58% center;
+  animation: confirm-photo 1.4s ease-out both;
+}
+.ld-confirm-editorial::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #07120b10 30%, #07120bd9 100%);
+  z-index: 1;
+}
+.ld-confirm-photo-copy {
+  position: absolute;
+  inset: auto 0 0;
+  padding: clamp(28px, 4vw, 72px);
+  z-index: 2;
+}
+.ld-confirm-photo-copy > p {
+  font:
+    clamp(38px, 4.2vw, 76px) / 1.08 Georgia,
+    serif;
+  letter-spacing: -0.035em;
+  color: #f4f0e6;
+  margin: 20px 0 30px;
+}
+.ld-confirm-photo-copy em {
+  color: #d7ba83;
+  font-weight: 400;
+}
+.ld-confirm-caption {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: #c4c9bb;
+}
+.ld-confirm-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  padding: clamp(28px, 5vw, 88px);
+  background: var(--ld-forest);
+}
+.ld-confirm-meta {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--ld-muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--ld-line);
+  margin-bottom: 40px;
+}
+.ld-confirm-emblem {
+  width: 68px;
+  height: 68px;
+  margin-bottom: 24px;
+  color: var(--ld-gold);
+}
+.ld-confirm-emblem svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ld-confirm-ring {
+  opacity: 0.4;
+}
+.ld-confirm-check {
+  stroke-dasharray: 45;
+  stroke-dashoffset: 45;
+  animation: confirm-check 0.65s 0.15s ease-out forwards;
+}
+.ld-confirm-emblem-working .ld-confirm-ring {
+  stroke-dasharray: 90 42;
+  transform-origin: center;
+  animation: confirm-spin 1.8s linear infinite;
+}
+.ld-confirm-emblem-error {
+  color: #e5b397;
+}
+.ld-confirm-heading h1 {
+  font:
+    clamp(34px, 3.4vw, 58px) / 1.08 Georgia,
+    serif;
+  letter-spacing: -0.03em;
+  margin: 0 0 18px;
+  overflow-wrap: anywhere;
+}
+.ld-confirm-heading p {
+  color: var(--ld-muted);
+  font-size: 15px;
+  line-height: 1.8;
+  max-width: 40ch;
+}
+.ld-confirm-card > .ld-auth-error {
+  margin-top: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+.ld-confirm-card > .ld-button {
+  margin-top: 32px;
+  min-height: 52px;
+  gap: 30px;
+}
+.ld-confirm-card form {
+  width: 100%;
+  margin-top: 28px;
+}
+.ld-confirm-card .ld-field {
+  font-size: 13px;
+}
+.ld-confirm-card .ld-field input {
+  min-height: 50px;
+  font-size: 16px;
+}
+.ld-confirm-card .ld-password-help {
+  font-size: 12px;
+}
+.ld-confirm-card .ld-submit {
+  min-height: 52px;
+}
+.ld-confirm-footnote {
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid var(--ld-line);
+  width: 100%;
+  margin-top: 40px;
+  padding-top: 20px;
+  color: var(--ld-muted);
+  font-size: 11px;
+}
+.ld-confirm-footnote > span {
+  color: var(--ld-gold);
+}
+.ld-confirm-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 24px;
+  color: var(--ld-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+@keyframes confirm-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes confirm-photo {
+  from {
+    transform: scale(1.04);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes confirm-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes confirm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (min-width: 1900px) {
+  .ld-confirm-layout {
+    min-height: 740px;
+  }
+}
+@media (max-width: 800px) {
+  .ld-confirm-header {
+    min-height: 88px;
+  }
+  .ld-confirm-layout {
+    grid-template-columns: minmax(0, 1fr);
+    margin: 24px 0;
+    min-height: auto;
+  }
+  .ld-confirm-editorial {
+    min-height: 250px;
+  }
+  .ld-confirm-photo-copy {
+    padding: 28px;
+  }
+  .ld-confirm-photo-copy > p {
+    font-size: 38px;
+    margin: 10px 0 16px;
+  }
+  .ld-confirm-card {
+    padding: 32px;
+  }
+  .ld-confirm-meta {
+    margin-bottom: 28px;
+  }
+}
+@media (max-width: 440px) {
+  .ld-confirm-header {
+    gap: 12px;
+  }
+  .ld-confirm-header .ld-brand strong {
+    font-size: 21px;
+  }
+  .ld-confirm-header .ld-brand small {
+    font-size: 8px;
+  }
+  .ld-confirm-header .ld-brand-symbol {
+    width: 38px;
+    height: 38px;
+  }
+  .ld-confirm-home {
+    font-size: 10px;
+    max-width: 80px;
+    text-align: right;
+  }
+  .ld-confirm-home span {
+    margin-left: 3px;
+  }
+  .ld-confirm-editorial {
+    min-height: 220px;
+  }
+  .ld-confirm-photo-copy {
+    padding: 22px;
+  }
+  .ld-confirm-card {
+    padding: 26px 22px;
+  }
+  .ld-confirm-card > .ld-button {
+    width: 100%;
+    box-sizing: border-box;
+    gap: 12px;
+  }
+  .ld-confirm-footer {
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-confirm-layout,
+  .ld-confirm-editorial > img,
+  .ld-confirm-check,
+  .ld-confirm-emblem-working .ld-confirm-ring {
+    animation: none;
+  }
+  .ld-confirm-check {
+    stroke-dashoffset: 0;
+  }
+}
