@@ -10,17 +10,20 @@ interface RaceResult {
 }
 
 export default function Results() {
+  const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<RaceResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<{ results: RaceResult[] }>('/api/racing/results')
       .then((d) => setResults(d.results))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load results.'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load results.'))
+      .finally(() => setLoading(false));
   }, []);
 
   if (error) return <div className="empty">{error}</div>;
-  if (results.length === 0) return <div className="loading">Loading results…</div>;
+  if (loading) return <div className="loading">Loading results…</div>;
+  if (results.length === 0) return <div className="empty">No records available yet.</div>;
 
   const topPayout = results.reduce((best, x) => {
     const v = Number(x.payouts.win.replace(/[^0-9.]/g, ''));

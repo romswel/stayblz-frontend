@@ -33,7 +33,7 @@ export default function Login() {
 
       <div className="cover-statement">
         <h2>Every furlong, accounted for.</h2>
-        <p>Stable, string, and race day â managed from one place.</p>
+        <p>Stable, string, and race day, managed from one place.</p>
       </div>
 
       <form className="login-plaque" onSubmit={handleSubmit}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import type { InventoryItem, TrackedHorse } from '../types';
 import HorsePhoto, { HORSE_PHOTOS } from '../components/HorsePhoto';
@@ -21,6 +21,7 @@ function statusChip(status: string): string {
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
 export default function Inventory() {
+  const trackerRequest = useRef(0);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<InventoryItem | null>(null);
@@ -37,13 +38,14 @@ export default function Inventory() {
   }, []);
 
   function openHorse(item: InventoryItem) {
+    const request = ++trackerRequest.current;
     setSelected(item);
     setTracker(null);
     // Enrich with tracker data when this horse is being tracked.
     api
       .get<{ horse: TrackedHorse }>(`/api/horses/${item.id}`)
-      .then((d) => setTracker(d.horse))
-      .catch(() => setTracker(null));
+      .then((d) => { if (request === trackerRequest.current) setTracker(d.horse); })
+      .catch(() => { if (request === trackerRequest.current) setTracker(null); });
   }
 
   const filtered = useMemo(() => {

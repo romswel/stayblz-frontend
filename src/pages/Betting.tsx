@@ -17,6 +17,7 @@ const fmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFr
 const QUICK = [100, 250, 500];
 
 export default function Betting() {
+  const [loading, setLoading] = useState(true);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
   const [txns, setTxns] = useState<Txn[]>([]);
@@ -36,7 +37,8 @@ export default function Betting() {
   useEffect(() => {
     api.get<{ markets: Market[] }>('/api/betting/markets')
       .then((d) => setMarkets(d.markets))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load markets.'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load markets.'))
+      .finally(() => setLoading(false));
     api.get<{ bets: Bet[] }>('/api/betting/bets')
       .then((d) => setBets(d.bets))
       .catch(() => undefined);
@@ -82,7 +84,8 @@ export default function Betting() {
   }
 
   if (error) return <div className="empty">{error}</div>;
-  if (markets.length === 0) return <div className="loading">Loading markets…</div>;
+  if (loading) return <div className="loading">Loading markets…</div>;
+  if (markets.length === 0) return <div className="empty">No records available yet.</div>;
 
   const leagues = [...new Set(markets.map((m) => m.league))];
   const stakeNum = Number(stake);

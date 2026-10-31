@@ -6,17 +6,20 @@ import MiniBar from '../components/MiniBar';
 interface StakesRace { date: string; race: string; grade: string; track: string; distance: string; surface: string; purse: string; conditions: string; }
 
 export default function Stakes() {
+  const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<StakesRace[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<{ stakes: StakesRace[] }>('/api/racing/stakes')
       .then((d) => setRows(d.stakes))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load stakes schedule.'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load stakes schedule.'))
+      .finally(() => setLoading(false));
   }, []);
 
   if (error) return <div className="empty">{error}</div>;
-  if (rows.length === 0) return <div className="loading">Loading stakes schedule…</div>;
+  if (loading) return <div className="loading">Loading stakes schedule…</div>;
+  if (rows.length === 0) return <div className="empty">No records available yet.</div>;
 
   const purse = (p: string) => Number(p.replace(/[^0-9]/g, ''));
   const totalPurses = rows.reduce((n, s) => n + purse(s.purse), 0);

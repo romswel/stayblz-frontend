@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [draft, setDraft] = useState('');
   const [posting, setPosting] = useState(false);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,19 +57,20 @@ export default function Dashboard() {
     api
       .get<{ posts: FeedPost[] }>('/api/feed')
       .then((d) => setPosts(d.posts))
-      .catch(() => setPosts([]));
+      .catch((e) => setFeedError(e instanceof Error ? e.message : 'Could not load the feed.'));
   }, []);
 
   async function submitPost(e: FormEvent) {
     e.preventDefault();
     if (!draft.trim() || posting) return;
     setPosting(true);
+    setFeedError(null);
     try {
       const d = await api.post<{ post: FeedPost }>('/api/feed', { body: draft.trim() });
       setPosts((prev) => [d.post, ...prev]);
       setDraft('');
-    } catch {
-      // keep the draft so nothing is lost
+    } catch (error) {
+      setFeedError(error instanceof Error ? error.message : 'Could not save your post.');
     } finally {
       setPosting(false);
     }
@@ -119,6 +121,7 @@ export default function Dashboard() {
             </div>
           </form>
 
+          {feedError && <div className="form-error" role="alert">{feedError}</div>}
           {posts.map((p) => (
             <article key={p.id} className="panel post-card">
               <span className={`feed-avatar${p.author === user?.displayName ? ' me' : ''}`}>

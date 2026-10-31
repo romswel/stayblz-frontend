@@ -6,17 +6,20 @@ import MiniBar from '../components/MiniBar';
 interface SpeedFigure { horse: string; figure: number; date: string; track: string; distance: string; finish: string; }
 
 export default function SpeedFigures() {
+  const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<SpeedFigure[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<{ speedFigures: SpeedFigure[] }>('/api/racing/speed-figures')
       .then((d) => setRows(d.speedFigures))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load speed figures.'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load speed figures.'))
+      .finally(() => setLoading(false));
   }, []);
 
   if (error) return <div className="empty">{error}</div>;
-  if (rows.length === 0) return <div className="loading">Loading speed figures…</div>;
+  if (loading) return <div className="loading">Loading speed figures…</div>;
+  if (rows.length === 0) return <div className="empty">No records available yet.</div>;
 
   const top = Math.max(...rows.map((r) => r.figure));
   const low = Math.min(...rows.map((r) => r.figure));

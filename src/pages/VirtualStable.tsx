@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import StatStrip from '../components/StatStrip';
 
@@ -11,27 +11,39 @@ const Star = ({ filled }: { filled: boolean }) => (
 );
 
 export default function VirtualStable() {
+  const [loading, setLoading] = useState(true);
+  const pendingRef = useRef(new Set<string>());
+  const [pending, setPending] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [items, setItems] = useState<WatchItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<{ stable: WatchItem[] }>('/api/racing/virtual-stable')
       .then((d) => setItems(d.stable))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load your virtual stable.'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load your virtual stable.'))
+      .finally(() => setLoading(false));
   }, []);
 
   async function toggle(name: string) {
-    // Optimistic toggle; revert on failure.
-    setItems((prev) => prev.map((w) => (w.name === name ? { ...w, watched: !w.watched } : w)));
+    if (pendingRef.current.has(name)) return;
+    pendingRef.current.add(name);
+    setPending([...pendingRef.current]);
+    setSaveError(null);
     try {
-      await api.post('/api/racing/virtual-stable/toggle', { name });
-    } catch {
-      setItems((prev) => prev.map((w) => (w.name === name ? { ...w, watched: !w.watched } : w)));
+      const { item } = await api.post<{ item: WatchItem }>('/api/racing/virtual-stable/toggle', { name });
+      setItems((prev) => prev.map((w) => w.name === name ? item : w));
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Could not update your watch list.');
+    } finally {
+      pendingRef.current.delete(name);
+      setPending([...pendingRef.current]);
     }
   }
 
   if (error) return <div className="empty">{error}</div>;
-  if (items.length === 0) return <div className="loading">Loading virtual stable…</div>;
+  if (loading) return <div className="loading">Loading virtual stable…</div>;
+  if (items.length === 0) return <div className="empty">No records available yet.</div>;
 
   const watchedCount = items.filter((w) => w.watched).length;
 
@@ -51,11 +63,13 @@ export default function VirtualStable() {
         ]}
       />
 
+      {saveError && <div className="form-error" role="alert">{saveError}</div>}
       <ul className="panel watch-list">
         {items.map((w) => (
           <li key={w.name}>
             <button
               className={`star-btn${w.watched ? ' on' : ''}`}
+              disabled={pending.includes(w.name)}
               onClick={() => toggle(w.name)}
               aria-pressed={w.watched}
               aria-label={w.watched ? `Stop watching ${w.name}` : `Watch ${w.name}`}

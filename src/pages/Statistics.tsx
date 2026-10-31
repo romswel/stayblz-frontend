@@ -28,8 +28,8 @@ function StandingsTable({ rows, label }: { rows: StandingRow[]; label: string })
               <td className="num">{r.shows}</td>
               <td className="num">
                 <span className="bar-cell">
-                  <span>{((r.wins / r.starts) * 100).toFixed(0)}%</span>
-                  <MiniBar value={(r.wins / r.starts) * 100} max={30} green title="Win rate" />
+                  <span>{(r.starts > 0 ? (r.wins / r.starts) * 100 : 0).toFixed(0)}%</span>
+                  <MiniBar value={r.starts > 0 ? (r.wins / r.starts) * 100 : 0} max={30} green title="Win rate" />
                 </span>
               </td>
               <td className="num gold">{usd.format(r.earningsUsd)}</td>
@@ -42,6 +42,7 @@ function StandingsTable({ rows, label }: { rows: StandingRow[]; label: string })
 }
 
 export default function Statistics() {
+  const [loading, setLoading] = useState(true);
   const [jockeys, setJockeys] = useState<StandingRow[]>([]);
   const [trainers, setTrainers] = useState<StandingRow[]>([]);
   const [tab, setTab] = useState<'jockeys' | 'trainers'>('jockeys');
@@ -50,11 +51,13 @@ export default function Statistics() {
   useEffect(() => {
     api.get<{ jockeys: StandingRow[]; trainers: StandingRow[] }>('/api/racing/statistics')
       .then((d) => { setJockeys(d.jockeys); setTrainers(d.trainers); })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load statistics.'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load statistics.'))
+      .finally(() => setLoading(false));
   }, []);
 
   if (error) return <div className="empty">{error}</div>;
-  if (jockeys.length === 0) return <div className="loading">Loading statistics…</div>;
+  if (loading) return <div className="loading">Loading statistics…</div>;
+  if (jockeys.length === 0 && trainers.length === 0) return <div className="empty">No records available yet.</div>;
 
   return (
     <>

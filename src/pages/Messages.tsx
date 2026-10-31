@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import type { Conversation, ConversationPreview } from '../types';
 
@@ -16,7 +16,8 @@ export default function Messages() {
   const [threadOpen, setThreadOpen] = useState(false); // mobile: show thread pane
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
+  const requestId = useRef(0);
+  const [threadLoading, setThreadLoading] = useState(false);
 
   useEffect(() => {
     api
@@ -31,32 +32,20 @@ export default function Messages() {
   }, []);
 
   function openConversation(id: string, focus = true) {
+    const request = ++requestId.current;
+    setActive(null);
+    setError(null);
+    setThreadLoading(true);
+    if (focus) setThreadOpen(true);
     api
       .get<{ conversation: Conversation }>(`/api/messages/${id}`)
       .then((d) => {
-        setActive(d.conversation);
-        if (focus) setThreadOpen(true);
+        if (request === requestId.current) setActive(d.conversation);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not open conversation.'));
-  }
-
-  function handleSend() {
-    if (!draft.trim() || !active) return;
-    // Local echo only — real send arrives with the messaging backend.
-    setActive({
-      ...active,
-      messages: [
-        ...active.messages,
-        {
-          id: `local-${Date.now()}`,
-          from: 'You',
-          body: draft.trim(),
-          sentAt: new Date().toISOString(),
-          mine: true
-        }
-      ]
-    });
-    setDraft('');
+      .catch((e) => {
+        if (request === requestId.current) setError(e instanceof Error ? e.message : 'Could not open conversation.');
+      })
+      .finally(() => { if (request === requestId.current) setThreadLoading(false); });
   }
 
   return (
@@ -111,21 +100,10 @@ export default function Messages() {
                   </div>
                 ))}
               </div>
-              <div className="thread-compose">
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Write a message"
-                  aria-label="Write a message"
-                />
-                <button className="btn btn-quiet" onClick={handleSend}>
-                  Send
-                </button>
-              </div>
+              <div className="thread-compose" role="status">Message history is read-only. Sending is not available yet.</div>
             </>
           ) : (
-            <div className="empty">Select a conversation to read it.</div>
+            <div className="empty">{threadLoading ? 'Loading conversation...' : 'Select a conversation to read it.'}</div>
           )}
         </div>
       </div>

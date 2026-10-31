@@ -8,6 +8,7 @@ interface RaceCard { raceNo: number; postTime: string; distance: string; surface
 interface TrackEntries { track: string; date: string; races: RaceCard[]; }
 
 export default function Entries() {
+  const [loading, setLoading] = useState(true);
   const [tracks, setTracks] = useState<TrackEntries[]>([]);
   const [active, setActive] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -15,11 +16,13 @@ export default function Entries() {
   useEffect(() => {
     api.get<{ entries: TrackEntries[] }>('/api/racing/entries')
       .then((d) => setTracks(d.entries))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load entries.'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load entries.'))
+      .finally(() => setLoading(false));
   }, []);
 
   if (error) return <div className="empty">{error}</div>;
-  if (tracks.length === 0) return <div className="loading">Loading entries…</div>;
+  if (loading) return <div className="loading">Loading entries…</div>;
+  if (tracks.length === 0) return <div className="empty">No records available yet.</div>;
 
   const t = tracks[Math.min(active, tracks.length - 1)];
 
