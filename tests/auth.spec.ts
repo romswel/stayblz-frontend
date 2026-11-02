@@ -1,3 +1,4 @@
+import { mockWorkspace } from "./workspace-fixture";
 import { test, expect } from "@playwright/test";
 const user = {
   id: "member-1",
@@ -256,7 +257,7 @@ test("confirmation layout stays readable across phone, tablet and wide desktop",
     fullPage: true,
   });
 });
-test("member profile persists through the API without exposing stable navigation", async ({
+test("member profile persists through the API with shared stable navigation", async ({
   page,
 }) => {
   await page.route("**/api/auth/me", (route) =>
@@ -275,13 +276,14 @@ test("member profile persists through the API without exposing stable navigation
       },
     });
   });
-  await page.goto("/dashboard");
+  await page.goto("/account");
   await expect(
     page.getByRole("heading", { name: "Profile", exact: true }),
   ).toBeVisible();
+  await page.locator(".ws-workspace-disclosure > summary:visible").click();
   await expect(
     page.getByRole("link", { name: "Inventory", exact: true }),
-  ).toHaveCount(0);
+  ).toBeVisible();
   await page.getByLabel("First name", { exact: true }).fill("Updated");
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Profile saved.");
@@ -676,4 +678,8 @@ test("late signup response cannot replace login after header navigation", async 
   await expect(
     page.getByRole("heading", { name: "Check your email", exact: true }),
   ).toHaveCount(0);
+});
+
+test.beforeEach(async ({ page }) => {
+  await mockWorkspace(page);
 });

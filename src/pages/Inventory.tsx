@@ -1,41 +1,63 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../api';
-import type { InventoryItem, TrackedHorse } from '../types';
-import HorsePhoto, { HORSE_PHOTOS } from '../components/HorsePhoto';
-import HorsePortrait from '../components/HorsePortrait';
-import Modal from '../components/Modal';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useStableApi, useWorkspace } from "../workspace";
+import type { InventoryItem, TrackedHorse } from "../types";
+import HorsePhoto, { HORSE_PHOTOS } from "../components/HorsePhoto";
+import HorsePortrait from "../components/HorsePortrait";
+import Modal from "../components/Modal";
+import HorseEditor from "../components/HorseEditor";
 
 function statusChip(status: string): string {
   switch (status) {
-    case 'Active':
-    case 'In training':
-      return 'chip green';
-    case 'Resting':
-    case 'For sale':
-      return 'chip amber';
+    case "Active":
+    case "In training":
+      return "chip green";
+    case "Resting":
+    case "For sale":
+      return "chip amber";
     default:
-      return 'chip grey';
+      return "chip grey";
   }
 }
 
-const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const usd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
 
 export default function Inventory() {
+  const api = useStableApi();
+  const { active: stable } = useWorkspace();
+  const [editing, setEditing] = useState<InventoryItem | "new" | null>(null);
+  const [version, setVersion] = useState(0);
+  const canManage = stable?.role === "owner" || stable?.role === "manager";
   const trackerRequest = useRef(0);
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<InventoryItem | null>(null);
   const [tracker, setTracker] = useState<TrackedHorse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
     api
-      .get<{ items: InventoryItem[] }>('/api/inventory')
-      .then((d) => setItems(d.items))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load inventory.'))
-      .finally(() => setLoading(false));
-  }, []);
+      .get<{ items: InventoryItem[] }>("/api/inventory", { signal: controller.signal })
+      .then((d) => {
+        if (!Array.isArray(d.items)) throw Error("Inventory response was invalid.");
+        if (!controller.signal.aborted) setItems(d.items);
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted)
+          setError(e instanceof Error ? e.message : "Could not load inventory.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [api, version]);
 
   function openHorse(item: InventoryItem) {
     const request = ++trackerRequest.current;
@@ -44,15 +66,21 @@ export default function Inventory() {
     // Enrich with tracker data when this horse is being tracked.
     api
       .get<{ horse: TrackedHorse }>(`/api/horses/${item.id}`)
-      .then((d) => { if (request === trackerRequest.current) setTracker(d.horse); })
-      .catch(() => { if (request === trackerRequest.current) setTracker(null); });
+      .then((d) => {
+        if (request === trackerRequest.current) setTracker(d.horse);
+      })
+      .catch(() => {
+        if (request === trackerRequest.current) setTracker(null);
+      });
   }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
     return items.filter((i) =>
-      [i.horseName, i.breed, i.status, i.stable, i.sex].some((v) => v.toLowerCase().includes(q))
+      [i.horseName, i.breed, i.status, i.stable, i.sex].some((v) =>
+        v.toLowerCase().includes(q),
+      ),
     );
   }, [items, query]);
 
@@ -61,9 +89,27 @@ export default function Inventory() {
       <header className="page-head">
         <div className="eyebrow">stable // registry</div>
         <h1>Inventory</h1>
-        <p className="sub">Every horse registered to your operation — select a horse for full details</p>
+        <p className="sub">
+          Every horse registered to your operation — select a horse for full
+          details
+        </p>
       </header>
 
+      {canManage && (
+        <button
+          className="ws-button inventory-add"
+          onClick={() => setEditing("new")}
+        >
+          Add horse
+        </button>
+      )}
+      {editing && (
+        <HorseEditor
+          item={editing === "new" ? undefined : editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => setVersion((v) => v + 1)}
+        />
+      )}
       <div className="toolbar">
         <input
           type="search"
@@ -79,7 +125,7 @@ export default function Inventory() {
 
       <div className="panel table-wrap">
         {loading && <div className="loading">Loading inventory…</div>}
-        {error && !loading && <div className="empty">{error}</div>}
+        {error && !loading && <div className="empty" role="alert">{error} <button className="ws-button" onClick={() => setVersion(v => v + 1)}>Retry inventory</button></div>}
         {!loading && !error && (
           <table className="data">
             <thead>
@@ -100,13 +146,23 @@ export default function Inventory() {
                   className="clickable"
                   tabIndex={0}
                   onClick={() => openHorse(i)}
-                  onKeyDown={(e) => e.key === 'Enter' && openHorse(i)}
+                  onKeyDown={(e) => e.key === "Enter" && openHorse(i)}
                   aria-label={`View details for ${i.horseName}`}
                 >
                   <td>
                     <div className="horse-cell">
-                      <HorsePhoto horseId={i.id} name={i.horseName} size={46} coat={i.coatColor} mane={i.maneColor} blaze={i.blaze} />
-                      <span className="saddlecloth sm" style={{ background: i.silksColor }}>
+                      <HorsePhoto
+                        horseId={i.id}
+                        name={i.horseName}
+                        size={46}
+                        coat={i.coatColor}
+                        mane={i.maneColor}
+                        blaze={i.blaze}
+                      />
+                      <span
+                        className="saddlecloth sm"
+                        style={{ background: i.silksColor }}
+                      >
                         {i.saddlecloth}
                       </span>
                       <span>
@@ -122,13 +178,21 @@ export default function Inventory() {
                   </td>
                   <td>{i.stable}</td>
                   <td className="num gold">{usd.format(i.valueUsd)}</td>
-                  <td>{new Date(i.acquiredAt).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                  <td>
+                    {new Date(i.acquiredAt).toLocaleDateString([], {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7}>
-                    <div className="empty">No records match “{query}”. Clear the search to see everything.</div>
+                    <div className="empty">
+                      {items.length ? `No records match “${query}”. Clear the search to see everything.` : "No horses registered yet."}
+                    </div>
                   </td>
                 </tr>
               )}
@@ -138,29 +202,73 @@ export default function Inventory() {
       </div>
 
       {selected && (
-        <Modal onClose={() => setSelected(null)} label={`Details for ${selected.horseName}`}>
+        <Modal
+          onClose={() => setSelected(null)}
+          label={`Details for ${selected.horseName}`}
+        >
           <div className="modal-hero">
             {HORSE_PHOTOS[selected.id] ? (
-              <img src={HORSE_PHOTOS[selected.id]} alt={`Photo of ${selected.horseName}`} />
+              <img
+                src={HORSE_PHOTOS[selected.id]}
+                alt={`Photo of ${selected.horseName}`}
+              />
             ) : (
-              <HorsePortrait coat={selected.coatColor} mane={selected.maneColor} blaze={selected.blaze} size={210} title={selected.horseName} />
+              <HorsePortrait
+                coat={selected.coatColor}
+                mane={selected.maneColor}
+                blaze={selected.blaze}
+                size={210}
+                title={selected.horseName}
+              />
             )}
             <div className="modal-title">
-              <span className="saddlecloth" style={{ background: selected.silksColor }}>{selected.saddlecloth}</span>
+              <span
+                className="saddlecloth"
+                style={{ background: selected.silksColor }}
+              >
+                {selected.saddlecloth}
+              </span>
               <h2>{selected.horseName}</h2>
             </div>
-            <button className="modal-close" onClick={() => setSelected(null)} aria-label="Close">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <button
+              className="modal-close"
+              onClick={() => setSelected(null)}
+              aria-label="Close"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
                 <path d="M6 6l12 12M18 6L6 18" />
               </svg>
             </button>
           </div>
 
           <div className="modal-body">
+            {canManage && (
+              <button
+                className="ws-button"
+                onClick={() => {
+                  setSelected(null);
+                  setEditing(selected);
+                }}
+              >
+                Edit horse
+              </button>
+            )}
             <div className="modal-tags">
-              <span className={statusChip(selected.status)}>{selected.status}</span>
+              <span className={statusChip(selected.status)}>
+                {selected.status}
+              </span>
               <span className="chip grey">{selected.breed}</span>
-              <span className="chip grey">{selected.sex}, {selected.age} yo</span>
+              <span className="chip grey">
+                {selected.sex}, {selected.age} yo
+              </span>
             </div>
 
             <div className="detail-grid">
@@ -175,7 +283,11 @@ export default function Inventory() {
               <div className="detail wide">
                 <div className="l">Acquired</div>
                 <div className="v">
-                  {new Date(selected.acquiredAt).toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {new Date(selected.acquiredAt).toLocaleDateString([], {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </div>
               </div>
             </div>
@@ -185,7 +297,9 @@ export default function Inventory() {
                 <div className="h">Training &amp; racing</div>
                 <div className="cond" style={{ marginBottom: 12 }}>
                   <span>Condition</span>
-                  <span className="bar"><span style={{ width: `${tracker.condition}%` }} /></span>
+                  <span className="bar">
+                    <span style={{ width: `${tracker.condition}%` }} />
+                  </span>
                   <span className="v">{tracker.condition}</span>
                 </div>
                 <div className="detail-grid">
@@ -211,7 +325,9 @@ export default function Inventory() {
                   </div>
                   <div className="detail wide">
                     <div className="l">Next race</div>
-                    <div className="v">{tracker.nextRace ?? 'Not yet entered'}</div>
+                    <div className="v">
+                      {tracker.nextRace ?? "Not yet entered"}
+                    </div>
                   </div>
                 </div>
               </div>

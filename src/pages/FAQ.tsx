@@ -99,6 +99,21 @@ const topics = [
         answer:
           "Email verification confirms ownership of your email address. Private stable access requires separate permission; signing up does not grant access to another stable’s information.",
       },
+      {
+        question: "Do I need to be a superadmin to manage a stable?",
+        answer:
+          "No. In My stables & team, create your own stable or accept an invitation addressed to your account email. Stable owners and managers maintain horse records and invite teammates. Members can view horses, post stable updates, and use conversations they participate in. Superadmin is a separate platform administration role.",
+      },
+      {
+        question: "Who can read my messages?",
+        answer:
+          "Personal messages are private to their conversation participants and do not require stable membership. Team conversations also require current membership of that stable. Superadmins cannot automatically read unrelated conversations. Messages are saved after the server confirms them. Live updates and notifications are not connected yet; use Refresh conversation to check for replies.",
+      },
+      {
+        question: "Do I have to own a stable to use My racing?",
+        answer:
+          "No. Your account holds follows for horses, jockeys and trainers, a private race notebook, alert preferences and personal messages. The virtual stable is a list of racing favorites. Inventory, training records and team updates are in the separate optional stable workspace. Alert preferences can be saved, but automatic delivery is not active yet.",
+      },
     ],
   },
 ];

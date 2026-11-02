@@ -37,8 +37,8 @@ export class ApiError extends Error {
   }
 }
 
-// Set VITE_API_URL in production (e.g. https://stayblz-api.onrender.com);
-// leave unset in development to use the Vite proxy.
+// Production uses the same-origin /api proxy for HttpOnly session cookies.
+// VITE_API_URL only overrides the API host during local development.
 const API_BASE = import.meta.env.PROD
   ? ""
   : (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/+$/, "");
@@ -111,9 +111,9 @@ async function request<T>(
     throw new ApiError(
       res.status,
       data &&
-      typeof data === "object" &&
-      "error" in data &&
-      typeof data.error === "string"
+        typeof data === "object" &&
+        "error" in data &&
+        typeof data.error === "string"
         ? data.error
         : "Something went wrong.",
       typeof details.code === "string" ? details.code : undefined,
@@ -124,13 +124,28 @@ async function request<T>(
 }
 
 export const api = {
-  get: <T>(path: string, options?: { signal?: AbortSignal }) =>
-    request<T>(path, options),
-  post: <T>(path: string, body?: unknown) =>
+  get: <T>(
+    path: string,
+    options?: { signal?: AbortSignal; headers?: Record<string, string> },
+  ) => request<T>(path, options),
+  post: <T>(
+    path: string,
+    body?: unknown,
+    options?: { headers?: Record<string, string> },
+  ) =>
     request<T>(path, {
       method: "POST",
+      ...options,
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
-  patch: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+  patch: <T>(
+    path: string,
+    body: unknown,
+    options?: { headers?: Record<string, string> },
+  ) =>
+    request<T>(path, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+      ...options,
+    }),
 };

@@ -137,6 +137,9 @@ export default function PublishedRacing({
       "figure",
       "margin",
       "detail",
+      "category",
+      "summary",
+      "body",
     ] as const
   ).filter((field) => records.some((row) => row[field] !== undefined));
   return (

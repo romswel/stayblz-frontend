@@ -1,90 +1,213 @@
-import { useEffect, useRef, useState } from 'react';
-import { api } from '../api';
-import StatStrip from '../components/StatStrip';
-
-interface WatchItem { name: string; watched: boolean; lastActivity: string; nextAlert: string | null; }
-
-const Star = ({ filled }: { filled: boolean }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
-    <path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.8l-5.8 3 1.1-6.4L2.6 9.8l6.5-.9z" />
-  </svg>
-);
-
-export default function VirtualStable() {
-  const [loading, setLoading] = useState(true);
-  const pendingRef = useRef(new Set<string>());
-  const [pending, setPending] = useState<string[]>([]);
-  const [saveError, setSaveError] = useState<string | null>(null);
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { api } from "../api";
+interface WatchItem {
+  id: string;
+  name: string;
+  watched: boolean;
+  lastActivity: string;
+  nextAlert: string | null;
+}
+type Kind = "horses" | "jockeys" | "trainers";
+export default function VirtualStable({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
+  const [kind, setKind] = useState<Kind>("horses");
   const [items, setItems] = useState<WatchItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [pending, setPending] = useState<string[]>([]);
+  const pendingRef = useRef(new Set<string>());
+  const [search, setSearch] = useState("");
+  const [onlyFollowing, setOnlyFollowing] = useState(false);
+  const [version, setVersion] = useState(0);
   useEffect(() => {
-    api.get<{ stable: WatchItem[] }>('/api/racing/virtual-stable')
-      .then((d) => setItems(d.stable))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load your virtual stable.'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function toggle(name: string) {
-    if (pendingRef.current.has(name)) return;
-    pendingRef.current.add(name);
+    const c = new AbortController();
+    setLoading(true);
+    setError("");
+    setItems([]);
+    api
+      .get<{ stable: WatchItem[] }>(
+        `/api/watchlist${kind === "horses" ? "" : `?kind=${kind}`}`,
+        { signal: c.signal },
+      )
+      .then((d) => {
+        if (!c.signal.aborted) {
+          if (!Array.isArray(d.stable))
+            throw Error("Your follows could not be loaded.");
+          setItems(d.stable);
+        }
+      })
+      .catch((e) => {
+        if (!c.signal.aborted) setError(e.message);
+      })
+      .finally(() => {
+        if (!c.signal.aborted) setLoading(false);
+      });
+    return () => c.abort();
+  }, [kind, version]);
+  async function toggle(item: WatchItem) {
+    if (pendingRef.current.has(item.id)) return;
+    pendingRef.current.add(item.id);
     setPending([...pendingRef.current]);
-    setSaveError(null);
+    setSaveError("");
     try {
-      const { item } = await api.post<{ item: WatchItem }>('/api/racing/virtual-stable/toggle', { name });
-      setItems((prev) => prev.map((w) => w.name === name ? item : w));
+      const saved = await api.post<{ id: string; watched: boolean }>(
+        "/api/watchlist/toggle",
+        { id: item.id, watched: !item.watched },
+      );
+      setItems((old) =>
+        old.map((w) =>
+          w.id === item.id ? { ...w, watched: saved.watched } : w,
+        ),
+      );
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Could not update your watch list.');
+      setSaveError(
+        e instanceof Error
+          ? e.message
+          : "Your follow preference could not be saved.",
+      );
     } finally {
-      pendingRef.current.delete(name);
+      pendingRef.current.delete(item.id);
       setPending([...pendingRef.current]);
     }
   }
-
-  if (error) return <div className="empty">{error}</div>;
-  if (loading) return <div className="loading">Loading virtual stable…</div>;
-  if (items.length === 0) return <div className="empty">No records available yet.</div>;
-
-  const watchedCount = items.filter((w) => w.watched).length;
-
+  const filtered = items.filter(
+    (i) =>
+      (!onlyFollowing || i.watched) &&
+      i.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
+  );
   return (
-    <>
-      <header className="page-head">
-        <div className="eyebrow">racing data // watch list</div>
-        <h1>Virtual Stable</h1>
-        <p className="sub">Watch horses to follow their entries, works, and results — {watchedCount} watched</p>
-      </header>
-
-      <StatStrip
-        tiles={[
-          { label: 'Horses listed', value: items.length },
-          { label: 'Watched', value: watchedCount },
-          { label: 'Active alerts', value: items.filter((w) => w.watched && w.nextAlert).length }
-        ]}
-      />
-
-      {saveError && <div className="form-error" role="alert">{saveError}</div>}
-      <ul className="panel watch-list">
-        {items.map((w) => (
-          <li key={w.name}>
+    <section>
+      <div className="mr-intro">
+        <span className="ov-kicker">YOUR PERSONAL VIRTUAL STABLE</span>
+        {embedded ? <h2>Follow the form.</h2> : <h1>Following</h1>}
+        <p>
+          Keep the horses and racing people you care about close. Following does
+          not mean owning a horse or joining a stable team.
+        </p>
+      </div>
+      <div className="mr-follows-toolbar">
+        <div className="ov-tabs">
+          {(["horses", "jockeys", "trainers"] as const).map((k) => (
             <button
-              className={`star-btn${w.watched ? ' on' : ''}`}
-              disabled={pending.includes(w.name)}
-              onClick={() => toggle(w.name)}
-              aria-pressed={w.watched}
-              aria-label={w.watched ? `Stop watching ${w.name}` : `Watch ${w.name}`}
+              key={k}
+              aria-pressed={kind === k}
+              onClick={() => {
+                setKind(k);
+                setSearch("");
+              }}
             >
-              <Star filled={w.watched} />
+              {k.charAt(0).toUpperCase() + k.slice(1)}
             </button>
-            <div className="watch-body">
-              <div className="watch-name">{w.name}</div>
-              <div className="watch-activity">{w.lastActivity}</div>
-              {w.nextAlert && <div className="watch-alert">⚑ {w.nextAlert}</div>}
-            </div>
-          </li>
-        ))}
-      </ul>
-      <p className="data-note">Watch flags are stored in memory during development; alerts will arrive once notifications are built.</p>
-    </>
+          ))}
+        </div>
+        <input
+          type="search"
+          aria-label="Search follows"
+          placeholder={`Search ${kind}…`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      <div className="mr-follow-count">
+        <label>
+          <input
+            type="checkbox"
+            checked={onlyFollowing}
+            onChange={(e) => setOnlyFollowing(e.target.checked)}
+          />{" "}
+          Only following
+        </label>
+        {!loading && !error && (
+          <span>
+            {" "}
+            · {items.filter((i) => i.watched).length} following in this category
+          </span>
+        )}
+      </div>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}{" "}
+          <button
+            className="ws-button"
+            onClick={() => setVersion((v) => v + 1)}
+          >
+            Retry follows
+          </button>
+        </p>
+      )}
+      {saveError && (
+        <p className="form-error" role="alert">
+          {saveError}
+        </p>
+      )}
+      <div className="ov-paper">
+        {loading ? (
+          <p className="ov-empty">Loading your racing follows…</p>
+        ) : error ? (
+          <p className="ov-empty">
+            Your follows could not be loaded. Use Retry follows to try again.
+          </p>
+        ) : !filtered.length ? (
+          <div className="mr-empty">
+            <h3>
+              {search
+                ? "No matches."
+                : onlyFollowing
+                  ? "Your list starts here."
+                  : "The published field is still to come."}
+            </h3>
+            <p>
+              {search
+                ? "Try another name."
+                : onlyFollowing
+                  ? "Turn off Only following to explore available names."
+                  : `Published ${kind} will appear here when available.`}
+            </p>
+          </div>
+        ) : (
+          <ul className="mr-follow-list">
+            {filtered.map((w) => (
+              <li key={w.id}>
+                <button
+                  className={`star-btn${w.watched ? " on" : ""}`}
+                  disabled={pending.includes(w.id)}
+                  onClick={() => void toggle(w)}
+                  aria-pressed={w.watched}
+                  aria-label={
+                    w.watched ? `Stop watching ${w.name}` : `Watch ${w.name}`
+                  }
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill={w.watched ? "currentColor" : "none"}
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    aria-hidden="true"
+                  >
+                    <path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.4-5.8-3-5.8 3 1.1-6.4-4.7-4.6 6.5-.9Z" />
+                  </svg>
+                </button>
+                <div>
+                  <strong>{w.name}</strong>
+                  <p>{w.lastActivity}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <p className="ov-footnote">
+        Saved to your account across devices. Shows up to 500 published names
+        per category plus your saved follows. Automatic alerts are not active
+        yet. <Link to="/my-racing?tab=alerts">Choose alert preferences ↗</Link>
+      </p>
+    </section>
   );
 }

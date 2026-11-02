@@ -1,0 +1,546 @@
+.my-racing {
+  max-width: 1500px;
+  margin: auto;
+  animation: ov-enter 220ms ease-out;
+}
+.mr-tabs {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--ws-line);
+  margin: 26px 0 30px;
+}
+.mr-tabs button,
+.mr-tabs > a {
+  padding: 16px 0;
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  font-size: 13px;
+  color: var(--ws-muted);
+  text-decoration: none;
+}
+.mr-tabs button[aria-pressed="true"] {
+  color: var(--ws-green);
+  border-color: var(--ws-gold);
+  font-weight: 600;
+}
+.mr-tabs > a {
+  margin-left: auto;
+  color: var(--ws-green);
+}
+.mr-intro {
+  margin-bottom: 24px;
+  max-width: 720px;
+}
+.mr-intro h2 {
+  font:
+    400 30px/1.2 Georgia,
+    serif;
+  margin: 10px 0;
+}
+.mr-intro p {
+  font-size: 13px;
+  color: var(--ws-muted);
+  line-height: 1.8;
+}
+.mr-follows-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.mr-follows-toolbar .ov-tabs {
+  gap: 24px;
+  flex: 1;
+}
+.mr-follows-toolbar input {
+  min-width: 0;
+  max-width: 290px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--ws-line);
+  background: var(--ws-paper);
+  color: var(--ws-ink);
+  font-size: 16px;
+}
+.mr-follow-count {
+  font-size: 12px;
+  color: var(--ws-muted);
+  margin: 12px 0;
+}
+.mr-follow-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mr-follow-list li {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--ws-line);
+}
+.mr-follow-list li:last-child {
+  border-bottom: 0;
+}
+.mr-follow-list strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ws-green);
+}
+.mr-follow-list p {
+  color: var(--ws-muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin-top: 5px;
+}
+.mr-follow-list .star-btn {
+  min-width: 44px;
+  min-height: 44px;
+  flex: none;
+}
+.mr-empty {
+  padding: 38px;
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.mr-empty h3 {
+  font:
+    400 26px Georgia,
+    serif;
+  margin-bottom: 12px;
+}
+.mr-empty p {
+  max-width: 570px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ws-muted);
+}
+.mr-notes-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.mr-note-editor {
+  padding: 26px;
+}
+.mr-note-editor h3 {
+  font:
+    400 25px Georgia,
+    serif;
+  margin-bottom: 20px;
+}
+.mr-note-editor label,
+.mr-conversation-invites label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0;
+  font-size: 12px;
+}
+.mr-note-editor :is(input, textarea),
+.mr-conversation-invites input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ws-line);
+  background: var(--ws-bg);
+  color: var(--ws-ink);
+  font:
+    16px/1.6 "Archivo",
+    sans-serif;
+  border-radius: 2px;
+}
+.mr-note-editor textarea {
+  resize: vertical;
+  min-height: 200px;
+}
+.mr-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.mr-actions > span {
+  color: var(--ws-muted);
+  font-size: 10px;
+  margin-right: auto;
+}
+.mr-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 850px;
+  overflow: auto;
+}
+.mr-note {
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+.mr-note time {
+  font-size: 10px;
+  color: var(--ws-muted);
+}
+.mr-note h3 {
+  font:
+    400 24px Georgia,
+    serif;
+  margin: 12px 0;
+}
+.mr-note > p {
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+.mr-delete-confirm {
+  padding: 16px;
+  background: var(--ws-soft);
+  margin-top: 18px;
+}
+.mr-delete-confirm p {
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.mr-delete-confirm button {
+  margin-right: 8px;
+}
+.mr-preferences {
+  padding: 28px;
+  max-width: 820px;
+}
+.mr-service-status {
+  border-left: 3px solid var(--ws-gold);
+  padding: 8px 18px;
+  margin-bottom: 24px;
+  background: var(--ws-soft);
+}
+.mr-service-status > span {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--ws-gold);
+}
+.mr-service-status p {
+  font-size: 12px;
+  color: var(--ws-muted);
+  line-height: 1.8;
+  margin: 8px 0;
+}
+.mr-preference {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  cursor: pointer;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--ws-line);
+}
+.mr-preference input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ws-green);
+  flex: none;
+}
+.mr-preference strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.mr-preference small {
+  display: block;
+  font-size: 12px;
+  color: var(--ws-muted);
+  margin-top: 6px;
+}
+.mr-preferences form > .ws-button {
+  margin-top: 24px;
+}
+.mr-optional {
+  margin-top: 40px;
+  border-top: 1px solid var(--ws-line);
+  padding: 28px 0;
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  justify-content: space-between;
+}
+.mr-optional h2 {
+  font:
+    400 26px Georgia,
+    serif;
+  margin: 10px 0;
+}
+.mr-optional p {
+  font-size: 12px;
+  color: var(--ws-muted);
+  max-width: 650px;
+}
+.mr-optional > .ws-button {
+  flex: none;
+}
+.ov-personal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.ov-personal-grid a {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  border-right: 1px solid var(--ws-line);
+  padding: 24px;
+  gap: 12px;
+}
+.ov-personal-grid a:last-child {
+  border: 0;
+}
+.ov-personal-grid a:hover {
+  background: var(--ws-soft);
+}
+.ov-personal-grid span {
+  font-size: 12px;
+  color: var(--ws-green);
+}
+.ov-personal-grid strong {
+  font:
+    400 38px Georgia,
+    serif;
+}
+.ov-personal-grid small {
+  font-size: 10px;
+  color: var(--ws-muted);
+}
+.ws-workspace-disclosure {
+  margin: 18px 0 8px;
+  border-top: 1px solid var(--ws-line);
+  border-bottom: 1px solid var(--ws-line);
+  padding: 8px 0;
+}
+.ws-workspace-disclosure summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+  cursor: pointer;
+  min-height: 52px;
+  padding: 12px;
+  font-size: 12px;
+}
+.ws-workspace-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+.ws-workspace-disclosure summary::after {
+  content: "+";
+  margin-left: auto;
+  color: var(--ws-gold);
+}
+.ws-workspace-disclosure[open] summary::after {
+  content: "−";
+}
+.ws-workspace-disclosure summary > svg {
+  flex: none;
+}
+.ws-workspace-label small {
+  display: block;
+  font-size: 8px;
+  color: var(--ws-muted);
+  margin-top: 4px;
+}
+.ws-workspace-disclosure .ws-nav-item {
+  font-size: 11px;
+}
+.ws-collapsed .ws-sidebar .ws-workspace-label,
+.ws-collapsed .ws-sidebar .ws-workspace-disclosure summary::after {
+  display: none;
+}
+.ws-collapsed .ws-sidebar .ws-workspace-disclosure summary {
+  justify-content: center;
+}
+.workspace .page-head h1 {
+  font-family: Georgia, serif;
+  font-size: clamp(30px, 3vw, 44px);
+  font-weight: 400;
+}
+.mr-conversation-invites {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ws-line);
+  flex: none;
+  max-height: 240px;
+  overflow: auto;
+}
+.mr-conversation-invites p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--ws-muted);
+  margin-top: 12px;
+}
+.mr-conversation-invites form {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+.mr-conversation-invites form label {
+  flex: 1;
+  min-width: 0;
+}
+.mr-conversation-invites form button {
+  margin-bottom: 18px;
+  flex: none;
+}
+.mr-pending-invite {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+  flex-wrap: wrap;
+}
+.workspace .thread-head {
+  flex-wrap: wrap;
+}
+.workspace .thread-head > div {
+  min-width: 0;
+  flex: 1;
+}
+.workspace .thread-head .p {
+  overflow-wrap: anywhere;
+}
+.workspace .bubble > div:last-child {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mr-accept-invite {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.mr-accept-invite h2 {
+  font:
+    400 26px Georgia,
+    serif;
+  margin-bottom: 12px;
+}
+.mr-accept-invite p {
+  font-size: 13px;
+  color: var(--ws-muted);
+  margin-bottom: 16px;
+}
+.mr-accept-invite input {
+  max-width: 420px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  background: var(--ws-paper);
+  border: 1px solid var(--ws-line);
+  color: var(--ws-ink);
+  font-size: 16px;
+}
+.mr-accept-invite button {
+  margin: 10px;
+}
+.invitation-entry {
+  --ws-gold: var(--ld-gold);
+  max-width: 760px;
+  margin: 70px auto;
+  padding: 32px;
+}
+.invitation-entry h1 {
+  font:
+    400 40px Georgia,
+    serif;
+  margin: 16px 0;
+}
+.invitation-entry p {
+  font-size: 16px;
+  line-height: 1.8;
+  margin-bottom: 24px;
+}
+.invitation-entry .ws-button {
+  margin: 8px 12px 8px 0;
+  color: var(--ld-paper);
+  border: 1px solid var(--ld-gold);
+  background: var(--ld-forest);
+}
+@media (max-width: 800px) {
+  .mr-notes-grid {
+    grid-template-columns: 1fr;
+  }
+  .mr-notes-list {
+    max-height: none;
+  }
+  .mr-tabs {
+    gap: 18px;
+  }
+  .mr-tabs button,
+  .mr-tabs > a {
+    font-size: 12px;
+  }
+  .mr-optional {
+    align-items: start;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .mr-conversation-invites form {
+    display: block;
+  }
+  .mr-conversation-invites form button {
+    margin-bottom: 8px;
+  }
+  .mr-conversation-invites label {
+    margin: 12px 0;
+  }
+  .mr-optional h2 {
+    font-size: 24px;
+  }
+}
+@media (max-width: 480px) {
+  .mr-tabs {
+    gap: 12px;
+  }
+  .mr-tabs > a {
+    margin-left: 0;
+  }
+  .mr-intro h2 {
+    font-size: 28px;
+  }
+  .mr-note-editor,
+  .mr-preferences,
+  .mr-note {
+    padding: 22px;
+  }
+  .mr-follow-list li {
+    padding: 16px;
+    gap: 12px;
+  }
+  .mr-empty {
+    padding: 26px;
+  }
+  .mr-follows-toolbar input {
+    max-width: none;
+  }
+  .ov-personal-grid {
+    grid-template-columns: 1fr;
+  }
+  .ov-personal-grid a {
+    border-right: 0;
+    border-bottom: 1px solid var(--ws-line);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+  }
+  .ov-personal-grid strong {
+    grid-column: 2;
+    grid-row: 1/3;
+  }
+  .invitation-entry {
+    margin: 24px auto;
+    padding: 24px;
+  }
+  .invitation-entry h1 {
+    font-size: 30px;
+  }
+}

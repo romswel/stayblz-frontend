@@ -1,8 +1,19 @@
-import { Fragment, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Fragment, useEffect, useState } from "react";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
-import logo from "../assets/logo.png";
+import Brand from "./Brand";
+import Modal from "./Modal";
+import { useWorkspace } from "../workspace";
+import "./team.css";
+import "./workspace.css";
+import "./my-racing/my-racing.css";
 
 const ICON_PROPS = {
   width: 17,
@@ -83,12 +94,6 @@ const StakesIcon = () => (
     <path d="M8 2v4M16 2v4M3 9h18" />
   </svg>
 );
-const BettingIcon = () => (
-  <svg {...ICON_PROPS}>
-    <path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z" />
-    <path d="M14 5v14" />
-  </svg>
-);
 const StableIcon = () => (
   <svg {...ICON_PROPS}>
     <path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.8l-5.8 3 1.1-6.4L2.6 9.8l6.5-.9z" />
@@ -113,152 +118,361 @@ const MenuIcon = () => (
 
 const GROUPS = [
   {
-    label: "Stable",
+    label: "Racing",
     items: [
-      { to: "/dashboard", label: "Dashboard", icon: <DashboardIcon /> },
-      { to: "/messages", label: "Messages", icon: <MessagesIcon /> },
-      { to: "/inventory", label: "Inventory", icon: <InventoryIcon /> },
-      { to: "/tracker", label: "Horse Tracker", icon: <TrackerIcon /> },
-    ],
-  },
-  {
-    label: "Racing data",
-    items: [
+      { to: "/dashboard", label: "Overview", icon: <DashboardIcon /> },
       { to: "/entries", label: "Entries", icon: <EntriesIcon /> },
       { to: "/results", label: "Results & Charts", icon: <ResultsIcon /> },
       { to: "/workouts", label: "Workouts", icon: <WorkoutsIcon /> },
       { to: "/speed-figures", label: "Speed Figures", icon: <FiguresIcon /> },
       { to: "/statistics", label: "Statistics", icon: <StatsIcon /> },
       { to: "/stakes", label: "Stakes Schedule", icon: <StakesIcon /> },
-      { to: "/virtual-stable", label: "Virtual Stable", icon: <StableIcon /> },
     ],
   },
   {
-    label: "Wagering",
-    items: [{ to: "/betting", label: "Betting", icon: <BettingIcon /> }],
+    label: "My racing",
+    items: [
+      { to: "/my-racing", label: "Following & notebook", icon: <StableIcon /> },
+      { to: "/messages", label: "Messages", icon: <MessagesIcon /> },
+      { to: "/account", label: "My account", icon: <TrackerIcon /> },
+    ],
   },
+];
+const WORKSPACE_ITEMS = [
+  { to: "/workspace", label: "Workspace overview", icon: <DashboardIcon /> },
+  { to: "/inventory", label: "Inventory", icon: <InventoryIcon /> },
+  { to: "/tracker", label: "Horse Tracker", icon: <TrackerIcon /> },
+  { to: "/team-messages", label: "Team messages", icon: <MessagesIcon /> },
+  { to: "/stables", label: "My stables & team", icon: <StableIcon /> },
 ];
 
 export default function Layout() {
+  const { active: stable, stables, select } = useWorkspace();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("stayblz.sidebar") === "collapsed";
+    } catch {
+      return false;
+    }
+  });
   const [theme, toggleTheme] = useTheme();
+  const [query, setQuery] = useState("");
+  const [notice, setNotice] = useState("");
+  const [cart, setCart] = useState(false);
   const [logoutError, setLogoutError] = useState("");
-
+  const [signingOut, setSigningOut] = useState(false);
+  useEffect(() => {
+    setOpen(false);
+    setNotice("");
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "stayblz.sidebar",
+        collapsed ? "collapsed" : "expanded",
+      );
+    } catch {
+      /* Layout still works. */
+    }
+  }, [collapsed]);
   async function handleLogout() {
+    if (signingOut) return;
+    setSigningOut(true);
     setLogoutError("");
     try {
       await logout();
+      navigate("/login", { replace: true });
     } catch (reason) {
       setLogoutError(
         reason instanceof Error
           ? reason.message
           : "Sign-out could not be confirmed. Please try again.",
       );
-      return;
+    } finally {
+      setSigningOut(false);
     }
-    navigate("/login", { replace: true });
   }
-
+  async function share() {
+    setNotice("");
+    // Share the overview, never account details or private conversation URLs.
+    const url = `${window.location.origin}/dashboard`;
+    try {
+      if (navigator.share)
+        await navigator.share({ title: "Stayblz racing overview", url });
+      else {
+        await navigator.clipboard.writeText(url);
+        setNotice("Overview link copied.");
+      }
+    } catch (reason) {
+      if (!(reason instanceof DOMException && reason.name === "AbortError"))
+        setNotice(
+          "Sharing is unavailable. Copy the overview address from your browser.",
+        );
+    }
+  }
+  const navigation = (
+    <nav aria-label="Main">
+      {GROUPS.map((g) => (
+        <Fragment key={g.label}>
+          <div className="ws-nav-group">{g.label}</div>
+          {g.items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              aria-label={item.to === "/dashboard" ? "Overview" : item.label}
+              title={collapsed ? item.label : undefined}
+              className={({ isActive }) =>
+                `ws-nav-item${isActive ? " active" : ""}`
+              }
+              onClick={() => setOpen(false)}
+            >
+              {item.icon}
+              <span>{item.to === "/dashboard" ? "Overview" : item.label}</span>
+            </NavLink>
+          ))}
+        </Fragment>
+      ))}
+      <details
+        className="ws-workspace-disclosure"
+        open={
+          WORKSPACE_ITEMS.some((item) => item.to === location.pathname) ||
+          undefined
+        }
+      >
+        <summary title="Stable workspace (optional)">
+          <StableIcon />
+          <span className="ws-workspace-label">
+            Stable workspace<small>Optional for owners & teams</small>
+          </span>
+        </summary>
+        {stables.length > 0 && (
+          <label className="ws-stable-select">
+            Stable
+            <select
+              aria-label="Current stable"
+              value={stable?.id ?? ""}
+              onChange={(e) => select(e.target.value)}
+            >
+              {stables.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {WORKSPACE_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            className="ws-nav-item"
+            to={item.to}
+            aria-label={item.label}
+            title={item.label}
+            onClick={() => setOpen(false)}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </details>
+      <div className="ws-nav-group">Support</div>
+      {user?.role === "superadmin" && (
+        <NavLink
+          className="ws-nav-item"
+          to="/administration"
+          aria-label="Administration"
+          title="Administration"
+        >
+          <StatsIcon />
+          <span>Administration</span>
+        </NavLink>
+      )}
+      <Link className="ws-nav-item" to="/faq" aria-label="Help & FAQ" title="Help & FAQ">
+        <span aria-hidden="true">?</span>
+        <span>Help & FAQ</span>
+      </Link>
+    </nav>
+  );
   return (
-    <div className="shell">
-      <div className="topbar">
+    <div className={`workspace${collapsed ? " ws-collapsed" : ""}`}>
+      <a className="ws-skip" href="#workspace-content">
+        Skip to content
+      </a>
+      <header className="ws-header">
         <button
-          className="menu-btn"
+          className="ws-mobile-menu ws-icon-button"
           aria-label="Open menu"
           onClick={() => setOpen(true)}
         >
           <MenuIcon />
         </button>
-        <img src={logo} alt="" />
-        <span className="name">Stayblz</span>
-      </div>
-
-      {open && (
-        <button
-          className="scrim"
-          aria-label="Close menu"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      <aside className={`sidebar${open ? " open" : ""}`}>
-        <div className="sidebar-brand">
-          <img src={logo} alt="Stayblz logo" />
-          <div>
-            <div className="name">Stayblz</div>
-            <div className="tag">Racing operations</div>
-          </div>
-        </div>
-
-        <nav aria-label="Main">
-          {(user?.role === "superadmin"
-            ? GROUPS
-            : GROUPS.filter((group) => group.label === "Racing data").map(
-                (group) => ({
-                  ...group,
-                  items: group.items.filter(
-                    (item) => item.to !== "/virtual-stable",
-                  ),
-                }),
-              )
-          ).map((g) => (
-            <Fragment key={g.label}>
-              <div className="nav-group">{g.label}</div>
-              {g.items.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `nav-item${isActive ? " active" : ""}`
-                  }
-                  onClick={() => setOpen(false)}
-                >
-                  {item.icon}
-                  {item.label}
-                </NavLink>
-              ))}
-            </Fragment>
-          ))}
-        </nav>
-
-        <div className="sidebar-foot">
-          <div className="user-row">
-            <div className="avatar">{(user?.displayName ?? "?").charAt(0)}</div>
-            <div className="who">
-              <NavLink className="n" to="/account">
-                {user?.displayName}
-              </NavLink>
-              <div className="r">{user?.role}</div>
+        <Link
+          className="ws-brand"
+          to="/dashboard"
+          aria-label="Stayblz overview"
+        >
+          <Brand />
+          <span>
+            STAYBLZ<small>THE RACING LEDGER</small>
+          </span>
+        </Link>
+        <form
+          className="ws-search"
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            navigate(
+              `/dashboard${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ""}`,
+            );
+          }}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <circle cx="10" cy="10" r="7" />
+            <path d="m16 16 5 5" />
+          </svg>
+          <input
+            aria-label="Search racing records"
+            placeholder="Search horses, races, people..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            type="search"
+            maxLength={120}
+          />
+          <button type="submit">Search</button>
+        </form>
+        <div className="ws-header-actions">
+          <button
+            className="ws-icon-button"
+            onClick={share}
+            aria-label="Share overview"
+            title="Share overview"
+          >
+            <svg {...ICON_PROPS}>
+              <path d="M12 16V3m-5 5 5-5 5 5M5 13v7h14v-7" />
+            </svg>
+          </button>
+          <button
+            className="ws-icon-button"
+            onClick={() => setCart(true)}
+            aria-label="Shopping cart"
+            title="Shopping cart"
+          >
+            <svg {...ICON_PROPS}>
+              <path d="M2 3h3l3 13h11l3-9H6" />
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="19" cy="21" r="1" />
+            </svg>
+          </button>
+          <button
+            className="ws-icon-button"
+            onClick={toggleTheme}
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+          >
+            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+          </button>
+          <Link to="/account" className="ws-account" aria-label="Your account">
+            <span>{(user?.displayName ?? "?").charAt(0)}</span>
+            <div>
+              {user?.displayName}
+              <small>My account</small>
             </div>
-            <button
-              className="theme-btn"
-              onClick={toggleTheme}
-              aria-label={
-                theme === "dark"
-                  ? "Switch to light mode"
-                  : "Switch to dark mode"
-              }
-              title={theme === "dark" ? "Light mode" : "Dark mode"}
-            >
-              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-            </button>
-          </div>
-          {logoutError && (
-            <p className="form-error" role="alert">
-              {logoutError}
-            </p>
-          )}
-          <button className="btn-logout" onClick={handleLogout}>
-            Log out
+          </Link>
+        </div>
+      </header>
+      <aside className="ws-sidebar" aria-label="Workspace navigation">
+        {navigation}
+        <div className="ws-sidebar-bottom">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+          >
+            <span aria-hidden="true">{collapsed ? ">>" : "<<"}</span>
+            <span className="ws-collapse-label">Collapse sidebar</span>
+          </button>
+          <button onClick={handleLogout} disabled={signingOut} title="Log out">
+            <span aria-hidden="true">↪</span>
+            <span className="ws-collapse-label">
+              {signingOut ? "Signing out..." : "Log out"}
+            </span>
           </button>
         </div>
       </aside>
-
-      <main className="main">
-        <Outlet />
+      {open && (
+        <Modal label="Navigation" onClose={() => setOpen(false)}>
+          <div className="ws-drawer">
+            <button className="ws-button" onClick={() => setOpen(false)}>
+              Close menu
+            </button>
+            {navigation}
+            <button
+              className="ws-button"
+              onClick={handleLogout}
+              disabled={signingOut}
+            >
+              Log out
+            </button>
+          </div>
+        </Modal>
+      )}
+      <main id="workspace-content" className="ws-main" tabIndex={-1}>
+        {notice && (
+          <p className="ws-notice" role="status">
+            {notice}
+          </p>
+        )}
+        {logoutError && (
+          <p className="form-error" role="alert">
+            {logoutError}
+          </p>
+        )}
+        <div
+          key={
+            ["/workspace", "/inventory", "/tracker", "/team-messages"].includes(
+              location.pathname,
+            )
+              ? (stable?.id ?? "no-stable")
+              : "personal"
+          }
+        >
+          <Outlet />
+        </div>
+        <footer className="ws-footer">
+          <span>STAYBLZ · Know the horse. Read the race.</span>
+          <Link to="/faq">Help & FAQ</Link>
+        </footer>
       </main>
+      {cart && (
+        <Modal label="Shopping cart" onClose={() => setCart(false)}>
+          <div className="ws-dialog">
+            <button className="ws-button" onClick={() => setCart(false)}>
+              Close
+            </button>
+            <h2>Your cart</h2>
+            <p>
+              Your cart is empty. Racing products and checkout are not available
+              yet.
+            </p>
+            <Link to="/dashboard" onClick={() => setCart(false)}>
+              Return to overview
+            </Link>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

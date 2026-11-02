@@ -6,7 +6,12 @@ export interface User {
   email?: string;
   emailVerified?: boolean;
   passwordSetupRequired?: boolean;
-  profile?: {firstName: string;lastName: string;country: string;racingRole: string};
+  profile?: {
+    firstName: string;
+    lastName: string;
+    country: string;
+    racingRole: string;
+  };
 }
 
 export interface Message {
@@ -18,6 +23,7 @@ export interface Message {
 }
 
 export interface ConversationPreview {
+  canInvite?: boolean;
   id: string;
   title: string;
   participants: string[];

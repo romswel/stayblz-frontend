@@ -64,6 +64,7 @@ const overview = () => ({
   fetchedAt: "2026-11-01T10:00:00Z",
 });
 test.beforeEach(async ({ page }) => {
+  await page.route("**/api/workspaces", route => route.fulfill({json:{stables:[]}}));
   await page.route("**/api/auth/**", (route) =>
     route.fulfill({ status: 401, json: { error: "Not signed in." } }),
   );

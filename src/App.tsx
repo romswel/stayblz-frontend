@@ -6,19 +6,18 @@ import Dashboard from "./pages/Dashboard";
 import Messages from "./pages/Messages";
 import Inventory from "./pages/Inventory";
 import HorseTracker from "./pages/HorseTracker";
-import Entries from "./pages/Entries";
-import Results from "./pages/Results";
-import Workouts from "./pages/Workouts";
-import SpeedFigures from "./pages/SpeedFigures";
-import Statistics from "./pages/Statistics";
-import Stakes from "./pages/Stakes";
-import VirtualStable from "./pages/VirtualStable";
-import Betting from "./pages/Betting";
+import MyRacing from "./pages/MyRacing";
+import StableWorkspace from "./pages/StableWorkspace";
+import InvitationEntry from "./pages/InvitationEntry";
 import AuthConfirm from "./pages/AuthConfirm";
 import Profile from "./pages/Profile";
 import PublishedRacing from "./pages/PublishedRacing";
 import StartupLoader from "./components/StartupLoader";
 import FAQ from "./pages/FAQ";
+import Stables from "./pages/Stables";
+import Administration from "./pages/Administration";
+import { WorkspaceProvider, StableGate } from "./workspace";
+import { Link } from "react-router-dom";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -33,6 +32,11 @@ export default function App() {
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Login />} />
+        <Route path="/stables" element={<InvitationEntry kind="stable" />} />
+        <Route
+          path="/messages"
+          element={<InvitationEntry kind="conversation" />}
+        />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/auth/confirm" element={<AuthConfirm />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
@@ -47,123 +51,131 @@ export default function App() {
       <Route path="/signup" element={<Login />} />
       <Route path="/faq" element={<FAQ />} />
       <Route path="/auth/confirm" element={<AuthConfirm />} />
-      <Route element={<Layout />}>
-        <Route
-          path="/dashboard"
-          element={user.role === "superadmin" ? <Dashboard /> : <Profile />}
-        />
+      <Route
+        element={
+          <WorkspaceProvider key={user.id}>
+            <Layout />
+          </WorkspaceProvider>
+        }
+      >
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/account" element={<Profile />} />
         <Route
-          path="/messages"
+          path="/racing-records/racecards"
+          element={<PublishedRacing title="Racecards" kinds={["racecards"]} />}
+        />
+        <Route
+          path="/racing-records/results"
+          element={<PublishedRacing title="Results" kinds={["results"]} />}
+        />
+        <Route
+          path="/racing-records/workouts"
+          element={<PublishedRacing title="Workouts" kinds={["workouts"]} />}
+        />
+        <Route
+          path="/racing-records/horses"
+          element={<PublishedRacing title="Horses" kinds={["horses"]} />}
+        />
+        <Route
+          path="/racing-records/jockeys"
+          element={<PublishedRacing title="Jockeys" kinds={["jockeys"]} />}
+        />
+        <Route
+          path="/racing-records/trainers"
+          element={<PublishedRacing title="Trainers" kinds={["trainers"]} />}
+        />
+        <Route
+          path="/racing-records/stakes"
+          element={<PublishedRacing title="Stakes" kinds={["stakes"]} />}
+        />
+        <Route
+          path="/racing-records/notes"
+          element={<PublishedRacing title="Racing notes" kinds={["notes"]} />}
+        />
+        <Route path="/messages" element={<Messages />} />
+        <Route
+          path="/team-messages"
           element={
-            user.role === "superadmin" ? (
-              <Messages />
-            ) : (
-              <Navigate to="/account" replace />
-            )
+            <StableGate>
+              <Messages mode="team" />
+            </StableGate>
           }
         />
+        <Route path="/my-racing" element={<MyRacing />} />
+        <Route path="/workspace" element={<StableWorkspace />} />
         <Route
           path="/inventory"
           element={
-            user.role === "superadmin" ? (
+            <StableGate>
               <Inventory />
-            ) : (
-              <Navigate to="/account" replace />
-            )
+            </StableGate>
           }
         />
         <Route
           path="/tracker"
           element={
-            user.role === "superadmin" ? (
+            <StableGate>
               <HorseTracker />
-            ) : (
-              <Navigate to="/account" replace />
-            )
+            </StableGate>
           }
         />
         <Route
           path="/entries"
-          element={
-            user.role === "superadmin" ? (
-              <Entries />
-            ) : (
-              <PublishedRacing title="Racecards" kinds={["racecards"]} />
-            )
-          }
+          element={<PublishedRacing title="Racecards" kinds={["racecards"]} />}
         />
         <Route
           path="/results"
-          element={
-            user.role === "superadmin" ? (
-              <Results />
-            ) : (
-              <PublishedRacing title="Results" kinds={["results"]} />
-            )
-          }
+          element={<PublishedRacing title="Results" kinds={["results"]} />}
         />
         <Route
           path="/workouts"
-          element={
-            user.role === "superadmin" ? (
-              <Workouts />
-            ) : (
-              <PublishedRacing title="Workouts" kinds={["workouts"]} />
-            )
-          }
+          element={<PublishedRacing title="Workouts" kinds={["workouts"]} />}
         />
         <Route
           path="/speed-figures"
-          element={
-            user.role === "superadmin" ? (
-              <SpeedFigures />
-            ) : (
-              <PublishedRacing title="Speed figures" kinds={["horses"]} />
-            )
-          }
+          element={<PublishedRacing title="Speed figures" kinds={["horses"]} />}
         />
         <Route
           path="/statistics"
           element={
-            user.role === "superadmin" ? (
-              <Statistics />
-            ) : (
-              <PublishedRacing
-                title="Statistics"
-                kinds={["horses", "jockeys", "trainers"]}
-              />
-            )
+            <PublishedRacing
+              title="Statistics"
+              kinds={["horses", "jockeys", "trainers"]}
+            />
           }
         />
         <Route
           path="/stakes"
-          element={
-            user.role === "superadmin" ? (
-              <Stakes />
-            ) : (
-              <PublishedRacing title="Stakes" kinds={["stakes"]} />
-            )
-          }
+          element={<PublishedRacing title="Stakes" kinds={["stakes"]} />}
         />
         <Route
           path="/virtual-stable"
+          element={<Navigate to="/my-racing" replace />}
+        />
+        <Route path="/stables" element={<Stables />} />
+        <Route
+          path="/administration"
           element={
             user.role === "superadmin" ? (
-              <VirtualStable />
+              <Administration />
             ) : (
-              <Navigate to="/account" replace />
+              <Navigate to="/dashboard" replace />
             )
           }
         />
         <Route
           path="/betting"
           element={
-            user.role === "superadmin" ? (
-              <Betting />
-            ) : (
-              <Navigate to="/account" replace />
-            )
+            <section className="panel ws-access">
+              <h1>Wagering</h1>
+              <p>
+                Wagering, deposits and payments are not connected yet. No
+                real-money bets can be placed on Stayblz.
+              </p>
+              <Link className="ws-button" to="/entries">
+                Explore racecards
+              </Link>
+            </section>
           }
         />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

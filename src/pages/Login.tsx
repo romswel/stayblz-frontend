@@ -19,6 +19,12 @@ const destinations = new Set([
   "/stakes",
   "/virtual-stable",
   "/tracker",
+  "/stables",
+  "/messages",
+  "/inventory",
+  "/my-racing",
+  "/workspace",
+  "/team-messages",
 ]);
 
 export default function Login() {
