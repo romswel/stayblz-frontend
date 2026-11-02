@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api } from "../api";
 import { confirmAccount, isPasswordRecovery } from "../confirmation";
+import usePublicMotion from "../components/usePublicMotion";
 import Brand from "../components/Brand";
 import "./landing.css";
 import "./AuthConfirm.css";
 
 export default function AuthConfirm() {
+  const pageRef = usePublicMotion();
   const { acceptUser } = useAuth();
   const [step, setStep] = useState<
     "working" | "verified" | "password" | "done" | "error"
@@ -81,7 +83,7 @@ export default function AuthConfirm() {
     error: "Return to login to request a fresh confirmation email.",
   }[step];
   return (
-    <div className="landing ld-confirm-page">
+    <div className="landing ld-confirm-page" ref={pageRef}>
       <header className="ld-confirm-header">
         <Link className="ld-brand" to="/" aria-label="Stayblz home">
           <Brand />
@@ -141,7 +143,12 @@ export default function AuthConfirm() {
               )}
             </svg>
           </div>
-          <div className="ld-confirm-heading" role="status" aria-live="polite">
+          <div
+            className="ld-confirm-heading"
+            key={step}
+            role="status"
+            aria-live="polite"
+          >
             <h1 id="confirmation-title">{title}</h1>
             <p>{description}</p>
           </div>

@@ -17,12 +17,14 @@ import Betting from "./pages/Betting";
 import AuthConfirm from "./pages/AuthConfirm";
 import Profile from "./pages/Profile";
 import PublishedRacing from "./pages/PublishedRacing";
+import StartupLoader from "./components/StartupLoader";
+import FAQ from "./pages/FAQ";
 
 export default function App() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading Stayblz…</div>;
+    return <StartupLoader />;
   }
 
   if (!user) {
@@ -31,6 +33,7 @@ export default function App() {
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Login />} />
+        <Route path="/faq" element={<FAQ />} />
         <Route path="/auth/confirm" element={<AuthConfirm />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
@@ -42,6 +45,7 @@ export default function App() {
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Login />} />
+      <Route path="/faq" element={<FAQ />} />
       <Route path="/auth/confirm" element={<AuthConfirm />} />
       <Route element={<Layout />}>
         <Route

@@ -1,0 +1,118 @@
+.sb-startup {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: 28px;
+  background: #102019;
+  color: #f4f0e6;
+  font:
+    14px/1.5 Archivo,
+    system-ui,
+    sans-serif;
+  text-align: center;
+}
+html[data-theme="dark"] .sb-startup {
+  background: #09120f;
+}
+.sb-startup-content {
+  width: min(100%, 300px);
+}
+.sb-startup-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 26px;
+}
+.sb-startup-mark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid #c5a46830;
+  border-top-color: #c5a468;
+  border-bottom-color: #c5a468;
+  border-radius: 50%;
+  animation: sb-track 1.5s linear infinite;
+}
+.sb-startup-mark img {
+  width: 72px;
+  height: 72px;
+  animation: sb-stride 0.8s ease-in-out infinite;
+}
+.sb-startup-name {
+  display: block;
+  font-size: 34px;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+.sb-startup-name span {
+  color: #c5a468;
+}
+.sb-startup-ledger {
+  display: block;
+  margin-top: 8px;
+  color: #c5a468;
+  font-size: 9px;
+  letter-spacing: 0.26em;
+}
+.sb-startup-line {
+  height: 2px;
+  margin: 32px auto 20px;
+  background: #c5a46825;
+  overflow: hidden;
+  width: 160px;
+}
+.sb-startup-line::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 45%;
+  background: #c5a468;
+  animation: sb-progress 1s ease-in-out infinite;
+}
+.sb-startup-message {
+  color: #b6c1ac;
+  font-size: 12px;
+  margin: 0;
+}
+@keyframes sb-track {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes sb-stride {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  45% {
+    transform: translateY(-5px) rotate(3deg);
+  }
+  70% {
+    transform: translateY(1px) rotate(-1deg);
+  }
+}
+@keyframes sb-progress {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(330%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-startup-mark::before,
+  .sb-startup-mark img,
+  .sb-startup-line::after {
+    animation: none;
+  }
+  .sb-startup-line::after {
+    width: 100%;
+    opacity: 0.7;
+  }
+}

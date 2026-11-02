@@ -5,15 +5,45 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
-    <script>try { document.documentElement.dataset.theme = localStorage.getItem('stayblz.theme') === 'dark' ? 'dark' : 'light'; } catch { document.documentElement.dataset.theme = 'light'; }</script>
+    <link rel="stylesheet" href="/startup.css" />
+    <script>
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem("stayblz.theme") === "dark" ? "dark" : "light";
+      } catch {
+        document.documentElement.dataset.theme = "light";
+      }
+    </script>
     <title>Stayblz — The Racing Ledger</title>
-    <meta name="description" content="Know the horse. Read the race. Explore the Stayblz racing ledger: racecards, form, field notes, and the stories behind the silks." />
+    <meta
+      name="description"
+      content="Know the horse. Read the race. Explore the Stayblz racing ledger: racecards, form, field notes, and the stories behind the silks."
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400..800;1,400..800&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400..800;1,400..800&family=JetBrains+Mono:wght@400..700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div
+        class="sb-startup"
+        role="status"
+        aria-live="polite"
+        aria-label="Loading Stayblz"
+      >
+        <div class="sb-startup-content">
+          <div class="sb-startup-mark"><img src="/favicon.svg" alt="" /></div>
+          <strong class="sb-startup-name">STAYBLZ<span>.</span></strong>
+          <span class="sb-startup-ledger">THE RACING LEDGER</span>
+          <div class="sb-startup-line" aria-hidden="true"></div>
+          <p class="sb-startup-message">Getting things ready…</p>
+          <noscript>Enable JavaScript to open Stayblz.</noscript>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -31,7 +31,6 @@
   margin: 32px 0;
   min-height: 620px;
   border: 1px solid var(--ld-line);
-  animation: confirm-arrive 0.65s ease-out both;
 }
 .ld-confirm-editorial {
   position: relative;
@@ -46,7 +45,7 @@
   height: 100%;
   object-fit: cover;
   object-position: 58% center;
-  animation: confirm-photo 1.4s ease-out both;
+  animation: confirm-photo 0.4s ease-out both;
 }
 .ld-confirm-editorial::after {
   content: "";
@@ -119,7 +118,7 @@
 .ld-confirm-check {
   stroke-dasharray: 45;
   stroke-dashoffset: 45;
-  animation: confirm-check 0.65s 0.15s ease-out forwards;
+  animation: confirm-check 0.28s 0.05s ease-out forwards;
 }
 .ld-confirm-emblem-working .ld-confirm-ring {
   stroke-dasharray: 90 42;

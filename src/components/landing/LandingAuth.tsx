@@ -1,8 +1,9 @@
-import { forwardRef, useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { forwardRef, useEffect, useRef, useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { api, ApiError } from "../../api";
 import { countries } from "./countries";
+import { useQuickTransition } from "../usePublicMotion";
 
 interface Props {
   mode: "login" | "signup";
@@ -16,6 +17,8 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
 ) {
   const { user, login, restoreError } = useAuth();
   const navigate = useNavigate();
+  const { key: navigationKey } = useLocation();
+  const operation = useRef(0);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,6 +33,9 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
   const [verification, setVerification] = useState(false);
+  const bodyRef = useQuickTransition(
+    `${mode}:${forgot}:${verification}:${user?.id ?? "guest"}`,
+  );
   const [retrySeconds, setRetrySeconds] = useState(0);
   const [retryUntil, setRetryUntil] = useState(0);
   const [retryScope, setRetryScope] = useState<"email" | "login">("email");
@@ -37,6 +43,19 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   const submitRateLimited =
     retrySeconds > 0 &&
     retryScope === (forgot || mode === "signup" ? "email" : "login");
+  useEffect(() => {
+    ++operation.current;
+    setForgot(false);
+    setVerification(false);
+    setError("");
+    setNotice("");
+    setPassword("");
+    setConfirmPassword("");
+    setBusy(false);
+    return () => {
+      ++operation.current;
+    };
+  }, [mode, navigationKey]);
   useEffect(() => {
     if (!retryUntil) return;
     const update = () => {
@@ -90,12 +109,14 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       return;
     }
     setBusy(true);
+    const currentOperation = operation.current;
     try {
       if (forgot) {
         const response = await api.post<{ message: string }>(
           "/api/auth/forgot-password",
           { email: email.trim() },
         );
+        if (operation.current !== currentOperation) return;
         setNotice(response.message);
       } else if (mode === "signup") {
         const response = await api.post<{
@@ -110,6 +131,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
           password,
           confirmPassword,
         });
+        if (operation.current !== currentOperation) return;
         if (!response.requiresVerification)
           throw new Error(
             "Registration could not be confirmed. Please try again.",
@@ -120,16 +142,18 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
         setNotice(response.message);
       } else {
         await login(username.trim(), password);
+        if (operation.current !== currentOperation) return;
         navigate(destination, { replace: true });
       }
     } catch (reason) {
+      if (operation.current !== currentOperation) return;
       reportError(
         reason,
         "The request failed. Please try again.",
         forgot || mode === "signup" ? "email" : "login",
       );
     } finally {
-      setBusy(false);
+      if (operation.current === currentOperation) setBusy(false);
     }
   }
   async function resend() {
@@ -137,6 +161,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     setBusy(true);
     setError("");
     setNotice("");
+    const currentOperation = operation.current;
     try {
       const response = await api.post<{ message: string }>("/api/auth/resend", {
         email:
@@ -144,11 +169,13 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
             ? email.trim()
             : username.trim(),
       });
+      if (operation.current !== currentOperation) return;
       setNotice(response.message);
     } catch (reason) {
+      if (operation.current !== currentOperation) return;
       reportError(reason, "Email could not be requested.", "email");
     } finally {
-      setBusy(false);
+      if (operation.current === currentOperation) setBusy(false);
     }
   }
   return (
@@ -160,7 +187,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       aria-label="Your Stayblz account"
     >
       {user ? (
-        <div className="ld-welcome">
+        <div className="ld-welcome" ref={bodyRef}>
           <span className="ld-kicker">SIGNED IN</span>
           <div className="ld-user-avatar">
             {(user.displayName || user.username).slice(0, 1).toUpperCase()}
@@ -193,7 +220,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
               Sign up
             </button>
           </div>
-          <div className="ld-auth-body">
+          <div className="ld-auth-body" ref={bodyRef}>
             <span className="ld-kicker">STAYBLZ ACCOUNT</span>
             <h2>
               {forgot

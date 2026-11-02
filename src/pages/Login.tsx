@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import Brand from "../components/Brand";
-import { useTheme } from "../theme";
+import usePublicMotion from "../components/usePublicMotion";
+import PublicHeader from "../components/PublicHeader";
+import PublicFooter from "../components/PublicFooter";
 import LandingAuth from "../components/landing/LandingAuth";
 import RacingPreview from "../components/landing/RacingPreview";
 import "./landing.css";
@@ -21,7 +23,6 @@ const destinations = new Set([
 
 export default function Login() {
   const { user } = useAuth();
-  const [theme, toggleTheme] = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const routeState = location.state as {
@@ -44,7 +45,7 @@ export default function Login() {
       : "",
   );
   const authRef = useRef<HTMLElement>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
+  const pageRef = usePublicMotion();
   useEffect(() => {
     setMode(location.pathname === "/signup" ? "signup" : "login");
     const state = location.state as {
@@ -73,28 +74,6 @@ export default function Login() {
     });
     return () => cancelAnimationFrame(frame);
   }, [location.key]);
-  useEffect(() => {
-    if (
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-      !("IntersectionObserver" in window)
-    )
-      return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries)
-          if (entry.isIntersecting) {
-            entry.target.classList.add("ld-visible");
-            observer.unobserve(entry.target);
-          }
-      },
-      { threshold: 0.08 },
-    );
-    pageRef.current?.querySelectorAll(".ld-reveal").forEach((el) => {
-      el.classList.add("ld-await-reveal");
-      observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, []);
 
   function showAuth(
     nextMode: "login" | "signup",
@@ -130,63 +109,11 @@ export default function Login() {
   }).format(new Date());
 
   return (
-    <div className="landing" ref={pageRef}>
+    <div className="landing" id="top" ref={pageRef}>
       <a className="ld-skip" href="#racing-overview">
         Skip to racing overview
       </a>
-      <header className="ld-header">
-        <div className="ld-header-inner">
-          <button
-            type="button"
-            className="ld-brand ld-brand-toggle"
-            aria-label={`Stayblz logo: switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            aria-pressed={theme === "dark"}
-            onClick={toggleTheme}
-            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          >
-            <Brand />
-            <span className="ld-brand-spark" aria-hidden="true">
-              ✦
-            </span>
-            <span>
-              <strong>
-                STAYBLZ<span className="ld-wordmark-dot">.</span>
-              </strong>
-              <small>THE RACING LEDGER</small>
-            </span>
-          </button>
-          <div className="ld-header-account">
-            {user ? (
-              <>
-                <span className="ld-account-name">
-                  {user.displayName || user.username}
-                </span>
-                <Link
-                  className="ld-button ld-button-gold ld-header-continue"
-                  to="/dashboard"
-                >
-                  Continue to dashboard <span aria-hidden="true">↗</span>
-                </Link>
-              </>
-            ) : (
-              <>
-                <button
-                  className="ld-text-button"
-                  onClick={() => showAuth("login")}
-                >
-                  Log in
-                </button>
-                <button
-                  className="ld-button ld-button-gold"
-                  onClick={() => showAuth("signup")}
-                >
-                  Sign up <span aria-hidden="true">↗</span>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <PublicHeader onAuth={(next) => showAuth(next)} />
       <main className="ld-main" id="racing-overview">
         <div className="ld-edition">
           <span>
@@ -276,13 +203,7 @@ export default function Login() {
           </button>
         </section>
       </main>
-      <footer className="ld-footer">
-        <Link to="/" className="ld-footer-brand">
-          STAYBLZ. <span>THE RACING LEDGER</span>
-        </Link>
-        <p>Know the horse. Read the race.</p>
-        <small>© {new Date().getFullYear()} Stayblz</small>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

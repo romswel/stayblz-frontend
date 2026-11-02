@@ -598,3 +598,82 @@ test("email cooldown honors an HTTP-date Retry-After header", async ({
     page.getByRole("button", { name: "Send reset email", exact: true }),
   ).toBeEnabled();
 });
+
+test("header login exits verification and password recovery panels", async ({
+  page,
+}) => {
+  await page.route("**/api/auth/signup", (route) =>
+    route.fulfill({
+      status: 202,
+      json: { requiresVerification: true, message: "Check your email." },
+    }),
+  );
+  await page.goto("/signup");
+  await fillSignup(page);
+  await page
+    .getByRole("button", { name: "Create account", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Check your email", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Public navigation" })
+    .getByRole("button", { name: "Log in", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Log in to Stayblz", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Forgot password?", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Reset your password" }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Public navigation" })
+    .getByRole("button", { name: "Log in", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Log in to Stayblz", exact: true }),
+  ).toBeVisible();
+});
+
+test("late signup response cannot replace login after header navigation", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started = false;
+  await page.route("**/api/auth/signup", async (route) => {
+    started = true;
+    await waiting;
+    await route.fulfill({
+      status: 202,
+      json: { requiresVerification: true, message: "Check your email." },
+    });
+  });
+  await page.goto("/signup");
+  await fillSignup(page);
+  await page
+    .getByRole("button", { name: "Create account", exact: true })
+    .click();
+  await expect.poll(() => started).toBe(true);
+  await page
+    .getByRole("navigation", { name: "Public navigation" })
+    .getByRole("button", { name: "Log in", exact: true })
+    .click();
+  const response = page.waitForResponse("**/api/auth/signup");
+  release();
+  await response;
+  await expect(
+    page.getByRole("heading", { name: "Log in to Stayblz", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign in", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("heading", { name: "Check your email", exact: true }),
+  ).toHaveCount(0);
+});

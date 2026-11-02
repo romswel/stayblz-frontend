@@ -133,7 +133,7 @@ export default function RacingPreview({ onOpen, onSignup }: Props) {
         />
         <p role={error ? "alert" : "status"}>
           {error
-            ? `${error}${data ? " Showing the last loaded records." : ""}`
+            ? `${error}${data ? " Showing the last loaded records." : ""} Checking again automatically.`
             : isLoading
               ? "Loading racing data…"
               : data
