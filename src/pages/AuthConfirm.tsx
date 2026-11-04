@@ -5,6 +5,7 @@ import { api } from "../api";
 import { confirmAccount, isPasswordRecovery } from "../confirmation";
 import usePublicMotion from "../components/usePublicMotion";
 import Brand from "../components/Brand";
+import PasswordField from "../components/PasswordField";
 import "./landing.css";
 import "./AuthConfirm.css";
 
@@ -159,34 +160,28 @@ export default function AuthConfirm() {
           )}
           {step === "password" && (
             <form onSubmit={save}>
-              <label className="ld-field">
-                New password
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="new-password"
-                  minLength={12}
-                  maxLength={128}
-                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}"
-                  required
-                />
-              </label>
+              <PasswordField
+                label="New password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={12}
+                maxLength={128}
+                pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}"
+                required
+              />
               <p className="ld-password-help">
                 12–128 characters, uppercase, lowercase, and a number.
               </p>
-              <label className="ld-field">
-                Confirm password
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  autoComplete="new-password"
-                  minLength={12}
-                  maxLength={128}
-                  required
-                />
-              </label>
+              <PasswordField
+                label="Confirm password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={12}
+                maxLength={128}
+                required
+              />
               <button
                 className="ld-button ld-button-gold ld-submit"
                 disabled={busy}

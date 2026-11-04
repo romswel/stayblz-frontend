@@ -13,13 +13,12 @@ export default function MyRacing() {
     <div className="my-racing">
       <header className="ov-heading">
         <div>
-          <span className="ov-kicker">YOUR ACCOUNT. YOUR RACING.</span>
+          <span className="ov-kicker">SAVED ITEMS AND SETTINGS</span>
           <h1>
             My racing<span>.</span>
           </h1>
           <p>
-            The horses you follow, the details you notice, and the people you
-            talk racing with.
+            Manage your followed horses, notes, messages, and alert settings.
           </p>
         </div>
         <Link className="ws-button" to="/account">
@@ -29,8 +28,8 @@ export default function MyRacing() {
       <nav className="mr-tabs" aria-label="My racing sections">
         {[
           ["following", "Following"],
-          ["notes", "Race notebook"],
-          ["alerts", "Alert preferences"],
+          ["notes", "My notes"],
+          ["alerts", "Alert settings"],
         ].map(([key, label]) => (
           <button
             key={key}
@@ -52,14 +51,13 @@ export default function MyRacing() {
       <aside className="mr-optional">
         <div>
           <span className="ov-kicker">FOR OWNERS, TRAINERS & TEAMS</span>
-          <h2>Run a stable, too?</h2>
+          <h2>Stable tools</h2>
           <p>
-            Horse inventory, training records, and team updates have their own
-            optional workspace.
+            Manage horse records, training updates, and team messages in your stable workspace.
           </p>
         </div>
         <Link className="ws-button" to="/workspace">
-          Explore stable workspace ↗
+          Open stable workspace ↗
         </Link>
       </aside>
     </div>

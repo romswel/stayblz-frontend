@@ -119,7 +119,7 @@ test("members get the overview, visible tools, filtered records and useful detai
   });
   await page.goto("/dashboard");
   await expect(
-    page.getByRole("heading", { name: "The overview." }),
+    page.getByRole("heading", { name: "Overview." }),
   ).toBeVisible();
   await expect(
     page
@@ -158,7 +158,7 @@ test("members get the overview, visible tools, filtered records and useful detai
   await expect(
     page.getByRole("heading", { name: "Messages", exact: true }),
   ).toBeVisible();
-  expect(privateRequests.length).toBeGreaterThan(0);
+  await expect.poll(() => privateRequests.length).toBeGreaterThan(0);
   for (const url of privateRequests)
     expect(new URL(url).pathname).not.toBe("/api/dashboard");
 });
@@ -206,7 +206,7 @@ test("overview handles unavailable data and preserves the last records after fai
     "Records temporarily unavailable.",
   );
   await expect(
-    page.getByRole("heading", { name: "At the races", exact: true }),
+    page.getByRole("heading", { name: "Entries & results", exact: true }),
   ).toBeVisible();
 });
 

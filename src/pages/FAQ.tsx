@@ -35,7 +35,7 @@ const topics = [
       {
         question: "How do I create an account?",
         answer:
-          "Choose Sign up, enter your name, country, racing role, and email address, then set a password. Open the confirmation email before logging in. Your racing role describes you; it does not assign account permissions.",
+          "Choose Sign up, enter your name, country, connection to racing, and email address, then set a password. Open the confirmation email before logging in. Your connection to racing is profile information. It does not change what you can access.",
       },
       {
         question: "Why hasn’t my confirmation email arrived?",
@@ -55,7 +55,7 @@ const topics = [
       {
         question: "Where can I update my profile?",
         answer:
-          "After logging in, open your account to update your name, country, and racing role. Profile changes do not change your permissions.",
+          "After logging in, open your account to update your name, country, and connection to racing. Profile changes do not change your permissions.",
       },
     ],
   },

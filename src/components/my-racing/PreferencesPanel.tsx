@@ -10,18 +10,18 @@ const options: [keyof Preferences, string, string][] = [
   [
     "entry_alerts",
     "Race entries",
-    "When a horse or connection you follow is entered.",
+    "When a horse, jockey, or trainer you follow has a race entry.",
   ],
   [
     "workout_alerts",
     "Morning workouts",
-    "Published work from horses you follow.",
+    "New workout records for horses you follow.",
   ],
-  ["result_alerts", "Race results", "Published outcomes for your follows."],
+  ["result_alerts", "Race results", "Race results for horses and people you follow."],
   [
     "email_enabled",
     "Email delivery",
-    "Your preference for receiving updates by email.",
+    "Choose whether you want email updates.",
   ],
 ];
 export default function PreferencesPanel() {
@@ -42,7 +42,7 @@ export default function PreferencesPanel() {
             !d.preferences ||
             !options.every(([key]) => typeof d.preferences[key] === "boolean")
           )
-            throw Error("Alert preferences could not be loaded.");
+            throw Error("Alert settings could not be loaded.");
           setValues(d.preferences);
         }
       })
@@ -73,8 +73,8 @@ export default function PreferencesPanel() {
   return (
     <section>
       <div className="mr-intro">
-        <span className="ov-kicker">CHOOSE WHAT MATTERS TO YOU</span>
-        <h2>Alert preferences</h2>
+        <span className="ov-kicker">NOTIFICATION SETTINGS</span>
+        <h2>Alert settings</h2>
         <p>Choose the racing updates you would like to receive.</p>
       </div>
       <div className="ov-paper mr-preferences">

@@ -10,6 +10,9 @@ import { useAuth } from "../auth";
 import { useTheme } from "../theme";
 import Brand from "./Brand";
 import Modal from "./Modal";
+import CartReview from "./pps/CartReview";
+import { useCart } from "./pps/CartContext";
+import PPNavigation from "./pps/PPNavigation";
 import { useWorkspace } from "../workspace";
 import "./team.css";
 import "./workspace.css";
@@ -163,6 +166,7 @@ export default function Layout() {
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
   const [cart, setCart] = useState(false);
+  const { items: cartItems } = useCart();
   const [logoutError, setLogoutError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   useEffect(() => {
@@ -221,19 +225,30 @@ export default function Layout() {
         <Fragment key={g.label}>
           <div className="ws-nav-group">{g.label}</div>
           {g.items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              aria-label={item.to === "/dashboard" ? "Overview" : item.label}
-              title={collapsed ? item.label : undefined}
-              className={({ isActive }) =>
-                `ws-nav-item${isActive ? " active" : ""}`
-              }
-              onClick={() => setOpen(false)}
-            >
-              {item.icon}
-              <span>{item.to === "/dashboard" ? "Overview" : item.label}</span>
-            </NavLink>
+            <Fragment key={item.to}>
+              <NavLink
+                to={item.to}
+                end
+                aria-label={item.to === "/dashboard" ? "Overview" : item.label}
+                title={collapsed ? item.label : undefined}
+                className={({ isActive }) =>
+                  `ws-nav-item${isActive ? " active" : ""}`
+                }
+                onClick={() => setOpen(false)}
+              >
+                {item.icon}
+                <span>
+                  {item.to === "/dashboard" ? "Overview" : item.label}
+                </span>
+              </NavLink>
+              {item.to === "/dashboard" && (
+                <PPNavigation
+                  collapsed={collapsed}
+                  onNavigate={() => setOpen(false)}
+                  onExpand={() => setCollapsed(false)}
+                />
+              )}
+            </Fragment>
           ))}
         </Fragment>
       ))}
@@ -292,14 +307,21 @@ export default function Layout() {
           <span>Administration</span>
         </NavLink>
       )}
-      <Link className="ws-nav-item" to="/faq" aria-label="Help & FAQ" title="Help & FAQ">
+      <Link
+        className="ws-nav-item"
+        to="/faq"
+        aria-label="Help & FAQ"
+        title="Help & FAQ"
+      >
         <span aria-hidden="true">?</span>
         <span>Help & FAQ</span>
       </Link>
     </nav>
   );
   return (
-    <div className={`workspace${collapsed ? " ws-collapsed" : ""}`}>
+    <div
+      className={`workspace${collapsed ? " ws-collapsed" : ""}${location.pathname === "/pps" || location.pathname.startsWith("/pps/") ? " ws-pp-page" : ""}`}
+    >
       <a className="ws-skip" href="#workspace-content">
         Skip to content
       </a>
@@ -374,6 +396,14 @@ export default function Layout() {
               <circle cx="9" cy="21" r="1" />
               <circle cx="19" cy="21" r="1" />
             </svg>
+            {cartItems.length > 0 && (
+              <span
+                className="pp-cart-count"
+                aria-label={`${cartItems.length} selections`}
+              >
+                {cartItems.length}
+              </span>
+            )}
           </button>
           <button
             className="ws-icon-button"
@@ -462,14 +492,7 @@ export default function Layout() {
             <button className="ws-button" onClick={() => setCart(false)}>
               Close
             </button>
-            <h2>Your cart</h2>
-            <p>
-              Your cart is empty. Racing products and checkout are not available
-              yet.
-            </p>
-            <Link to="/dashboard" onClick={() => setCart(false)}>
-              Return to overview
-            </Link>
+            <CartReview onNavigate={() => setCart(false)} />
           </div>
         </Modal>
       )}

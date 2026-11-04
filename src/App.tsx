@@ -1,5 +1,7 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { isPPDestination } from "./components/pps/catalog";
 import { useAuth } from "./auth";
+import { CartProvider } from "./components/pps/CartContext";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -12,12 +14,29 @@ import InvitationEntry from "./pages/InvitationEntry";
 import AuthConfirm from "./pages/AuthConfirm";
 import Profile from "./pages/Profile";
 import PublishedRacing from "./pages/PublishedRacing";
+import PastPerformances from "./pages/PastPerformances";
 import StartupLoader from "./components/StartupLoader";
 import FAQ from "./pages/FAQ";
 import Stables from "./pages/Stables";
 import Administration from "./pages/Administration";
 import { WorkspaceProvider, StableGate } from "./workspace";
 import { Link } from "react-router-dom";
+
+function PPLoginRedirect() {
+  const { pathname, search } = useLocation();
+  return (
+    <Navigate
+      to="/login"
+      replace
+      state={{
+        destination: isPPDestination(pathname + search)
+          ? pathname + search
+          : "/pps",
+        intent: "view past performances",
+      }}
+    />
+  );
+}
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -39,6 +58,7 @@ export default function App() {
         />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/auth/confirm" element={<AuthConfirm />} />
+        <Route path="/pps/*" element={<PPLoginRedirect />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -54,11 +74,21 @@ export default function App() {
       <Route
         element={
           <WorkspaceProvider key={user.id}>
-            <Layout />
+            <CartProvider key={user.id} accountId={user.id}>
+              <Layout />
+            </CartProvider>
           </WorkspaceProvider>
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/pps" element={<PastPerformances />} />
+        <Route path="/pps/compare" element={<PastPerformances />} />
+        <Route path="/pps/by-track" element={<PastPerformances />} />
+        <Route path="/pps/day-passes" element={<PastPerformances />} />
+        <Route path="/pps/store" element={<PastPerformances />} />
+        <Route path="/pps/cart" element={<PastPerformances />} />
+        <Route path="/pps/:productId" element={<PastPerformances />} />
+        <Route path="/pps/:productId/:view" element={<PastPerformances />} />
         <Route path="/account" element={<Profile />} />
         <Route
           path="/racing-records/racecards"

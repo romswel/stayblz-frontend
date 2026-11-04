@@ -45,7 +45,7 @@ async function fillSignup(page: import("@playwright/test").Page) {
     .getByRole("combobox", { name: "Country", exact: true })
     .selectOption("PH");
   await page
-    .getByRole("combobox", { name: "Racing role", exact: true })
+    .getByRole("combobox", { name: "Your connection to racing", exact: true })
     .selectOption("fan");
   await page
     .getByLabel("Email address", { exact: true })
@@ -682,4 +682,86 @@ test("late signup response cannot replace login after header navigation", async 
 
 test.beforeEach(async ({ page }) => {
   await mockWorkspace(page);
+});
+
+
+test("signup has clear racing choices and separate Show controls for both passwords", async ({ page }) => {
+  await page.goto("/signup");
+  const connection = page.getByRole("combobox", { name: "Your connection to racing", exact: true });
+  await expect(connection.locator("option")).toHaveText([
+    "Select an option", "Horse owner", "Trainer", "Jockey", "Stable staff", "Racing fan", "Other",
+  ]);
+  await connection.selectOption({ label: "Racing fan" });
+  await expect(connection).toHaveValue("fan");
+  const password = page.getByLabel("Password", { exact: true });
+  const confirmation = page.getByLabel("Confirm password", { exact: true });
+  await password.fill("VisibleTestPassword123");
+  await confirmation.fill("VisibleTestPassword123");
+  await page.getByRole("button", { name: "Show password", exact: true }).click();
+  await expect(password).toHaveAttribute("type", "text");
+  await expect(confirmation).toHaveAttribute("type", "password");
+  await page.getByRole("button", { name: "Show confirm password", exact: true }).click();
+  await expect(confirmation).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Hide password", exact: true }).click();
+  await expect(password).toHaveAttribute("type", "password");
+  await expect(password).toHaveValue("VisibleTestPassword123");
+  await expect(confirmation).toHaveValue("VisibleTestPassword123");
+});
+
+test("password setup and recovery reveal each field without submitting the form", async ({ page }) => {
+  await page.route("**/api/auth/confirm", route => route.fulfill({ json: { user } }));
+  let saves = 0;
+  await page.route("**/api/auth/password", route => {
+    saves++;
+    return route.fulfill({ json: { ok: true } });
+  });
+  await page.goto("/auth/confirm?recovery=1#access_token=fixture-access&refresh_token=fixture-refresh&type=recovery");
+  const password = page.getByLabel("New password", { exact: true });
+  const confirmation = page.getByLabel("Confirm password", { exact: true });
+  await password.fill("NewTestOnlyPassword123");
+  await confirmation.fill("DifferentPassword123");
+  await page.getByRole("button", { name: "Show new password", exact: true }).click();
+  await expect(password).toHaveAttribute("type", "text");
+  await expect(confirmation).toHaveAttribute("type", "password");
+  await page.getByRole("button", { name: "Show confirm password", exact: true }).click();
+  await expect(confirmation).toHaveAttribute("type", "text");
+  expect(saves).toBe(0);
+  await page.getByRole("button", { name: "Save password", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveText("Passwords do not match.");
+  expect(saves).toBe(0);
+  await confirmation.fill("NewTestOnlyPassword123");
+  await page.getByRole("button", { name: "Hide confirm password", exact: true }).click();
+  await page.getByRole("button", { name: "Save password", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Password saved", exact: true })).toBeVisible();
+  expect(saves).toBe(1);
+});
+
+
+test("password Show controls stay usable on phones and desktop in both themes", async ({ page }) => {
+  await page.route("**/api/auth/confirm", route => route.fulfill({ json: { user } }));
+  for (const width of [320, 375, 768, 1440]) {
+    await page.setViewportSize({ width, height: 950 });
+    for (const path of ["/signup", "/auth/confirm?recovery=1#access_token=fixture-access&refresh_token=fixture-refresh&type=recovery"]) {
+      await page.goto(path);
+      for (const theme of ["light", "dark"]) {
+        await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+        const toggle = page.getByRole("button", { name: "Show confirm password", exact: true });
+        await toggle.click();
+        const hide = page.getByRole("button", { name: "Hide confirm password", exact: true });
+        await expect(hide).toHaveAttribute("aria-pressed", "true");
+        const box = await hide.boundingBox();
+        expect(box!.x).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await hide.click();
+      }
+    }
+  }
+  await page.setViewportSize({ width: 375, height: 950 });
+  await page.goto("/signup");
+  await page.getByRole("button", { name: "Show confirm password", exact: true }).click();
+  await page.screenshot({ path: "test-results/signup-password-mobile.png", fullPage: true });
+  await page.goto("/auth/confirm?recovery=1#access_token=fixture-access&refresh_token=fixture-refresh&type=recovery");
+  await page.getByRole("button", { name: "Show new password", exact: true }).click();
+  await page.screenshot({ path: "test-results/reset-password-mobile.png", fullPage: true });
 });

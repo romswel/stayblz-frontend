@@ -92,10 +92,9 @@ export default function NotesPanel() {
     <section className="mr-notebook">
       <div className="mr-intro">
         <span className="ov-kicker">PRIVATE TO YOUR ACCOUNT</span>
-        <h2>The race notebook</h2>
+        <h2>My notes</h2>
         <p>
-          A trip worth remembering. A horse to watch next time. Keep your own
-          reading of the race.
+          Save notes about horses, races, or anything you want to remember.
         </p>
       </div>
       {error && (
@@ -121,7 +120,7 @@ export default function NotesPanel() {
       )}
       <div className="mr-notes-grid">
         <form className="ov-paper mr-note-editor" onSubmit={save}>
-          <h3>{id ? "Edit your note" : "A new note"}</h3>
+          <h3>{id ? "Edit note" : "New note"}</h3>
           <label htmlFor="racing-note-title">Note title</label>
           <input
             id="racing-note-title"
@@ -130,7 +129,7 @@ export default function NotesPanel() {
             maxLength={120}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Horse, race, or something to remember"
+            placeholder="Enter a title"
           />
           <label htmlFor="racing-note-body">Your note</label>
           <textarea
@@ -140,7 +139,7 @@ export default function NotesPanel() {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={8}
-            placeholder="What caught your eye?"
+            placeholder="Write your note"
           />
           <div className="mr-actions">
             <span>{body.length}/4,000</span>
@@ -164,10 +163,9 @@ export default function NotesPanel() {
             </p>
           ) : !notes.length ? (
             <div className="ov-paper mr-empty">
-              <h3>Start with an observation.</h3>
+              <h3>No notes yet.</h3>
               <p>
-                Your private notes will appear here. They are separate from
-                published racing news and stable team updates.
+                Your saved notes will appear here. Only you can see them.
               </p>
             </div>
           ) : (

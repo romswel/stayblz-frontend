@@ -35,8 +35,8 @@ export default function MyRacingPanel() {
     <OverviewSection
       id="my-racing"
       number="05"
-      title="Your side of the rail"
-      subtitle="Follows, notes & conversations"
+      title="My account"
+      subtitle="Saved horses, notes and messages"
       link="/my-racing"
     >
       <div className="ov-personal-grid">
@@ -48,16 +48,16 @@ export default function MyRacingPanel() {
             "Horses, jockeys & trainers",
           ],
           [
-            "Race notebook",
+            "My notes",
             data?.notes,
             "/my-racing?tab=notes",
-            "Your private observations",
+            "Notes only you can see",
           ],
           [
             "Messages",
             data?.conversations,
             "/messages",
-            "Your racing conversations",
+            "Private conversations",
           ],
         ].map(([label, count, path, detail]) => (
           <Link key={label} to={String(path)}>
@@ -82,8 +82,7 @@ export default function MyRacingPanel() {
         </div>
       )}
       <p className="ov-footnote">
-        Saved to your account. You do not need to own or join a stable to use My
-        racing.
+        Your saved items are linked to your account. You do not need to join a stable.
       </p>
     </OverviewSection>
   );

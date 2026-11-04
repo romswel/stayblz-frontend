@@ -87,7 +87,7 @@ export default function Inventory() {
   return (
     <>
       <header className="page-head">
-        <div className="eyebrow">stable // registry</div>
+        <div className="eyebrow">Horse records</div>
         <h1>Inventory</h1>
         <p className="sub">
           Every horse registered to your operation — select a horse for full

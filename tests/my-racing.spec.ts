@@ -142,7 +142,7 @@ test.beforeEach(async ({ page }) => {
 async function openNotebook(page: Page) {
   await page.goto("/my-racing?tab=notes");
   await expect(
-    page.getByRole("heading", { name: "The race notebook" }),
+    page.getByRole("heading", { name: "My notes" }),
   ).toBeVisible();
 }
 
@@ -160,11 +160,11 @@ test("racing and account tools work while the optional stable service is unavail
   });
   await page.goto("/dashboard");
   await expect(
-    page.getByRole("heading", { name: "The overview." }),
+    page.getByRole("heading", { name: "Overview." }),
   ).toBeVisible();
   await expect(
     page.getByText(
-      "Saved to your account. You do not need to own or join a stable to use My racing.",
+      "Your saved items are linked to your account. You do not need to join a stable.",
     ),
   ).toBeVisible();
   await expect(
@@ -324,7 +324,7 @@ test("conversation invitations survive account loading and are consumed without 
   await expect(page.getByLabel("Conversation invitation code")).toHaveValue(
     token,
   );
-  expect(new URL(page.url()).hash).toBe("");
+  await expect(page).toHaveURL(/\/messages$/);
   await page
     .getByRole("button", { name: "Accept conversation invitation" })
     .click();

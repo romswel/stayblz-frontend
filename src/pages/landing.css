@@ -512,6 +512,14 @@
   place-items: center;
   color: #b4bfa5;
 }
+.ld-password-text-toggle input {
+  padding-right: 64px;
+}
+.ld-password-text-toggle button {
+  width: 60px;
+  height: 100%;
+  font-size: 12px;
+}
 .landing .ld-submit {
   width: 100%;
   display: flex;

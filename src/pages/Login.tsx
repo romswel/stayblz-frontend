@@ -7,6 +7,7 @@ import PublicHeader from "../components/PublicHeader";
 import PublicFooter from "../components/PublicFooter";
 import LandingAuth from "../components/landing/LandingAuth";
 import RacingPreview from "../components/landing/RacingPreview";
+import { isPPDestination } from "../components/pps/catalog";
 import "./landing.css";
 const destinations = new Set([
   "/dashboard",
@@ -41,7 +42,8 @@ export default function Login() {
   );
   const [destination, setDestination] = useState(
     typeof routeState?.destination === "string" &&
-      destinations.has(routeState.destination)
+      (destinations.has(routeState.destination) ||
+        isPPDestination(routeState.destination))
       ? routeState.destination
       : "/dashboard",
   );
@@ -61,7 +63,8 @@ export default function Login() {
     } | null;
     if (
       typeof state?.destination === "string" &&
-      destinations.has(state.destination)
+      (destinations.has(state.destination) ||
+        isPPDestination(state.destination))
     )
       setDestination(state.destination);
     if (typeof state?.intent === "string")
@@ -198,7 +201,7 @@ export default function Login() {
           <Brand />
           <div>
             <span className="ld-kicker">YOUR ACCOUNT</span>
-            <h2>Your horses. Your stable.</h2>
+            <h2>Save horses, notes, and messages.</h2>
           </div>
           <button
             className="ld-button ld-button-gold"

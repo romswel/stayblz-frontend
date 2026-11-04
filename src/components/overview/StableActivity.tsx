@@ -103,7 +103,7 @@ export default function StableActivity() {
     <OverviewSection
       id="stable-activity"
       number="01"
-      title="Inside your stable"
+      title="Stable updates"
       subtitle="People, horses & the day’s work"
     >
       {!hasStable ? (
@@ -238,7 +238,7 @@ export default function StableActivity() {
               <p className="ov-footnote">
                 Private conversations are visible only to their participants.
               </p>
-              <h3 className="ov-engagement-heading">Engagements</h3>
+              <h3 className="ov-engagement-heading">Upcoming races</h3>
               {horses
                 ?.filter((h) => h.nextRace)
                 .slice(0, 4)
@@ -249,7 +249,7 @@ export default function StableActivity() {
                   </Link>
                 ))}
               {horses && !horses.some((h) => h.nextRace) && (
-                <p className="ov-footnote">No upcoming engagements recorded.</p>
+                <p className="ov-footnote">No upcoming races added.</p>
               )}
             </div>
           </div>

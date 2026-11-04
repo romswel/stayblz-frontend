@@ -83,11 +83,10 @@ export default function VirtualStable({
   return (
     <section>
       <div className="mr-intro">
-        <span className="ov-kicker">YOUR PERSONAL VIRTUAL STABLE</span>
-        {embedded ? <h2>Follow the form.</h2> : <h1>Following</h1>}
+        <span className="ov-kicker">HORSES, JOCKEYS AND TRAINERS</span>
+        {embedded ? <h2>Following</h2> : <h1>Following</h1>}
         <p>
-          Keep the horses and racing people you care about close. Following does
-          not mean owning a horse or joining a stable team.
+          Follow horses, jockeys, and trainers. You do not need to own a horse or join a stable.
         </p>
       </div>
       <div className="mr-follows-toolbar">
@@ -158,8 +157,8 @@ export default function VirtualStable({
               {search
                 ? "No matches."
                 : onlyFollowing
-                  ? "Your list starts here."
-                  : "The published field is still to come."}
+                  ? "You are not following anyone in this list yet."
+                  : "No records added yet."}
             </h3>
             <p>
               {search
@@ -206,7 +205,7 @@ export default function VirtualStable({
       <p className="ov-footnote">
         Saved to your account across devices. Shows up to 500 published names
         per category plus your saved follows. Automatic alerts are not active
-        yet. <Link to="/my-racing?tab=alerts">Choose alert preferences ↗</Link>
+        yet. <Link to="/my-racing?tab=alerts">Open alert settings ↗</Link>
       </p>
     </section>
   );

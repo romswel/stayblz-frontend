@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { api, ApiError } from "../../api";
 import { countries } from "./countries";
+import PasswordField from "../PasswordField";
+import { accountTypes } from "../accountTypes";
 import { useQuickTransition } from "../usePublicMotion";
 
 interface Props {
@@ -27,7 +29,6 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   const [lastName, setLastName] = useState("");
   const [country, setCountry] = useState("");
   const [racingRole, setRacingRole] = useState("");
-  const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -334,20 +335,17 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                         </select>
                       </label>
                       <label className="ld-field">
-                        Racing role
+                        Your connection to racing
                         <select
                           name="racingRole"
                           value={racingRole}
                           onChange={(e) => setRacingRole(e.target.value)}
                           required
                         >
-                          <option value="">Select role</option>
-                          <option value="owner">Owner</option>
-                          <option value="trainer">Trainer</option>
-                          <option value="jockey">Jockey</option>
-                          <option value="staff">Stable staff</option>
-                          <option value="fan">Racing fan</option>
-                          <option value="other">Other</option>
+                          <option value="">Select an option</option>
+                          {accountTypes.map(type => (
+                            <option key={type.value} value={type.value}>{type.label}</option>
+                          ))}
                         </select>
                       </label>
                     </div>
@@ -380,74 +378,35 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                 </label>
                 {!forgot && (
                   <>
-                    <label className="ld-field">
-                      Password
-                      <span className="ld-password">
-                        <input
-                          name="password"
-                          type={visible ? "text" : "password"}
-                          autoComplete={
-                            mode === "login"
-                              ? "current-password"
-                              : "new-password"
-                          }
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          minLength={mode === "signup" ? 12 : undefined}
-                          maxLength={128}
-                          pattern={
-                            mode === "signup"
-                              ? "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}"
-                              : undefined
-                          }
-                          aria-describedby={
-                            mode === "signup" ? "ld-password-help" : undefined
-                          }
-                          required
-                        />
-                        <button
-                          type="button"
-                          aria-label={
-                            visible ? "Hide password" : "Show password"
-                          }
-                          aria-pressed={visible}
-                          onClick={() => setVisible(!visible)}
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            aria-hidden="true"
-                          >
-                            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
-                            <circle cx="12" cy="12" r="2.5" />
-                            {visible && <path d="m3 3 18 18" />}
-                          </svg>
-                        </button>
-                      </span>
-                    </label>
+                    <PasswordField
+                      key={`${mode}:${navigationKey}`}
+                      label="Password"
+                      name="password"
+                      autoComplete={mode === "login" ? "current-password" : "new-password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      minLength={mode === "signup" ? 12 : undefined}
+                      maxLength={128}
+                      pattern={mode === "signup" ? "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}" : undefined}
+                      aria-describedby={mode === "signup" ? "ld-password-help" : undefined}
+                      required
+                    />
                     {mode === "signup" && (
                       <>
                         <p className="ld-password-help" id="ld-password-help">
                           12–128 characters, with uppercase, lowercase, and a
                           number.
                         </p>
-                        <label className="ld-field">
-                          Confirm password
-                          <input
-                            name="confirmPassword"
-                            type={visible ? "text" : "password"}
-                            autoComplete="new-password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            minLength={12}
-                            maxLength={128}
-                            required
-                          />
-                        </label>
+                        <PasswordField
+                          label="Confirm password"
+                          name="confirmPassword"
+                          autoComplete="new-password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          minLength={12}
+                          maxLength={128}
+                          required
+                        />
                       </>
                     )}
                   </>

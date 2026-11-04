@@ -50,10 +50,10 @@ export default function HorseTracker() {
   return (
     <>
       <header className="page-head">
-        <div className="eyebrow">stable // monitoring</div>
+        <div className="eyebrow">Horse tracking</div>
         <h1>Horse Tracker</h1>
         <p className="sub">
-          Training condition, recent form, and upcoming engagements
+          Training progress, recent results, and upcoming races
         </p>
       </header>
 

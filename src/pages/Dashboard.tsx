@@ -52,8 +52,8 @@ export default function Dashboard() {
       : !data && error
         ? "Records are unavailable. Use Refresh to try again."
         : query || currentTrack
-          ? "No published records match your filters."
-          : "No records published yet. New records will appear here automatically.";
+          ? "No records match your search or track."
+          : "No racing records added yet.";
   const open = (record: RacingRecord, kind: SectionKey) =>
     setSelected({ record, kind });
   const leaders = [...filtered(leader)].sort((a, b) =>
@@ -90,9 +90,9 @@ export default function Dashboard() {
     <div className="overview">
       <header className="ov-heading">
         <div>
-          <div className="ov-kicker">YOUR DAILY RACING DESK</div>
+          <div className="ov-kicker">RACING OVERVIEW</div>
           <h1>
-            The overview<span>.</span>
+            Overview<span>.</span>
           </h1>
           <p>
             Racing information. Your follows. A clearer view of what’s next.
@@ -120,6 +120,8 @@ export default function Dashboard() {
             ? `${error}${data ? " Showing last loaded records." : ""}`
             : !data
               ? "Loading racing records…"
+              : sectionKeys.every(key => rows(key).length === 0)
+                ? "No racing records have been added yet."
               : `Published records · Checked ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
         </div>
         <label>
@@ -143,8 +145,7 @@ export default function Dashboard() {
         <div className="ov-search-summary">
           <strong>Search: “{params.get("q")}”</strong>
           <span>
-            Searching the loaded overview. Open a section for its full published
-            list.
+            Search covers the records shown here. Open a section to see all records.
           </span>
           <button className="ws-button" onClick={() => setParams({})}>
             Clear search
@@ -153,9 +154,9 @@ export default function Dashboard() {
       )}
       <nav className="ov-jumps" aria-label="Overview sections">
         {[
-          ["racing-desk", "Racing desk"],
+          ["racing-desk", "Entries & results"],
           ["leaderboard", "Leaders"],
-          ["daily-insights", "Daily insights"],
+          ["daily-insights", "Speed figures"],
           ["stakes", "Stakes"],
           ["my-racing", "My racing"],
           ["racing-notes", "Racing notes"],
@@ -170,15 +171,15 @@ export default function Dashboard() {
           <OverviewSection
             id="racing-desk"
             number="01"
-            title="At the races"
-            subtitle="Entries, results & morning work"
+            title="Entries & results"
+            subtitle="Race entries, results and workouts"
             link="/racing-records/racecards"
           >
             <div className="ov-racing-top">
               <div className="ov-feature">
-                <div className="ov-kicker">ON THE RACING CALENDAR</div>
+                <div className="ov-kicker">UPCOMING RACES</div>
                 <h3>
-                  {featured?.name ?? "The next chapter starts at the gate."}
+                  {featured?.name ?? "Upcoming races"}
                 </h3>
                 <p>
                   {featured
@@ -190,7 +191,7 @@ export default function Dashboard() {
                       ]
                         .filter(Boolean)
                         .join(" · ")
-                    : "Explore published racecards and upcoming stakes, all in one place."}
+                    : "See race entries and upcoming stakes races."}
                 </p>
                 {featured ? (
                   <button onClick={() => open(featured, featuredKind)}>
@@ -205,17 +206,17 @@ export default function Dashboard() {
                   [
                     "/racing-records/racecards",
                     "Racecards",
-                    "Fields & race conditions",
+                    "Horses entered and race details",
                   ],
                   [
                     "/racing-records/results",
                     "Results & charts",
-                    "Published race outcomes",
+                    "Race results",
                   ],
                   [
                     "/racing-records/workouts",
                     "Workouts",
-                    "Morning work & times",
+                    "Training times",
                   ],
                 ].map(([to, title, sub]) => (
                   <Link key={to} to={to}>
@@ -230,15 +231,15 @@ export default function Dashboard() {
             </div>
             <div className="ov-panel-toolbar">
               {tabs(["racecards", "results", "workouts"], desk, setDesk)}
-              <span>Published overview</span>
+              <span>Racing records</span>
             </div>
             {table(desk)}
           </OverviewSection>
           <OverviewSection
             id="leaderboard"
             number="02"
-            title="The leaderboard"
-            subtitle="Compare the published field"
+            title="Leaderboard"
+            subtitle="Horses, jockeys and trainers"
             link="/racing-records/horses"
           >
             <div className="ov-panel-toolbar">
@@ -253,8 +254,8 @@ export default function Dashboard() {
           <OverviewSection
             id="daily-insights"
             number="03"
-            title="Daily insights"
-            subtitle="Find the detail that matters"
+            title="Speed figures"
+            subtitle="Compare horse performance"
             link="/racing-records/horses"
           >
             {insights.length ? (
@@ -263,8 +264,8 @@ export default function Dashboard() {
                   <button key={r.id} onClick={() => open(r, "horses")}>
                     <span>
                       {i === 0
-                        ? "Highest published figure"
-                        : "In the published field"}
+                        ? "Highest speed figure"
+                        : "Speed figure"}
                     </span>
                     <strong>
                       {r.figure}
@@ -281,15 +282,14 @@ export default function Dashboard() {
               <p className="ov-empty">{empty}</p>
             )}
             <p className="ov-footnote">
-              Figures reflect published records in this overview. Rankings are
-              not a complete season table or a prediction.
+              Based on the records shown here. This is not a full season ranking.
             </p>
           </OverviewSection>
           <OverviewSection
             id="stakes"
             number="04"
-            title="The stakes calendar"
-            subtitle="Plan the next outing"
+            title="Stakes schedule"
+            subtitle="Stakes entries and results"
             link="/racing-records/stakes"
           >
             <div className="ov-panel-toolbar">
@@ -301,8 +301,8 @@ export default function Dashboard() {
           <OverviewSection
             id="racing-notes"
             number="06"
-            title="From the racing desk"
-            subtitle="Published news, changes & stories"
+            title="Racing news"
+            subtitle="News and race updates"
             link="/racing-records/notes"
           >
             {filtered("notes").length ? (
@@ -325,36 +325,35 @@ export default function Dashboard() {
         </div>
         <aside className="ov-rail" aria-label="Your racing tools">
           <section className="ov-paper ov-welcome">
-            <span className="ov-kicker">A GOOD DAY TO FOLLOW THE FORM</span>
+            <span className="ov-kicker">YOUR ACCOUNT</span>
             <h2>
               Welcome back,
               <br />
-              {user?.profile?.firstName || user?.displayName || "racing fan"}.
+              {user?.profile?.firstName || user?.displayName || "member"}.
             </h2>
             <p>
-              Follow the form, keep your own notes, and pick up your racing
-              conversations.
+              View your saved horses, notes, and messages.
             </p>
             <Link to="/account">Manage your account ↗</Link>
           </section>
           <section className="ov-paper">
             <div className="ov-rail-head">
-              <h2>The quick rail</h2>
+              <h2>Quick links</h2>
               <span>↗</span>
             </div>
             <div className="ov-quick-links">
               {[
-                ["/messages", "Messages", "Talk racing privately"],
+                ["/messages", "Messages", "Private conversations"],
                 ["/my-racing", "Following", "Horses, jockeys & trainers"],
                 [
                   "/my-racing?tab=notes",
-                  "Race notebook",
-                  "Your private observations",
+                  "My notes",
+                  "Notes only you can see",
                 ],
                 [
                   "/my-racing?tab=alerts",
-                  "Alert preferences",
-                  "Choose your racing updates",
+                  "Alert settings",
+                  "Choose which updates you want",
                 ],
               ].map(([to, label, sub], i) => (
                 <Link key={to} to={to}>
@@ -375,7 +374,7 @@ export default function Dashboard() {
             <div className="ov-directory">
               {[
                 ["/racing-records/notes", "Race day changes & notices"],
-                ["/racing-records/workouts", "Published workouts"],
+                ["/racing-records/workouts", "Workouts"],
                 ["/racing-records/stakes", "Upcoming stakes"],
                 ["/racing-records/jockeys", "Jockey statistics"],
                 ["/racing-records/trainers", "Trainer statistics"],
@@ -388,24 +387,30 @@ export default function Dashboard() {
             </div>
           </section>
           <section className="ov-paper ov-editorial">
-            <span className="ov-kicker">KNOW THE HORSE. READ THE RACE.</span>
-            <h2>A better-informed day at the races.</h2>
+            <span className="ov-kicker">FOR STABLE OWNERS AND TEAMS</span>
+            <h2>Stable tools</h2>
             <p>
-              Start with the field. Compare the form. Keep your favorites in
-              view.
+              Manage horses, training, and team updates. Create a stable or join
+              one with an invitation.
             </p>
-            <Link to="/faq">How Stayblz works ↗</Link>
+            <div className="ov-directory">
+              <Link to="/workspace">Stable updates <span>↗</span></Link>
+              <Link to="/inventory">Horse records <span>↗</span></Link>
+              <Link to="/tracker">Horse tracking <span>↗</span></Link>
+              <Link to="/team-messages">Team messages <span>↗</span></Link>
+              <Link to="/stables">Stables and team access <span>↗</span></Link>
+            </div>
           </section>
           <section className="ov-paper ov-availability">
             <h2>Data & services</h2>
             <p>
-              Published racing records refresh automatically. Past performances,
-              replays, wagering pools, paid products and checkout are not
-              connected yet.
+              Racing records update when new data is added. Race videos,
+              past performance reports, betting pools, and paid products are
+              not available yet.
             </p>
             <p>
-              Your follows, notes and personal conversations belong to your
-              account. Team operations are optional.
+              You can use follows, notes, and personal messages without joining
+              a stable. Automatic alerts are not active yet.
             </p>
           </section>
         </aside>

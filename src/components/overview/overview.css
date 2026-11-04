@@ -364,11 +364,11 @@
   white-space: nowrap;
 }
 .ov-empty {
-  padding: 44px 24px;
+  padding: 24px;
   color: var(--ws-muted);
   font-size: 12px;
   text-align: center;
-  min-height: 144px;
+  min-height: 88px;
   display: grid;
   place-items: center;
 }
@@ -560,7 +560,7 @@
 }
 .ov-editorial h2 {
   font:
-    italic 400 29px/1.2 Georgia,
+    400 29px/1.2 Georgia,
     serif;
   margin: 18px 0;
 }

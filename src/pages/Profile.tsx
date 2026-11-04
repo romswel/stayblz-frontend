@@ -4,6 +4,7 @@ import { useAuth } from "../auth";
 import { api } from "../api";
 import { countries } from "../components/landing/countries";
 import type { User } from "../types";
+import { accountTypes } from "../components/accountTypes";
 
 export default function Profile() {
   const { user, acceptUser } = useAuth();
@@ -88,19 +89,16 @@ export default function Profile() {
               </select>
             </label>
             <label>
-              Racing role
+              Your connection to racing
               <select
                 value={racingRole}
                 onChange={(e) => setRacingRole(e.target.value)}
                 required
               >
-                <option value="">Select role</option>
-                <option value="owner">Owner</option>
-                <option value="trainer">Trainer</option>
-                <option value="jockey">Jockey</option>
-                <option value="staff">Stable staff</option>
-                <option value="fan">Racing fan</option>
-                <option value="other">Other</option>
+                <option value="">Select an option</option>
+                {accountTypes.map(type => (
+                  <option key={type.value} value={type.value}>{type.label}</option>
+                ))}
               </select>
             </label>
           </div>
@@ -118,8 +116,8 @@ export default function Profile() {
       <section className="panel account-profile">
         <h2>Racing records</h2>
         <p>
-          Your account can view published racing records. Stable operations
-          require admin access.
+          View racing records, save notes, follow horses, and send private messages.
+          You can also create a stable or join a team.
         </p>
         <Link className="btn btn-primary" to="/entries">
           View racecards

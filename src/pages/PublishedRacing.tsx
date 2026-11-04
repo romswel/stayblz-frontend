@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import SectionNav from "../components/SectionNav";
 import type {
   RacingRecord,
   SectionKey,
@@ -148,6 +149,19 @@ export default function PublishedRacing({
         <div className="eyebrow">Published racing records</div>
         <h1>{title}</h1>
       </header>
+      <SectionNav
+        label="Racing pages"
+        links={[
+          { to: "/dashboard", label: "Overview" },
+          { to: "/pps", label: "PPs" },
+          { to: "/entries", label: "Entries" },
+          { to: "/results", label: "Results" },
+          { to: "/workouts", label: "Workouts" },
+          { to: "/speed-figures", label: "Speed figures" },
+          { to: "/statistics", label: "Statistics" },
+          { to: "/stakes", label: "Stakes" },
+        ]}
+      />
       {kinds.length > 1 && (
         <div className="tabs">
           {kinds.map((key) => (
