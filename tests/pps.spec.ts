@@ -54,7 +54,7 @@ test("PP overview has seven report cards and real detail/compare navigation", as
     page.getByRole("heading", { name: "Harness", exact: true }),
   ).toBeVisible();
   await page.locator(".pp-card").first().click();
-  await expect(page).toHaveURL(/\/pps\/premium$/);
+  await expect(page).toHaveURL(/\/pps\/detailed-racecard$/);
   await expect(
     page.getByText("No PP files available", { exact: true }),
   ).toBeVisible();
@@ -92,11 +92,11 @@ test("PP sidebar expands from collapsed desktop and exposes grouped pages", asyn
     await toggle.click();
   await page
     .getByRole("navigation", { name: "Main" })
-    .getByRole("link", { name: "Lifetime PPs", exact: true })
+    .getByRole("link", { name: "Horse History", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/pps\/lifetime$/);
+  await expect(page).toHaveURL(/\/pps\/horse-history$/);
   await expect(
-    page.getByRole("heading", { name: "Lifetime PPs", exact: true }).first(),
+    page.getByRole("heading", { name: "Horse History", exact: true }).first(),
   ).toBeVisible();
   await expect(
     page
@@ -169,7 +169,7 @@ test("PP pages fit phone/tablet/desktop themes and mobile submenu navigates", as
     for (const path of [
       "/pps",
       "/pps/compare",
-      "/pps/premium",
+      "/pps/detailed-racecard",
       "/pps/by-track",
       "/pps/day-passes",
     ]) {
@@ -191,11 +191,9 @@ test("PP pages fit phone/tablet/desktop themes and mobile submenu navigates", as
   await page.goto("/pps");
   await page.getByRole("button", { name: "Open menu" }).click();
   const dialog = page.getByRole("dialog", { name: "Navigation" });
-  await dialog
-    .getByRole("link", { name: "Basic PP Program", exact: true })
-    .click();
+  await dialog.getByRole("link", { name: "Racecard", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(/\/pps\/basic$/);
+  await expect(page).toHaveURL(/\/pps\/racecard$/);
   await page.goto("/pps");
   await page.screenshot({
     path: "test-results/pps-mobile.png",
@@ -234,14 +232,14 @@ test("signed-out PP links keep their destination through login", async ({
   await page.route("**/api/auth/login", (route) =>
     route.fulfill({ json: { user } }),
   );
-  await page.goto("/pps/harness-pro");
+  await page.goto("/pps/harness-workspace");
   await expect(page).toHaveURL(/\/login$/);
   await page
     .getByLabel("Email or admin username", { exact: true })
     .fill("test@example.test");
   await page.getByLabel("Password", { exact: true }).fill("TestPassword123");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).toHaveURL(/\/pps\/harness-pro$/);
+  await expect(page).toHaveURL(/\/pps\/harness-workspace$/);
 });
 
 test("PP label navigates separately from its arrow and top links work on every page", async ({
@@ -262,13 +260,13 @@ test("PP label navigates separately from its arrow and top links work on every p
     .getByRole("link", { name: "View details", exact: true })
     .first()
     .click();
-  await expect(page).toHaveURL(/\/pps\/premium$/);
+  await expect(page).toHaveURL(/\/pps\/detailed-racecard$/);
   await page.getByRole("link", { name: "Back to previous PP page" }).click();
   await expect(page).toHaveURL(/\/pps\/compare$/);
-  await (await openPPLink(page, "Harness Pro")).click();
-  await expect(page).toHaveURL(/\/pps\/harness-pro$/);
+  await (await openPPLink(page, "Harness Workspace")).click();
+  await expect(page).toHaveURL(/\/pps\/harness-workspace$/);
   await expect(await openPPLink(page, "Store")).toBeVisible();
-  await page.goto("/pps/basic");
+  await page.goto("/pps/racecard");
   await page.getByRole("link", { name: "Back to previous PP page" }).click();
   await expect(page).toHaveURL(/\/pps$/);
   await page.getByRole("link", { name: "Back to racing overview" }).click();
@@ -289,10 +287,10 @@ test("top PP navigation mirrors every sidebar destination and marks the current 
     await destinations(sidebar.getByRole("link")),
   );
   for (const link of [
-    "Lifetime PPs",
-    "Daily Racing Form",
-    "Harness Platinum",
-    "Basic PPs",
+    "Horse History",
+    "Race Day Summary",
+    "Harness Form Guide",
+    "Racecard",
   ]) {
     await (await openPPLink(page, link)).click();
     await expect(
@@ -301,8 +299,8 @@ test("top PP navigation mirrors every sidebar destination and marks the current 
     await expect(top.locator('[aria-current="page"]')).toHaveCount(1);
   }
   await page.setViewportSize({ width: 320, height: 900 });
-  await page.goto("/pps/lifetime");
-  const active = await openPPLink(page, "Lifetime PPs");
+  await page.goto("/pps/horse-history");
+  const active = await openPPLink(page, "Horse History");
   await expect(active).toBeInViewport();
   await active.focus();
   await expect(active).toBeFocused();
@@ -314,11 +312,11 @@ test("PP report search and race-type filters update the catalogue", async ({
   await page.goto("/pps");
   await page.getByRole("button", { name: "Harness", exact: true }).click();
   await expect(page.locator(".pp-card")).toHaveCount(3);
-  await page.getByLabel("Search PP reports").fill("platinum");
+  await page.getByLabel("Search PP reports").fill("guide");
   await expect(page.locator(".pp-card")).toHaveCount(1);
   await page.locator(".pp-card").click();
   await page.getByRole("link", { name: "Back to previous PP page" }).click();
-  await expect(page.getByLabel("Search PP reports")).toHaveValue("platinum");
+  await expect(page.getByLabel("Search PP reports")).toHaveValue("guide");
   await expect(page.locator(".pp-card")).toHaveCount(1);
   await page.getByLabel("Search PP reports").fill("no-such-report");
   await expect(page.getByText("No matching reports.")).toBeVisible();
@@ -335,7 +333,7 @@ test("PP report search and race-type filters update the catalogue", async ({
 test("PP dropdowns close on navigation, outside click and Escape with keyboard focus", async ({
   page,
 }) => {
-  await page.goto("/pps/premium");
+  await page.goto("/pps/detailed-racecard");
   const nav = page.getByRole("navigation", { name: "PP pages" });
   const menu = nav.locator("details").first();
   const trigger = menu.locator("summary");
@@ -352,7 +350,7 @@ test("PP dropdowns close on navigation, outside click and Escape with keyboard f
   await expect(nav.locator("details[open]")).toHaveCount(1);
   await page.locator("h1").click();
   await expect(nav.locator("details[open]")).toHaveCount(0);
-  await (await openPPLink(page, "Lifetime PPs")).click();
+  await (await openPPLink(page, "Horse History")).click();
   await expect(nav.locator("details[open]")).toHaveCount(0);
   await expect(nav.locator("summary.is-current")).toContainText("Thoroughbred");
 });
@@ -360,14 +358,14 @@ test("PP dropdowns close on navigation, outside click and Escape with keyboard f
 test("PP dropdown panels stay within phone and desktop layouts", async ({
   page,
 }) => {
-  await page.goto("/pps/premium");
+  await page.goto("/pps/detailed-racecard");
   for (const width of [320, 768, 1440]) {
     await page.setViewportSize({ width, height: 950 });
     for (const theme of ["light", "dark"]) {
       await page.evaluate((theme) => {
         document.documentElement.dataset.theme = theme;
       }, theme);
-      await openPPLink(page, "Lifetime PPs");
+      await openPPLink(page, "Horse History");
       const panel = page.locator(".pp-page-menu[open] .pp-page-menu-panel");
       const rect = await panel.boundingBox();
       expect(rect).not.toBeNull();

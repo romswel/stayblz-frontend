@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { recordsForDiscipline } from "./racingDiscipline";
 import useRacingOverview from "../landing/useRacingOverview";
 import { useCart, type CartItem } from "./CartContext";
 import type { PPProduct } from "./catalog";
@@ -8,12 +9,12 @@ export default function PPOrder({ product }: { product: PPProduct }) {
   const [params, setParams] = useSearchParams();
   const cart = useCart();
   const { pathname, search } = useLocation();
+  const cards = recordsForDiscipline(
+    data?.sections.racecards ?? [],
+    product.group,
+  );
   const dates = [
-    ...new Set(
-      (data?.sections.racecards ?? []).flatMap((row) =>
-        row.date ? [row.date] : [],
-      ),
-    ),
+    ...new Set(cards.flatMap((row) => (row.date ? [row.date] : []))),
   ].sort();
   const date = params.get("date") ?? dates[0] ?? "";
   const query = params.get("tracks") ?? "";
@@ -24,7 +25,7 @@ export default function PPOrder({ product }: { product: PPProduct }) {
   const [notice, setNotice] = useState("");
   const tracks = [
     ...new Set(
-      (data?.sections.racecards ?? [])
+      cards
         .filter((row) => row.date === date)
         .flatMap((row) => (row.track ? [row.track] : [])),
     ),
@@ -66,7 +67,7 @@ export default function PPOrder({ product }: { product: PPProduct }) {
       <div className="pp-section-heading">
         <div>
           <span className="pp-kicker">01 / CHOOSE YOUR REPORT</span>
-          <h2>Pricing & tracks</h2>
+          <h2>Tracks & access</h2>
         </div>
         <span>Prices not set</span>
       </div>
@@ -89,18 +90,19 @@ export default function PPOrder({ product }: { product: PPProduct }) {
           <strong>Single cards</strong>
           <span>Choose one or more tracks</span>
         </button>
-        {product.id !== "daily-racing-form" && (
-          <button
-            aria-pressed={kind === "day-pass"}
-            onClick={() => {
-              setKind("day-pass");
-              setNotice("");
-            }}
-          >
-            <strong>Day pass</strong>
-            <span>Access plan for one race date</span>
-          </button>
-        )}
+        {product.group === "Thoroughbred" &&
+          product.id !== "race-day-summary" && (
+            <button
+              aria-pressed={kind === "day-pass"}
+              onClick={() => {
+                setKind("day-pass");
+                setNotice("");
+              }}
+            >
+              <strong>Day pass</strong>
+              <span>Access plan for one race date</span>
+            </button>
+          )}
       </div>
       <div className="pp-order-filters">
         <label>
@@ -138,7 +140,10 @@ export default function PPOrder({ product }: { product: PPProduct }) {
       ) : !tracks.length ? (
         <div className="pp-empty" role="status">
           <h3>No tracks available for this date.</h3>
-          <p>Tracks will appear here when dated race entries are published.</p>
+          <p>
+            Tracks will appear here when dated entries for this racing type are
+            published.
+          </p>
         </div>
       ) : kind === "card" ? (
         <fieldset className="pp-track-options">

@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { canonicalPPPath } from "./components/pps/legacyRoutes";
 import { isPPDestination } from "./components/pps/catalog";
 import { useAuth } from "./auth";
 import { CartProvider } from "./components/pps/CartContext";
@@ -23,7 +24,8 @@ import { WorkspaceProvider, StableGate } from "./workspace";
 import { Link } from "react-router-dom";
 
 function PPLoginRedirect() {
-  const { pathname, search } = useLocation();
+  const { pathname: oldPathname, search } = useLocation();
+  const pathname = canonicalPPPath(oldPathname);
   return (
     <Navigate
       to="/login"

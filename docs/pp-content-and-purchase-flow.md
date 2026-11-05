@@ -1,41 +1,15 @@
-# Thoroughbred PP content and purchase flow
+# Reports and purchase flow
 
-Updated 2026-11-05. This pass is local UI and navigation work, not a production release or a provider/payment integration.
+Updated 2026-11-05. The independent product direction in product-identity.md replaces the earlier supplier catalogue. No provider or payment integration is implied. Release checks are recorded in PROJECT_NOTES.md.
 
-## Implemented screens
+The catalogue contains five Thoroughbred report concepts and three Harness destinations. Each report has Features, Sample layout and Reading guide pages; access-plan information appears only where designed. Horse History starts with a published-name search. Harness Workspace is an account tool with actual search, sorting and record details, rather than a paid report or imitation of external scoring software.
 
-Premium, Basic, Lifetime, TrackMaster Platinum and Daily Racing Form now have separate report destinations. Pricing/track selection is the entry screen for card products; Lifetime starts with horse search. Each has Features, Sample or Free Race, and How to read. Premium, Basic and Platinum also have a subscription information page. The reference catalogue names identify formats, not Stayblz-owned products or authorised offers.
+Track/date selection uses existing published entries. Harness products and the shared track browser use only explicitly marked harness records for Harness selection. A race entry does not establish PP file availability. The overview API is bounded, so these are not complete data-provider catalogues.
 
-The PP section dropdowns stay compact. Report-local page links sit below them. Breadcrumbs include the report parent, and direct child-page entry has a Back-to-report fallback. Thoroughbred navigation is limited to the five supplied report pages. EquiGraphix and Plus Pro have been removed from the catalogue, navigation and valid destinations. Harness pages remain for later work.
+The preview cart stores up to 40 validated, deduplicated selections for the account in the current browser tab. The new store uses version 2. Old supplier-labelled selections are not automatically converted into new designs. Header review, full cart review, remove, clear and reload work. No prices, totals, order submission, payments or file entitlements exist.
 
-Pricing and tracks: choose a date from real published entries, select tracks or a day-pass interest, and add the selection to the preview cart. No source tracks are copied into the application. Empty dated records produce an empty state. Race entries do not establish report availability. The current overview API is bounded, so these are not a complete provider catalogue.
+No external PDF samples, current prices, artwork, editorial picks or rating calculations are included. A report can later be generated on the server from records approved for this use, or delivered from an authorised file service under the agreed terms. Public sample availability is not permission to resell or rebrand it.
 
-Lifetime: search published horse names. Year and dam inputs show the intended provider-search flow, but clearly report that registry search is unavailable. No guessed birth years, pedigree matches or lifetime records are produced.
+A later checkout needs an authoritative server catalogue, product/date/track validation, a pending order, secure payment and verified signed payment events before granting download access. Private files need account entitlement checks. Neither a browser cart nor a payment-return URL can grant access. Define plan limits, cancellations and refunds before selling plans.
 
-Cart: selections are scoped to the signed-in account in sessionStorage for the current browser tab, bounded to 40 entries, validated on load and deduplicated by product/type/date/track/horse. The header opens a review dialog, and /pps/cart provides a full review page. Remove and clear work. No prices, totals, orders, payments, entitlements or paid files exist. This browser store must never establish a price or authorise a download.
-
-## Content scope and sources
-
-Primary design/content scope: the user's 12 screenshots, supplied on 2026-11-05. Explanations are rewritten in short, original English. The useful structures are report features, reading help, date/track selection, single-card/day-pass/subscription distinctions, Lifetime horse search, sample/free-race areas and related report links. Marketing paragraphs, advertisements, racing examples, horse data, images, QR codes and PDFs were not copied into the product.
-
-Official references checked:
-
-- https://tvg.equibase.com/newsite2/PremiumPP.cfm - Premium report fields and the distinction between charts/replays/ratings.
-- https://www.trackmaster.com/products/tpp - official product listing found in search; direct access returned 403.
-- https://www1.drf.com/Equibase/Products.do - DRF's page identifies other providers' products as distributed options.
-- https://www.jockeyclub.com/default.asp?archives=show&area=10&section=Resources&story=163 - a historical 2004 announcement identifies the equineline relationship for Lifetime reports; not evidence of current commercial terms.
-- https://www.dmtc.com/media/news/equibase-the-keeper-of-racings-treasure-trove-of-information-2658 - track entry files, chart collection and distribution context.
-
-The main equibase.com site and attempted terms page returned 403. No access controls were bypassed and no bulk extraction was performed. The actual 50201, 50316 and 50208 PDF attachments were not available in the workspace; screenshots show their viewers, not reusable source files. No sample PDFs are bundled or hotlinked.
-
-## What makes a PP file
-
-The published racing explanation describes track entries being combined with historical starts and race charts. A report service can assemble those structured records into a PDF layout. The research does not reveal Equibase's private implementation or establish that Stayblz can reuse its output. Provider-defined figures and analysis remain distinct from general race fields.
-
-For Stayblz, the later implementation can either deliver provider-supplied files under an approved arrangement, or generate Stayblz PDFs on the server from data we may use. Sample availability does not establish redistribution or resale rights. Record source, permitted use and attribution per dataset/file before using it. Do not copy speed-figure algorithms, branded reports, editorial picks, private data or advertising into the app.
-
-## Later checkout and delivery
-
-An authoritative catalogue must define real products, prices/currency, dates, track coverage, plan limits and approved files. The server then validates selections, creates a pending order and payment session, verifies the payment provider's signed webhook, grants account entitlements and provides authorised downloads from private storage. Payment completion must not rely on a browser redirect or editable cart state. Define refunds, cancellations and subscription renewals before offering plans. This is a future design, not implemented checkout.
-
-Related-product cards are ordinary internal navigation, not ads. Provider promotions in the reference are not copied. External partnerships/ads can be designed later with clear labels and agreed destinations.
+Historical source links and legal/design boundaries are recorded in product-identity.md. The earlier product pages were reference research, not evidence of an authorised sales relationship. No database changes are required by these UI changes.

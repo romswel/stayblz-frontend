@@ -4,6 +4,7 @@ import { ppContent, productPages } from "./productContent";
 import { ppProducts, type PPProduct } from "./catalog";
 import PPPreview from "./PPPreview";
 import PPOrder from "./PPOrder";
+import HarnessWorkspace from "./HarnessWorkspace";
 import LifetimeSearch from "./LifetimeSearch";
 import "./product.css";
 export default function PPProductPage({
@@ -18,16 +19,7 @@ export default function PPProductPage({
   const links = productPages(product.id);
   const current = links.find((link) => link.to === pathname);
   const related = ppProducts
-    .filter(
-      (p) =>
-        [
-          "premium",
-          "basic",
-          "platinum",
-          "daily-racing-form",
-          "lifetime",
-        ].includes(p.id) && p.id !== product.id,
-    )
+    .filter((p) => p.group === product.group && p.id !== product.id)
     .slice(0, 3);
   return (
     <div className="pp-product-page">
@@ -46,8 +38,10 @@ export default function PPProductPage({
         <div className="pp-product-layout">
           <div className="pp-product-main" key={pathname}>
             {!view ? (
-              product.id === "lifetime" ? (
+              content.mode === "history" ? (
                 <LifetimeSearch />
+              ) : content.mode === "workspace" ? (
+                <HarnessWorkspace />
               ) : (
                 <PPOrder key={product.id} product={product} />
               )
@@ -57,8 +51,8 @@ export default function PPProductPage({
                 <h2>What is in this report?</h2>
                 <p className="pp-intro">{content.intro}</p>
                 <p className="pp-footnote">
-                  These explain the reference report. Stayblz files and provider
-                  features are not connected yet.
+                  These describe the Stayblz design. Unavailable data and report
+                  files are not included.
                 </p>
                 <ul className="pp-feature-highlights">
                   {content.highlights.map((item) => (
@@ -91,28 +85,20 @@ export default function PPProductPage({
                   </Link>
                 </div>
               </section>
-            ) : view === "sample" || view === "free-race" ? (
+            ) : view === "sample" ? (
               <section className="pp-order">
-                <span className="pp-kicker">
-                  {view === "free-race" ? "FREE RACE" : "REPORT SAMPLE"}
-                </span>
-                <h2>
-                  {view === "free-race"
-                    ? "Try a free race report"
-                    : "View a sample"}
-                </h2>
+                <span className="pp-kicker">STAYBLZ / SAMPLE LAYOUT</span>
+                <h2>Explore the report layout</h2>
                 <p>
-                  {view === "free-race"
-                    ? "A free-race page is where a selected race and its approved report files will appear."
-                    : "Check a report layout before choosing a product. Approved sample files will appear here."}
+                  This original layout shows where report fields could appear.
+                  It contains no race data.
                 </p>
                 <div className="pp-sample-layout">
                   <PPPreview variant={product.preview} />
                   <div>
                     <h3>No PP files available</h3>
                     <p>
-                      No approved PDF has been added for this report. The
-                      picture is a layout preview with no racing data.
+                      No Stayblz sample PDF has been published for this design.
                     </p>
                     <button className="ws-button" disabled>
                       Open PDF unavailable
@@ -122,18 +108,6 @@ export default function PPProductPage({
                     </button>
                   </div>
                 </div>
-                {product.id === "premium" && (
-                  <div className="pp-sample-options">
-                    {["Standard PP", "Highlighted PP", "Selections"].map(
-                      (name) => (
-                        <div key={name}>
-                          <strong>{name}</strong>
-                          <small>No free-race file available</small>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                )}
                 <Link className="ws-button" to={`/pps/${product.id}/guide`}>
                   Read the report guide
                 </Link>
@@ -141,7 +115,11 @@ export default function PPProductPage({
             ) : view === "guide" ? (
               <section className="pp-order">
                 <span className="pp-kicker">READING GUIDE</span>
-                <h2>How to read a PP</h2>
+                <h2>
+                  {product.group === "Harness"
+                    ? "Read harness form"
+                    : "How to read a PP"}
+                </h2>
                 <p>
                   Start with the race conditions, then compare each horse's
                   recent starts. Read the terms below before using a report.
@@ -158,7 +136,8 @@ export default function PPProductPage({
                     <strong>Read the horse's form</strong>
                     <p>
                       Work through recent starts, positions, margins and changes
-                      in rider or trainer.
+                      in {product.group === "Harness" ? "driver" : "rider"} or
+                      trainer.
                     </p>
                   </li>
                   <li>
@@ -185,7 +164,7 @@ export default function PPProductPage({
             ) : (
               <section className="pp-order">
                 <span className="pp-kicker">REPORT ACCESS</span>
-                <h2>Subscriptions</h2>
+                <h2>Access plans</h2>
                 <p>
                   A subscription can provide access over a set period. A day
                   pass covers a selected race date; a single card covers a
@@ -202,7 +181,7 @@ export default function PPProductPage({
                   </button>
                 </div>
                 <Link className="ws-button" to={`/pps/${product.id}`}>
-                  View single cards and day passes
+                  Back to tracks & access
                 </Link>
               </section>
             )}
@@ -212,34 +191,58 @@ export default function PPProductPage({
               <span className="pp-kicker">AT A GLANCE</span>
               <h2>{product.name}</h2>
               <p>{content.intro}</p>
-              <dl>
-                <div>
-                  <dt>Price</dt>
-                  <dd>Not set</dd>
-                </div>
-                <div>
-                  <dt>File access</dt>
-                  <dd>No PP files available</dd>
-                </div>
-                <div>
-                  <dt>Payment</dt>
-                  <dd>Not available</dd>
-                </div>
-              </dl>
-              <Link
-                className="ws-button"
-                to="/pps/cart"
-                state={{ ppFrom: pathname + search }}
-              >
-                Review cart
-              </Link>
+              {content.mode === "workspace" ? (
+                <>
+                  <dl>
+                    <div>
+                      <dt>Access</dt>
+                      <dd>Your account</dd>
+                    </div>
+                    <div>
+                      <dt>Data</dt>
+                      <dd>Published harness records</dd>
+                    </div>
+                    <div>
+                      <dt>Export</dt>
+                      <dd>Not connected</dd>
+                    </div>
+                  </dl>
+                  <Link className="ws-button" to="/my-racing?tab=notes">
+                    Open my notes
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <dl>
+                    <div>
+                      <dt>Price</dt>
+                      <dd>Not set</dd>
+                    </div>
+                    <div>
+                      <dt>File access</dt>
+                      <dd>No PP files available</dd>
+                    </div>
+                    <div>
+                      <dt>Payment</dt>
+                      <dd>Not available</dd>
+                    </div>
+                  </dl>
+                  <Link
+                    className="ws-button"
+                    to="/pps/cart"
+                    state={{ ppFrom: pathname + search }}
+                  >
+                    Review cart
+                  </Link>
+                </>
+              )}
             </section>
             <section className="pp-provider-note">
-              <h3>About this option</h3>
+              <h3>About this design</h3>
               <p>{content.note}</p>
               <p>
-                Report names identify the reference format. They do not mean
-                Stayblz sells the provider's product.
+                Only data and files approved for use in Stayblz will be
+                included.
               </p>
             </section>
           </aside>
@@ -257,7 +260,7 @@ export default function PPProductPage({
               to={`/pps/${item.id}`}
               state={{ ppFrom: pathname + search }}
             >
-              <span className="pp-kicker">THOROUGHBRED</span>
+              <span className="pp-kicker">{product.group}</span>
               <h3>{item.name}</h3>
               <p>{item.description}</p>
               <span>View report &#8594;</span>

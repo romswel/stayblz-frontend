@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ppNavigationGroups, ppProducts } from "./catalog";
 import "./pps.css";
@@ -16,6 +16,18 @@ export default function PPNavigation({
   const active = pathname === "/pps" || pathname.startsWith("/pps/");
   const [open, setOpen] = useState(active);
   const id = useId();
+  const children = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const container = children.current;
+    const selected = container?.querySelector<HTMLElement>("a.active");
+    if (!open || !container?.clientHeight || !selected) return;
+    const bounds = container.getBoundingClientRect();
+    const item = selected.getBoundingClientRect();
+    if (item.bottom > bounds.bottom)
+      container.scrollTop += item.bottom - bounds.bottom + 8;
+    else if (item.top < bounds.top)
+      container.scrollTop -= bounds.top - item.top + 8;
+  }, [pathname, open]);
   useEffect(() => {
     if (active) setOpen(true);
   }, [pathname, active]);
@@ -79,7 +91,7 @@ export default function PPNavigation({
           </svg>
         </button>
       </div>
-      <div id={id} className="pp-nav-children" hidden={!open}>
+      <div id={id} className="pp-nav-children" hidden={!open} ref={children}>
         {link("/pps", "PPs overview")}
         {ppNavigationGroups.map((group) => (
           <div key={group.label}>

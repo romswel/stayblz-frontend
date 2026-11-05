@@ -36,7 +36,7 @@ Stable tools are optional. Customers can create or join a stable. Platform super
 | Carryovers, payouts and betting pools | Missing. |
 | Race Lens and handicapping tools | Missing. |
 | Owner spotlight | Missing. |
-| Paid products, subscriptions, cart and checkout | Five Thoroughbred report flows and an account-scoped browser-tab cart preview are available locally. Prices, payments, orders and licensed file delivery are not connected. |
+| Paid products, subscriptions, cart and checkout | Five Thoroughbred report flows and an account-scoped browser-tab cart preview are available. Prices, payments, orders and licensed file delivery are not connected. |
 | Industry links, about/contact and policy pages | Help/FAQ exists. Business contact details, policies and partner links still need approved content. |
 
 ## Later data and service work
@@ -57,3 +57,8 @@ Keep sample or paid data out of production until its source and use are approved
 The user clarified that data integration can follow later. Continue building each requested reference page and its actual navigation flow with honest empty/unavailable states. Do not make feed setup a blocker for the UI work. The current PP pass adds an expandable sidebar group, a seven-card Thoroughbred/Harness overview at /pps, eight product-detail destinations including Lifetime PPs, comparison, track browsing, day-pass and store pages. Report pictures are code-built layout previews. Catalogue prices, downloads, provider connections and payments remain unavailable; no reference prices are copied as current offers. Other Equibase menu groups will be handled page by page, not claimed complete by this PP pass.
 
 2026-11-05: Premium, Basic, Lifetime, Platinum and Daily Racing Form now have Features, Sample/Free Race and reading-guide pages, with subscription information where applicable. Track/date and horse selections connect to a preview cart using real published records. No vendor PDF files, current vendor prices, ads, editorial picks or proprietary ratings were copied. See pp-content-and-purchase-flow.md for sources and later integration work.
+
+
+## Current independent catalogue direction - 2026-11-05
+
+Supplier-named offerings are no longer used in the customer UI. Stayblz has original report-design descriptions and five descriptive Thoroughbred concepts, plus Harness Racecard, Harness Form Guide and Harness Workspace. The workspace's published-record search, sorting, detail view and notebook links work; full reports, approved PDFs, ratings, payment and subscriptions do not. Harness lists require explicit harness classification. Old links redirect, and old supplier preview-cart selections are not automatically repurposed. See product-identity.md. Earlier dated entries above describe historical reference work, not current branding or an authorised supplier relationship.

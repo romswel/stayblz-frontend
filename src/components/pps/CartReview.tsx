@@ -6,7 +6,7 @@ export default function CartReview({
 }: {
   onNavigate?: () => void;
 }) {
-  const { items, remove, clear, storageError } = useCart();
+  const { items, remove, clear, storageError, catalogueChanged } = useCart();
   return (
     <div className="pp-cart-review">
       <span className="pp-kicker">CART PREVIEW</span>
@@ -16,6 +16,12 @@ export default function CartReview({
         saved in this browser tab for your account. They are not orders or
         purchases.
       </p>
+      {catalogueChanged && (
+        <p role="status">
+          The report catalogue has changed. Please choose your report selections
+          again; previous selections were not turned into new products.
+        </p>
+      )}
       {storageError && (
         <p role="alert">
           Selections are kept on this screen, but could not be saved for a
@@ -32,7 +38,7 @@ export default function CartReview({
                     {ppProducts.find((p) => p.id === item.productId)?.name}
                   </Link>
                   <p>
-                    {item.kind === "lifetime"
+                    {item.kind === "history"
                       ? item.horseName
                       : [
                           item.date,
@@ -40,7 +46,7 @@ export default function CartReview({
                             ? item.track
                             : item.kind === "day-pass"
                               ? "Day pass"
-                              : "Subscription enquiry",
+                              : "Report selection",
                         ].join(" / ")}
                   </p>
                   <small>Price pending / No file access</small>

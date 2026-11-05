@@ -7,7 +7,10 @@ const sections = {
   ],
   results: [],
   workouts: [],
-  horses: [{ id: "horse-a", name: "Test Horse" }],
+  horses: [
+    { id: "horse-a", name: "Test Horse" },
+    { id: "harness-horse", name: "Test Horse Harness", category: "harness" },
+  ],
   jockeys: [],
   trainers: [],
   stakes: [],
@@ -36,11 +39,11 @@ test("five Thoroughbred reports have separate child pages and direct-entry paren
 }) => {
   test.setTimeout(60000);
   for (const id of [
-    "premium",
-    "basic",
-    "lifetime",
-    "platinum",
-    "daily-racing-form",
+    "detailed-racecard",
+    "racecard",
+    "horse-history",
+    "form-comparison",
+    "race-day-summary",
   ]) {
     await page.goto(`/pps/${id}`);
     const nav = page.getByRole("navigation", { name: "Report pages" });
@@ -54,7 +57,7 @@ test("five Thoroughbred reports have separate child pages and direct-entry paren
     ).toBeVisible();
     await nav
       .getByRole("link", {
-        name: id === "premium" ? "Free race" : "Sample",
+        name: "Sample layout",
         exact: true,
       })
       .click();
@@ -62,7 +65,7 @@ test("five Thoroughbred reports have separate child pages and direct-entry paren
       page.getByRole("button", { name: "Download unavailable" }),
     ).toBeDisabled();
     await expect(page.locator("iframe")).toHaveCount(0);
-    await nav.getByRole("link", { name: "How to read", exact: true }).click();
+    await nav.getByRole("link", { name: "Reading guide", exact: true }).click();
     await page.locator(".pp-glossary summary").first().click();
     await expect(page.locator(".pp-glossary details").first()).toHaveAttribute(
       "open",
@@ -73,11 +76,11 @@ test("five Thoroughbred reports have separate child pages and direct-entry paren
     await page.getByRole("link", { name: "Back to previous PP page" }).click();
     await expect(page).toHaveURL(new RegExp(`/pps/${id}$`));
   }
-  await page.goto("/pps/basic/subscriptions");
+  await page.goto("/pps/racecard/subscriptions");
   await expect(
     page.getByRole("button", { name: "Subscribe unavailable" }),
   ).toBeDisabled();
-  await page.goto("/pps/basic/not-real");
+  await page.goto("/pps/racecard/not-real");
   await expect(
     page.getByRole("heading", { name: "Page not found", exact: true }),
   ).toBeVisible();
@@ -89,7 +92,7 @@ test("cart preview deduplicates selections, persists per account, and never enab
   page.on("request", (r) => {
     if (r.method() !== "GET") writes.push(r.url());
   });
-  await page.goto("/pps/premium?date=2026-11-05");
+  await page.goto("/pps/detailed-racecard?date=2026-11-05");
   await expect(
     page.getByRole("button", { name: "Add to cart", exact: true }),
   ).toBeDisabled();
@@ -130,7 +133,7 @@ test("cart preview deduplicates selections, persists per account, and never enab
 test("changing race date clears track choices and failed refresh blocks adding stale entries", async ({
   page,
 }) => {
-  await page.goto("/pps/basic?date=2026-11-05");
+  await page.goto("/pps/racecard?date=2026-11-05");
   await page
     .getByRole("checkbox", { name: "Test Track A", exact: true })
     .check();
@@ -153,10 +156,10 @@ test("changing race date clears track choices and failed refresh blocks adding s
     page.getByRole("button", { name: "Add to cart", exact: true }),
   ).toBeDisabled();
 });
-test("lifetime search uses published horses, exposes unavailable registry search, and adds a preview", async ({
+test("horse history excludes Harness records and blocks stale cart selections", async ({
   page,
 }) => {
-  await page.goto("/pps/lifetime");
+  await page.goto("/pps/horse-history");
   await page.getByLabel("Birth year", { exact: true }).fill("2020");
   await page.getByLabel("Dam's name", { exact: true }).fill("Test Dam");
   await page
@@ -167,6 +170,20 @@ test("lifetime search uses published horses, exposes unavailable registry search
   await page
     .getByRole("button", { name: "Search horses", exact: true })
     .click();
+  await expect(page.locator(".pp-horse-results li")).toHaveCount(1);
+  await page.route("**/api/public/racing-overview", (route) =>
+    route.fulfill({ status: 503, json: { error: "Horse source unavailable" } }),
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("alert")).toContainText("Horse source unavailable");
+  await expect(
+    page.getByRole("button", { name: "Add horse to cart", exact: true }),
+  ).toBeDisabled();
+  await page.unroute("**/api/public/racing-overview");
+  await page
+    .getByRole("button", { name: "Retry horse search", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
   await page
     .getByRole("button", { name: "Add horse to cart", exact: true })
     .click();
@@ -182,7 +199,7 @@ test("invalid stored cart entries are ignored and valid deep product links survi
 }) => {
   await page.addInitScript(() =>
     sessionStorage.setItem(
-      "stayblz.cart-preview.product-customer",
+      "stayblz.cart-preview.v2.product-customer",
       JSON.stringify([
         { productId: "not-real", kind: "card", date: "broken" },
         null,
@@ -195,14 +212,14 @@ test("invalid stored cart entries are ignored and valid deep product links survi
     r.fulfill({ status: 401, json: { error: "Not signed in" } }),
   );
   await page.route("**/api/auth/login", (r) => r.fulfill({ json: { user } }));
-  await page.goto("/pps/basic/sample");
+  await page.goto("/pps/racecard/sample");
   await expect(page).toHaveURL(/\/login$/);
   await page
     .getByLabel("Email or admin username", { exact: true })
     .fill("test@example.test");
   await page.getByLabel("Password", { exact: true }).fill("TestPassword123");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).toHaveURL(/\/pps\/basic\/sample$/);
+  await expect(page).toHaveURL(/\/pps\/racecard\/sample$/);
 });
 test("product forms, features, samples and cart fit mobile and desktop in both themes", async ({
   page,
@@ -213,11 +230,11 @@ test("product forms, features, samples and cart fit mobile and desktop in both t
   for (const width of [320, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     for (const path of [
-      "/pps/premium",
-      "/pps/basic/features",
-      "/pps/lifetime",
-      "/pps/platinum/sample",
-      "/pps/daily-racing-form/features",
+      "/pps/detailed-racecard",
+      "/pps/racecard/features",
+      "/pps/horse-history",
+      "/pps/form-comparison/sample",
+      "/pps/race-day-summary/features",
       "/pps/cart",
     ]) {
       await page.goto(path);
@@ -234,7 +251,7 @@ test("product forms, features, samples and cart fit mobile and desktop in both t
       }
     }
   }
-  await page.goto("/pps/premium/features");
+  await page.goto("/pps/detailed-racecard/features");
   await page.getByRole("button", { name: "Switch to dark mode" }).click();
   await page.screenshot({
     path: "test-results/pp-premium-features-dark.png",
@@ -242,7 +259,7 @@ test("product forms, features, samples and cart fit mobile and desktop in both t
     fullPage: true,
   });
   await page.setViewportSize({ width: 375, height: 950 });
-  await page.goto("/pps/basic");
+  await page.goto("/pps/racecard");
   await page.evaluate(() => {
     document.documentElement.dataset.theme = "light";
   });
@@ -261,7 +278,7 @@ test("sign-in keeps the selected PP track and date", async ({ page }) => {
   await page.route("**/api/auth/login", (route) =>
     route.fulfill({ json: { user } }),
   );
-  await page.goto("/pps/basic?date=2026-11-05&track=Test%20Track%20A");
+  await page.goto("/pps/racecard?date=2026-11-05&track=Test%20Track%20A");
   await expect(page).toHaveURL(/\/login$/);
   await page
     .getByLabel("Email or admin username", { exact: true })
@@ -269,7 +286,7 @@ test("sign-in keeps the selected PP track and date", async ({ page }) => {
   await page.getByLabel("Password", { exact: true }).fill("TestPassword123");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(
-    /\/pps\/basic\?date=2026-11-05&track=Test%20Track%20A$/,
+    /\/pps\/racecard\?date=2026-11-05&track=Test%20Track%20A$/,
   );
   await expect(
     page.getByRole("checkbox", { name: "Test Track A", exact: true }),

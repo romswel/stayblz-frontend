@@ -1,5 +1,6 @@
 import {
   Link,
+  Navigate,
   useLocation,
   useParams,
   useSearchParams,
@@ -12,6 +13,8 @@ import {
 } from "../components/pps/catalog";
 import { ppContent, productPages } from "../components/pps/productContent";
 import PPProductPage from "../components/pps/PPProductPage";
+import { recordsForDiscipline } from "../components/pps/racingDiscipline";
+import { canonicalPPPath } from "../components/pps/legacyRoutes";
 import CartReview from "../components/pps/CartReview";
 import PPPreview from "../components/pps/PPPreview";
 import PPPageNav from "../components/pps/PPPageNav";
@@ -58,9 +61,16 @@ function ProductCard({ product }: { product: PPProduct }) {
         <h3>{product.name}</h3>
         <p>{product.description}</p>
         <div className="pp-card-bottom">
-          <span>Price not available</span>
+          <span>
+            {ppContent[product.id]?.mode === "workspace"
+              ? "Account workspace"
+              : "Price not available"}
+          </span>
           <strong>
-            View details <span aria-hidden="true">↗</span>
+            {ppContent[product.id]?.mode === "workspace"
+              ? "Open workspace"
+              : "View details"}{" "}
+            <span aria-hidden="true">↗</span>
           </strong>
         </div>
       </div>
@@ -76,7 +86,8 @@ function TrackBrowser() {
   const query = params.get("q") ?? "";
   const setDate = (value: string) => change("date", value);
   const setQuery = (value: string) => change("q", value);
-  const cards = data?.sections.racecards ?? [];
+  const group = params.get("type") === "Harness" ? "Harness" : "Thoroughbred";
+  const cards = recordsForDiscipline(data?.sections.racecards ?? [], group);
   const tracks = [
     ...new Set(
       cards
@@ -96,6 +107,16 @@ function TrackBrowser() {
         not available yet.
       </p>
       <div className="pp-filters">
+        <label>
+          Race type
+          <select
+            value={group}
+            onChange={(e) => change("type", e.target.value)}
+          >
+            <option>Thoroughbred</option>
+            <option>Harness</option>
+          </select>
+        </label>
         <label>
           Race date
           <input
@@ -146,7 +167,7 @@ function TrackBrowser() {
               </div>
               <Link
                 className="ws-button"
-                to={`/pps/premium?track=${encodeURIComponent(track)}&date=${encodeURIComponent(date || cards.find((card) => card.track === track)?.date || "")}`}
+                to={`/pps/${group === "Harness" ? "harness-racecard" : "racecard"}?track=${encodeURIComponent(track)}&date=${encodeURIComponent(date || cards.find((card) => card.track === track)?.date || "")}`}
                 state={{ ppFrom: pathname + search }}
               >
                 View PP option
@@ -210,7 +231,11 @@ function Comparison() {
                 <tr key={p.id}>
                   <th scope="row">{p.name}</th>
                   <td>{p.description}</td>
-                  <td>Not available</td>
+                  <td>
+                    {ppContent[p.id]?.mode === "workspace"
+                      ? "Account tool"
+                      : "Not available"}
+                  </td>
                   <td>
                     <Link
                       to={`/pps/${p.id}`}
@@ -268,7 +293,7 @@ export default function PastPerformances() {
     compare: "Compare PPs",
     "by-track": "Shop by track",
     "day-passes": "Day pass plans",
-    store: "Handicapping store",
+    store: "Report catalogue",
     cart: "Your cart",
   };
   const childPage =
@@ -279,6 +304,15 @@ export default function PastPerformances() {
     (view ? (childPage?.label ?? "Report page not found") : product?.name) ??
     titles[section] ??
     (section ? "PP report not found" : "Past Performances");
+  const canonicalPath = canonicalPPPath(pathname);
+  if (canonicalPath !== pathname)
+    return (
+      <Navigate
+        to={canonicalPath + search}
+        replace
+        state={{ ...state, catalogueRedirect: true }}
+      />
+    );
   return (
     <div className="pps-page">
       <div className="pp-top-row">
@@ -338,11 +372,17 @@ export default function PastPerformances() {
         )}
       </nav>
       <PPPageNav />
+      {state?.catalogueRedirect && (
+        <p className="pp-footnote" role="status">
+          This older link now opens a Stayblz report design. It does not give
+          access to an outside publisher's product.
+        </p>
+      )}
       <div className="pp-preview-notice">
         <strong>Catalogue preview</strong>
         <p>
-          Report layouts are available to browse. Prices, files, and purchases
-          are not available yet.
+          Explore Stayblz report designs. Prices, files and purchases are not
+          available yet.
         </p>
       </div>
       <div className="pp-route-content" key={pathname}>
@@ -475,7 +515,7 @@ export default function PastPerformances() {
           </section>
         ) : section === "store" ? (
           <section className="pp-panel">
-            <h2>Handicapping store</h2>
+            <h2>Report catalogue</h2>
             <p>
               Browse the PP report options. Purchases and downloads are not
               available yet.
@@ -547,8 +587,8 @@ export default function PastPerformances() {
       </div>
       <footer className="pp-page-footer">
         <p>
-          Third-party report names are included as reference options. No
-          provider connection or product availability is confirmed.
+          Stayblz racing reports and tools. Availability depends on the data and
+          files published here.
         </p>
         <Link to="/faq">Help & FAQ ↗</Link>
       </footer>

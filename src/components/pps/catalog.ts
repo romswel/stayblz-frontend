@@ -8,65 +8,65 @@ export interface PPProduct {
   overview?: boolean;
 }
 
-// Reference catalogue content, not live offers. Never add reference prices as
-// current prices. Provider data, downloads and checkout are not connected.
+// Stayblz report designs, not offers for another company's products.
 export const ppProducts: PPProduct[] = [
   {
-    id: "premium",
-    name: "Premium PP Program",
+    id: "detailed-racecard",
+    name: "Detailed Racecard",
     group: "Thoroughbred",
-    description: "A detailed past performance report for a race card.",
+    description: "More space to read previous starts and race context.",
     preview: "detailed",
   },
   {
-    id: "basic",
-    name: "Basic PP Program",
+    id: "racecard",
+    name: "Racecard",
     group: "Thoroughbred",
-    description: "A simpler past performance report for a race card.",
+    description: "Entries and race conditions in a clear report layout.",
     preview: "standard",
   },
   {
-    id: "daily-racing-form",
-    name: "Daily Racing Form Past Performances",
-    group: "Thoroughbred",
-    description: "Past performance reports in the Daily Racing Form format.",
-    preview: "standard",
-  },
-  {
-    id: "platinum",
-    name: "TrackMaster Platinum Past Performances",
+    id: "race-day-summary",
+    name: "Race Day Summary",
     group: "Thoroughbred",
     description:
-      "The TrackMaster Platinum report option for Thoroughbred races.",
+      "A short view of the schedule, conditions and published changes.",
+    preview: "standard",
+  },
+  {
+    id: "form-comparison",
+    name: "Form Comparison",
+    group: "Thoroughbred",
+    description: "A planned side-by-side view of recent form.",
     preview: "detailed",
   },
   {
-    id: "lifetime",
-    name: "Lifetime PPs",
+    id: "horse-history",
+    name: "Horse History",
     group: "Thoroughbred",
-    description: "A report option for a horse’s full racing history.",
+    description: "Find a horse and explore a career-history report design.",
     preview: "standard",
     overview: false,
   },
   {
-    id: "harness",
-    name: "TrackMaster PPs Harness",
+    id: "harness-racecard",
+    name: "Harness Racecard",
     group: "Harness",
-    description: "A past performance report option for harness races.",
+    description: "Race-day entries, conditions and driver fields.",
     preview: "standard",
   },
   {
-    id: "harness-platinum",
-    name: "TrackMaster Platinum PPs for Harness",
+    id: "harness-form",
+    name: "Harness Form Guide",
     group: "Harness",
-    description: "The Platinum report option for harness races.",
+    description: "An expanded harness running-line layout and reading guide.",
     preview: "detailed",
   },
   {
-    id: "harness-pro",
-    name: "TrackMaster Harness Pro",
+    id: "harness-workspace",
+    name: "Harness Workspace",
     group: "Harness",
-    description: "A harness report option with a visual layout.",
+    description:
+      "Search and sort published harness records, then open your notes.",
     preview: "chart",
   },
 ];
@@ -77,17 +77,6 @@ export const ppLinks = [
   { to: "/pps/day-passes", label: "Day pass plans" },
 ];
 
-const reportLabels: Record<string, string> = {
-  premium: "Premium PPs",
-  basic: "Basic PPs",
-  "daily-racing-form": "Daily Racing Form",
-  platinum: "Platinum PPs",
-  lifetime: "Lifetime PPs",
-  harness: "Harness PPs",
-  "harness-platinum": "Harness Platinum",
-  "harness-pro": "Harness Pro",
-};
-
 // Both navigation surfaces use these existing routes; top links use short names.
 export const ppNavigationGroups = [
   ...(["Thoroughbred", "Harness"] as const).map((group) => ({
@@ -97,14 +86,14 @@ export const ppNavigationGroups = [
       .map((product) => ({
         to: `/pps/${product.id}`,
         label: product.name,
-        shortLabel: reportLabels[product.id],
+        shortLabel: product.name,
       })),
   })),
   {
     label: "More",
     links: [
       ...ppLinks.map((link) => ({ ...link, shortLabel: link.label })),
-      { to: "/pps/store", label: "Handicapping store", shortLabel: "Store" },
+      { to: "/pps/store", label: "Report catalogue", shortLabel: "Store" },
     ],
   },
 ];

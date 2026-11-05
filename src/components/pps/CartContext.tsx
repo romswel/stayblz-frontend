@@ -8,13 +8,13 @@ import {
 import { ppContent } from "./productContent";
 export interface CartItem {
   productId: string;
-  kind: "card" | "day-pass" | "subscription" | "lifetime";
+  kind: "card" | "day-pass" | "history";
   date: string;
   track: string;
   horseId: string;
   horseName: string;
 }
-const kinds = ["card", "day-pass", "subscription", "lifetime"];
+const kinds = ["card", "day-pass", "history"];
 const validDate = (value: string) =>
   value === "" ||
   (/^\d{4}-\d{2}-\d{2}$/.test(value) &&
@@ -27,13 +27,18 @@ function valid(value: unknown): value is CartItem {
     typeof item.productId === "string" &&
     Object.hasOwn(ppContent, item.productId) &&
     kinds.includes(item.kind) &&
+    ppContent[item.productId].mode !== "workspace" &&
+    (item.kind !== "day-pass" ||
+      ["racecard", "detailed-racecard", "form-comparison"].includes(
+        item.productId,
+      )) &&
     [item.date, item.track, item.horseId, item.horseName].every(
       (v) => typeof v === "string" && v.length <= 250,
     ) &&
     validDate(item.date) &&
-    (item.kind === "lifetime"
-      ? item.productId === "lifetime" && !!item.horseId && !!item.horseName
-      : item.productId !== "lifetime" && !!item.date) &&
+    (item.kind === "history"
+      ? item.productId === "horse-history" && !!item.horseId && !!item.horseName
+      : item.productId !== "horse-history" && !!item.date) &&
     (item.kind !== "card" || !!item.track)
   );
 }
@@ -51,6 +56,7 @@ interface CartState {
   remove: (key: string) => void;
   clear: () => void;
   storageError: boolean;
+  catalogueChanged: boolean;
 }
 const CartContext = createContext<CartState | null>(null);
 export function CartProvider({
@@ -60,24 +66,38 @@ export function CartProvider({
   accountId: string;
   children: ReactNode;
 }) {
-  const key = `stayblz.cart-preview.${accountId}`;
-  const [items, setItems] = useState<CartItem[]>(() => {
+  const key = `stayblz.cart-preview.v2.${accountId}`;
+  const [restored] = useState(() => {
     try {
-      const data: unknown = JSON.parse(sessionStorage.getItem(key) ?? "[]");
-      return Array.isArray(data)
-        ? [
-            ...new Map(
-              data
-                .filter(valid)
-                .slice(0, 40)
-                .map((i) => [cartKey(i), i]),
-            ).values(),
-          ]
-        : [];
+      const current = sessionStorage.getItem(key);
+      if (current === null) {
+        const old: unknown = JSON.parse(
+          sessionStorage.getItem(`stayblz.cart-preview.${accountId}`) ?? "[]",
+        );
+        return {
+          items: [] as CartItem[],
+          catalogueChanged: Array.isArray(old) && old.length > 0,
+        };
+      }
+      const data: unknown = JSON.parse(current);
+      return {
+        items: Array.isArray(data)
+          ? [
+              ...new Map(
+                data
+                  .filter(valid)
+                  .slice(0, 40)
+                  .map((item) => [cartKey(item), item]),
+              ).values(),
+            ]
+          : [],
+        catalogueChanged: false,
+      };
     } catch {
-      return [];
+      return { items: [] as CartItem[], catalogueChanged: false };
     }
   });
+  const [items, setItems] = useState<CartItem[]>(restored.items);
   const [storageError, setStorageError] = useState(false);
   useEffect(() => {
     try {
@@ -92,6 +112,7 @@ export function CartProvider({
       value={{
         items,
         storageError,
+        catalogueChanged: restored.catalogueChanged,
         add: (incoming) =>
           setItems((previous) =>
             [

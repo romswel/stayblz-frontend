@@ -3,176 +3,209 @@ export interface PPContent {
   highlights: string[];
   sections: { title: string; text: string }[];
   note: string;
+  mode?: "history" | "workspace";
+  subscriptions?: boolean;
 }
-const running = {
-  title: "Running lines and race times",
-  text: "Read each previous start by date, track, distance and surface. Positions and margins show where the horse ran; split times show how the race developed.",
+const raceConditions = {
+  title: "Race conditions",
+  text: "Check the distance, surface, entry rules and scheduled start. Changes to a race should come from an approved racing source and carry an update time.",
 };
-const figures = {
-  title: "Speed, pace and class",
-  text: "Speed describes a past performance, pace describes parts of a race, and class helps compare the level of competition. Provider ratings use their own methods and are not interchangeable.",
+const runningLines = {
+  title: "Previous starts",
+  text: "Read earlier starts by date, track and distance. Finishing position, margins and split times can help explain the run when that information is available.",
 };
-const track = {
-  title: "Run-up and rail position",
-  text: "Run-up is the distance from the gate to where timing starts. A temporary turf rail changes the course layout. Both help put race times in context.",
+const records = {
+  title: "Records and source",
+  text: "Each race or horse record needs an identified source. Missing fields stay blank. A published entry does not mean a full history or downloadable report is available.",
 };
-const results = {
-  title: "Results, replays and race changes",
-  text: "A report may link to the result chart, replay, scratches and rider changes. Replay access can require a separate plan. A QR code is a shortcut to an existing race page, not a separate source of data.",
+const harnessBasics = {
+  title: "Pace and trot",
+  text: "Harness races use different gaits. Check whether the race is for pacers or trotters before comparing form. Gait is a race condition, not a speed rating.",
 };
-const changes = {
-  title: "Claims, geldings and trip notes",
-  text: "Claim notes record changes of ownership, including claims later cancelled by officials. Gelding notes identify the first start after the reported change. Trip notes flag a difficult start, blocked path or other trouble.",
+const harnessPeople = {
+  title: "Drivers and trainers",
+  text: "The driver steers the horse from a sulky; the trainer prepares the horse. Driver changes and trainer records can add context when approved records are available.",
 };
+const harnessForm = {
+  title: "Breaks and qualifying races",
+  text: "A break means a horse left the required gait. Qualifying races and time away can help explain a return to racing. These details must come from recorded results, not guesses.",
+};
+const availability =
+  "This is a Stayblz report design. Prices, approved report files and paid access are not available yet.";
 export const ppContent: Record<string, PPContent> = {
-  premium: {
-    intro:
-      "A detailed race-card report for comparing runners, recent form and racing connections.",
+  racecard: {
+    intro: "A clear view of the entries and conditions for a race day.",
     highlights: [
-      "Up to 12 recent starts in the reference format",
-      "Speed, pace, class and race-rating fields",
-      "Jockey, trainer and partnership statistics",
-      "Claim, scratch and trip notes",
-      "Standard and highlighted report layouts",
+      "Track and race-date selection",
+      "Race conditions and entry details",
+      "A readable print layout",
+    ],
+    sections: [raceConditions, runningLines, records],
+    note: availability,
+    subscriptions: true,
+  },
+  "detailed-racecard": {
+    intro:
+      "A planned report that gives more space to each horse's previous starts.",
+    highlights: [
+      "An expanded running-line layout",
+      "Space for rider and trainer changes",
+      "Notes beside the facts you are comparing",
     ],
     sections: [
-      running,
-      figures,
+      runningLines,
       {
-        title: "Connections and previous trainers",
-        text: "Trainer and jockey records can add context to a runner's form. Previous-trainer and claim information helps explain changes between starts.",
-      },
-      track,
-      changes,
-      results,
-      {
-        title: "Highlighted report option",
-        text: "The reference includes a second layout that draws attention to selected fields and groups rating comparisons in charts. Stayblz has no licensed enhanced report or rating calculations connected yet.",
+        title: "Race context",
+        text: "Read the conditions and changes alongside the result. A run at a different distance or surface may need a closer look.",
       },
       {
-        title: "Other report fields",
-        text: "Foreign ratings, outer-turf symbols and wind information for applicable race types depend on the report and its source. Missing information should stay blank, rather than be estimated.",
+        title: "Your notes",
+        text: "Keep personal observations in My notes. Notes belong to your account and do not change published racing records.",
       },
+      records,
     ],
-    note: "Equibase Speed Figures, Pace Figures and Class Ratings, and Timeform ratings are provider content. No such ratings are supplied or calculated here.",
+    note: availability,
+    subscriptions: true,
   },
-  basic: {
+  "race-day-summary": {
     intro:
-      "A straightforward race-card report for reading recent form before a race.",
+      "A planned short report for checking the day's schedule and race conditions.",
     highlights: [
-      "Recent race history in a traditional layout",
-      "Horse and racing connection details",
-      "Speed, pace and class fields",
-      "Claims and reported gelding changes",
-      "Links to results and available replays",
-    ],
-    sections: [running, figures, track, changes, results],
-    note: "The reference Basic report includes provider ratings. Stayblz does not supply those ratings or a licensed Basic PP file yet.",
-  },
-  platinum: {
-    intro:
-      "A detailed report format with ratings, race context and horse-by-horse comparisons.",
-    highlights: [
-      "Power, speed, class and pace fields",
-      "Positive and negative form notes",
-      "Full positions at each call",
-      "Jockey and trainer statistics",
-      "Run-up, rail and track-bias context",
+      "A compact race-day outline",
+      "Conditions and published changes",
+      "Quick links to available records",
     ],
     sections: [
-      running,
+      raceConditions,
       {
-        title: "Power ratings",
-        text: "TrackMaster's Power Rating combines its speed, class and pace information into a provider-specific comparison. Stayblz does not reproduce that formula or generate a substitute rating.",
+        title: "Changes and updates",
+        text: "A schedule is useful only when changes are clear. Show the source and time of each scratch, cancellation or rider change when that feed is connected.",
       },
-      figures,
-      track,
-      {
-        title: "Track bias and running style",
-        text: "Bias notes describe whether a surface appeared to favour leaders, stalking runners or horses coming from behind. They describe past conditions and are not a guarantee about the next race.",
-      },
-      results,
+      records,
     ],
-    note: "TrackMaster Power Ratings and the provider's other ratings require a separate data arrangement. No Platinum files or ratings are connected.",
+    note: availability,
   },
-  "daily-racing-form": {
-    intro:
-      "A traditional past-performance format, with additional race information when supplied by the publisher.",
+  "form-comparison": {
+    intro: "A planned side-by-side layout for comparing recent horse form.",
     highlights: [
-      "Detailed recent race history",
-      "Graded entry summaries",
-      "Track records by distance",
-      "Race analysis where supplied",
-      "Selections where supplied",
+      "Comparable dates, surfaces and distances",
+      "Positions and margins where available",
+      "Your notes alongside the race facts",
     ],
     sections: [
-      running,
+      runningLines,
       {
-        title: "Graded entries",
-        text: "A short view of the field can show post position, rider, assigned weight, expected odds and comments. Race conditions and equipment changes give more context.",
+        title: "Compare similar conditions",
+        text: "Start with races at a similar distance and surface. A finishing position alone does not explain the field or race conditions.",
       },
       {
-        title: "Track records",
-        text: "Track records list the fastest recorded performances at the listed distance and surface. Compare like conditions when reading them.",
+        title: "Compare the facts",
+        text: "Compare the available records directly. This layout does not calculate a score or predict a winner.",
       },
-      {
-        title: "Analysis and selections",
-        text: "Publisher-written race analysis and selections are separate editorial content. They may not appear in every edition. Stayblz does not copy the publisher's picks or generate results in their place.",
-      },
-      {
-        title: "Beyer Speed Figures",
-        text: "Beyer Speed Figures are a Daily Racing Form rating. They are not the same as an Equibase figure. No Beyer data or calculations are included in Stayblz.",
-      },
+      records,
     ],
-    note: "Daily Racing Form reports, Beyer Speed Figures and publisher analysis are reference content only. Stayblz is not an authorised seller of these files.",
+    note: availability,
   },
-  lifetime: {
+  "horse-history": {
     intro:
-      "Find an individual horse and review the option for a report covering its racing history.",
+      "Find a published horse and explore the design for a career-history report.",
+    mode: "history",
     highlights: [
-      "Horse-based search instead of a race-card selection",
-      "Career racing history for Thoroughbreds and Quarter Horses",
-      "Performance and connection details",
-      "Sales and pedigree context where supplied",
+      "Search published horses by name",
+      "Planned career-history layout",
+      "Clear gaps when history is missing",
     ],
     sections: [
       {
-        title: "Choose the right horse",
-        text: "Start with the horse's registered name. Birth year and dam's name can help distinguish horses with similar names when a provider supports those fields.",
+        title: "Find the right horse",
+        text: "Start with the registered name. Birth year and dam can help distinguish similar names once a horse-record source supports those fields.",
       },
-      {
-        title: "Career history",
-        text: "A lifetime report follows one horse across its recorded starts. Coverage and available fields depend on the provider and the countries where the horse raced.",
-      },
-      {
-        title: "Sales and pedigree information",
-        text: "Sales history, pedigree and stakes summaries may be supplied in a provider's report. These are separate from the recent-race lists shown in Stayblz.",
-      },
+      runningLines,
+      records,
     ],
-    note: "The screenshot identifies equineline as the lifetime-report provider. No equineline search or report delivery is connected here.",
+    note: availability,
+  },
+  "harness-racecard": {
+    intro: "A straightforward report design for a harness race day.",
+    highlights: [
+      "Harness tracks and race dates",
+      "Driver, trainer and gait fields",
+      "Entries in a clear print layout",
+    ],
+    sections: [harnessBasics, raceConditions, harnessPeople, records],
+    note: availability,
+    subscriptions: true,
+  },
+  "harness-form": {
+    intro:
+      "A planned expanded view of harness form, with room to read each previous start.",
+    highlights: [
+      "Space for recent starts and split times",
+      "Breaks, qualifying races and time away",
+      "Driver and trainer changes",
+      "Recent form without a predicted score",
+    ],
+    sections: [
+      harnessBasics,
+      runningLines,
+      harnessForm,
+      harnessPeople,
+      {
+        title: "Equipment and other changes",
+        text: "Shoe, equipment and medication changes can be useful context when the source provides them. Do not infer a change from a missing field.",
+      },
+      records,
+    ],
+    note: availability,
+    subscriptions: true,
+  },
+  "harness-workspace": {
+    intro:
+      "Browse published harness entries and horse records, sort the list, and keep your own notes.",
+    mode: "workspace",
+    highlights: [
+      "Search the loaded harness records",
+      "Switch between race entries and horses",
+      "Sort by name or recorded starts and wins",
+      "Open your private notes",
+    ],
+    sections: [
+      {
+        title: "What works here",
+        text: "Search, list switching and sorting work on the harness records published in Stayblz. The workspace does not need a paid report to open.",
+      },
+      {
+        title: "Keep your observations",
+        text: "Use My notes for private observations. Your notes remain separate from the public race and horse records.",
+      },
+      {
+        title: "What is not connected",
+        text: "Runner-level race fields, charts, pedigree analysis, automatic picks and proprietary ratings are not supplied here. No figures are invented to fill an empty list.",
+      },
+      records,
+    ],
+    note: "This workspace uses the published records loaded in Stayblz. It does not include paid files, automated picks or a scoring model.",
   },
 };
-export const productViews = [
-  "features",
-  "sample",
-  "free-race",
-  "guide",
-  "subscriptions",
-] as const;
 export function productPages(id: string) {
+  const content = ppContent[id];
   return [
     {
       to: `/pps/${id}`,
-      label: id === "lifetime" ? "Find a horse" : "Pricing & tracks",
+      label:
+        content?.mode === "history"
+          ? "Find a horse"
+          : content?.mode === "workspace"
+            ? "Workspace"
+            : "Tracks & access",
     },
     { to: `/pps/${id}/features`, label: "Features" },
-    {
-      to: `/pps/${id}/${id === "premium" ? "free-race" : "sample"}`,
-      label: id === "premium" ? "Free race" : "Sample",
-    },
-    { to: `/pps/${id}/guide`, label: "How to read" },
-    ...(id !== "lifetime" && id !== "daily-racing-form"
-      ? [{ to: `/pps/${id}/subscriptions`, label: "Subscriptions" }]
+    ...(content?.mode === "workspace"
+      ? []
+      : [{ to: `/pps/${id}/sample`, label: "Sample layout" }]),
+    { to: `/pps/${id}/guide`, label: "Reading guide" },
+    ...(content?.subscriptions
+      ? [{ to: `/pps/${id}/subscriptions`, label: "Access plans" }]
       : []),
   ];
 }

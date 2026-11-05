@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import useRacingOverview from "../landing/useRacingOverview";
 import { useCart } from "./CartContext";
+import { recordsForDiscipline } from "./racingDiscipline";
 export default function LifetimeSearch() {
   const { data, error, refreshing, refresh } = useRacingOverview();
   const { add, items } = useCart();
@@ -11,8 +12,8 @@ export default function LifetimeSearch() {
   const [searched, setSearched] = useState(false);
   const [notice, setNotice] = useState("");
   const horses = name.trim()
-    ? (data?.sections.horses ?? []).filter((h) =>
-        h.name.toLowerCase().includes(name.trim().toLowerCase()),
+    ? recordsForDiscipline(data?.sections.horses ?? [], "Thoroughbred").filter(
+        (h) => h.name.toLowerCase().includes(name.trim().toLowerCase()),
       )
     : [];
   const providerSearch = !name.trim() && (!!year || !!dam.trim());
@@ -107,12 +108,12 @@ export default function LifetimeSearch() {
                   </div>
                   <button
                     className="ws-button"
-                    disabled={items.length >= 40}
+                    disabled={!!error || refreshing || items.length >= 40}
                     onClick={() => {
                       add([
                         {
-                          productId: "lifetime",
-                          kind: "lifetime",
+                          productId: "horse-history",
+                          kind: "history",
                           date: "",
                           track: "",
                           horseId: horse.id,
@@ -142,7 +143,7 @@ export default function LifetimeSearch() {
       )}
       <p className="pp-footnote">
         Searching by name uses the horses published in Stayblz, not a complete
-        registry. A cart selection does not request or purchase a lifetime
+        registry. A cart selection does not request or purchase a horse-history
         report.
       </p>
     </section>

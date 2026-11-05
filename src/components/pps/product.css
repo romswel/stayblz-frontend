@@ -439,3 +439,38 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.pp-workspace-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  gap: 14px;
+  margin: 24px 0;
+}
+.pp-record-button {
+  border: 0;
+  background: none;
+  color: var(--ws-green);
+  text-decoration: underline;
+  text-align: left;
+  cursor: pointer;
+  padding: 8px 0;
+  font: inherit;
+}
+.pp-record-detail {
+  border: 1px solid var(--ws-line);
+  background: var(--ws-bg);
+  padding: 20px;
+  margin-top: 24px;
+}
+.pp-record-detail > button {
+  float: right;
+  margin: 0 0 12px 12px;
+}
+.pp-record-detail h3 {
+  margin: 0 0 12px;
+}
+@media (max-width: 600px) {
+  .pp-workspace-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
