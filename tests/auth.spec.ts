@@ -454,7 +454,7 @@ test("resend uses Retry-After, clears old success text and leaves password login
     page.getByRole("button", { name: "Sign in", exact: true }),
   ).toBeEnabled();
   await page
-    .getByLabel("Email or admin username", { exact: true })
+    .getByLabel("Email", { exact: true })
     .fill("member@example.test");
   await expect(
     page.getByRole("button", {
@@ -500,7 +500,7 @@ test("resend after switching to login uses the current email instead of the sign
     .getByRole("button", { name: "Back to login", exact: true })
     .click();
   await page
-    .getByLabel("Email or admin username", { exact: true })
+    .getByLabel("Email", { exact: true })
     .fill("other@example.test");
   await page
     .getByRole("button", { name: "Resend verification email", exact: true })

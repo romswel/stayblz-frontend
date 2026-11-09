@@ -3,5 +3,18 @@
     {"source":"/api/:path*","destination":"https://stayblz-backend.onrender.com/api/:path*"},
     { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "headers": [{"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"X-Frame-Options","value":"DENY"}]}]
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {"key":"Content-Security-Policy","value":"default-src 'self'; script-src 'self' 'sha256-iS6l3HCDzvQ8qPPqfNkU1wTAgq+LFhMPNJovJ3uY5OY='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"},
+        {"key":"Strict-Transport-Security","value":"max-age=31536000; includeSubDomains"},
+        {"key":"X-Content-Type-Options","value":"nosniff"},
+        {"key":"Referrer-Policy","value":"no-referrer"},
+        {"key":"X-Frame-Options","value":"DENY"},
+        {"key":"Cross-Origin-Opener-Policy","value":"same-origin"},
+        {"key":"Permissions-Policy","value":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"}
+      ]
+    }
+  ]
 }

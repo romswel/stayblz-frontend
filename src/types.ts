@@ -2,10 +2,18 @@ export interface User {
   id: string;
   username: string;
   displayName: string;
+  /** The role in use now (after any "View as" choice): member | admin | superadmin. */
   role: string;
+  /** The account's real role. */
+  platformRole?: string;
+  actingRole?: string | null;
+  accountStatus?: string;
   email?: string;
   emailVerified?: boolean;
   passwordSetupRequired?: boolean;
+  mfa?: { enabled: boolean; verified: boolean };
+  /** 2-step login is on and this session still needs the code. */
+  mfaPending?: boolean;
   profile?: {
     firstName: string;
     lastName: string;

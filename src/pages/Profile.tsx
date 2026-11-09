@@ -5,6 +5,10 @@ import { api } from "../api";
 import { countries } from "../components/landing/countries";
 import type { User } from "../types";
 import { accountTypes } from "../components/accountTypes";
+import TwoStepSettings from "../components/account/TwoStepSettings";
+import ViewAsSettings from "../components/account/ViewAsSettings";
+import { roleLabel } from "../components/account/roles";
+import "../components/account/account.css";
 
 export default function Profile() {
   const { user, acceptUser } = useAuth();
@@ -15,9 +19,11 @@ export default function Profile() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  // The superadmin identity is fixed on the server; the form is shown read-only.
+  const locked = user?.platformRole === "superadmin";
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || locked) return;
     setBusy(true);
     setNotice("");
     setError("");
@@ -46,11 +52,18 @@ export default function Profile() {
         <div className="eyebrow">Your account</div>
         <h1>Profile</h1>
         <p className="sub">
-          {user?.email} {user?.emailVerified ? "· Email verified" : ""}
+          {user?.email} {user?.emailVerified ? "· Email verified" : ""}{" "}
+          <span className="acct-badge">{roleLabel(user?.platformRole ?? user?.role)} account</span>
         </p>
       </header>
       <section className="panel account-profile">
         <form onSubmit={save}>
+          {locked && (
+            <p role="note">
+              The superadmin profile is locked and can't be edited here. Your password and 2-step login can still be
+              changed.
+            </p>
+          )}
           <div className="profile-fields">
             <label>
               First name
@@ -60,6 +73,7 @@ export default function Profile() {
                 onChange={(e) => setFirstName(e.target.value)}
                 maxLength={60}
                 required
+                disabled={locked}
               />
             </label>
             <label>
@@ -70,6 +84,7 @@ export default function Profile() {
                 onChange={(e) => setLastName(e.target.value)}
                 maxLength={60}
                 required
+                disabled={locked}
               />
             </label>
             <label>
@@ -79,6 +94,7 @@ export default function Profile() {
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
                 required
+                disabled={locked}
               >
                 <option value="">Select country</option>
                 {countries.map((c) => (
@@ -94,6 +110,7 @@ export default function Profile() {
                 value={racingRole}
                 onChange={(e) => setRacingRole(e.target.value)}
                 required
+                disabled={locked}
               >
                 <option value="">Select an option</option>
                 {accountTypes.map(type => (
@@ -108,11 +125,15 @@ export default function Profile() {
             </p>
           )}
           {notice && <p role="status">{notice}</p>}
-          <button className="btn btn-primary" disabled={busy}>
-            {busy ? "Saving…" : "Save profile"}
-          </button>
+          {!locked && (
+            <button className="btn btn-primary" disabled={busy}>
+              {busy ? "Saving…" : "Save profile"}
+            </button>
+          )}
         </form>
       </section>
+      <ViewAsSettings />
+      <TwoStepSettings />
       <section className="panel account-profile">
         <h2>Racing records</h2>
         <p>

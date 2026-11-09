@@ -310,7 +310,7 @@ test("full view focuses account, handles failed login and continues to requested
     "Log in or sign up to view full racecards.",
   );
   await page
-    .getByLabel("Email or admin username", { exact: true })
+    .getByLabel("Email", { exact: true })
     .fill("rider");
   await page.getByLabel("Password", { exact: true }).fill("test-password");
   await page.getByRole("button", { name: "Show password" }).click();
@@ -324,7 +324,7 @@ test("full view focuses account, handles failed login and continues to requested
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("alert")).toHaveText("Invalid credentials");
   await expect(
-    page.getByLabel("Email or admin username", { exact: true }),
+    page.getByLabel("Email", { exact: true }),
   ).toHaveValue("rider");
   await page.route("**/api/auth/login", (route) =>
     route.fulfill({
