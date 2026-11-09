@@ -1,5 +1,5 @@
 .my-racing {
-  max-width: 1500px;
+  max-width: none;
   margin: auto;
   animation: ov-enter 220ms ease-out;
 }

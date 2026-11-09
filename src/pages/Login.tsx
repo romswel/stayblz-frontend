@@ -43,6 +43,7 @@ export default function Login() {
   const [destination, setDestination] = useState(
     typeof routeState?.destination === "string" &&
       (destinations.has(routeState.destination) ||
+        /^\/updates(\/[a-z0-9-]{1,80})?$/.test(routeState.destination) ||
         isPPDestination(routeState.destination))
       ? routeState.destination
       : "/dashboard",

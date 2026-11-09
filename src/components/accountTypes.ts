@@ -1,10 +1,4 @@
-// Keep stored values compatible with existing accounts and API validation.
-// This describes the customer; it never changes access permissions.
-export const accountTypes = [
-  { value: "owner", label: "Horse owner" },
-  { value: "trainer", label: "Trainer" },
-  { value: "jockey", label: "Jockey" },
-  { value: "staff", label: "Stable staff" },
-  { value: "fan", label: "Racing fan" },
-  { value: "other", label: "Other" },
-];
+// Kept for older imports. The full grouped list lives in account/communityRoles.ts.
+import { allRoles } from "./account/communityRoles";
+
+export const accountTypes = allRoles.map(({ value, label }) => ({ value, label }));

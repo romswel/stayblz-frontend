@@ -15,8 +15,9 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   restoreError: string;
-  login: (username: string, password: string) => Promise<User>;
-  logout: () => Promise<void>;
+  login: (username: string, password: string, remember?: boolean) => Promise<User>;
+  /** Signs out this device, or every device when `everywhere` is true. */
+  logout: (everywhere?: boolean) => Promise<void>;
   acceptUser: (user: User | null) => void;
 }
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -28,17 +29,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const controller = new AbortController();
     const start = epoch.current;
+    // A sleeping server gives no answer, or a proxy error page instead of our JSON, for up
+    // to a minute. Keep waiting (the startup screen explains why) instead of logging people
+    // out. A real answer from our API, even an error, is final.
+    const waking = (error: unknown) =>
+      error instanceof ApiError &&
+      (error.status === 0 || error.code === "server_unavailable");
+    const pause = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const timer = window.setTimeout(resolve, ms);
+        controller.signal.addEventListener("abort", () => {
+          window.clearTimeout(timer);
+          resolve();
+        });
+      });
+    async function check(): Promise<{ user: User }> {
+      try {
+        return await api.get<{ user: User }>("/api/auth/me", {
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (controller.signal.aborted) throw error;
+        if (!(error instanceof ApiError) || error.status !== 401) throw error;
+        return api.post<{ user: User }>("/api/auth/refresh");
+      }
+    }
     async function restore() {
       try {
-        let response;
-        try {
-          response = await api.get<{ user: User }>("/api/auth/me", {
-            signal: controller.signal,
-          });
-        } catch (error) {
-          if (controller.signal.aborted) return;
-          if (!(error instanceof ApiError) || error.status !== 401) throw error;
-          response = await api.post<{ user: User }>("/api/auth/refresh");
+        let response: { user: User } | undefined;
+        const waits = [2000, 3000, 5000, 8000, 10000, 10000, 10000];
+        for (let attempt = 0; ; attempt++) {
+          try {
+            response = await check();
+            break;
+          } catch (error) {
+            if (controller.signal.aborted) return;
+            if (!waking(error) || attempt >= waits.length) throw error;
+            await pause(waits[attempt]);
+            if (controller.signal.aborted) return;
+          }
         }
         if (!controller.signal.aborted && epoch.current === start)
           setUser(response.user);
@@ -49,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           (!(error instanceof ApiError) || error.status !== 401)
         )
           setRestoreError(
-            "Your session could not be checked. Try logging in again.",
+            "We couldn't reach Stayblz to check your sign-in. Wait a moment and reload, or log in again.",
           );
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -69,11 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       restoreError,
-      login: async (username, password) => {
+      login: async (username, password, remember = true) => {
         const start = ++epoch.current;
         const response = await api.post<{ user: User; token?: string }>(
           "/api/auth/login",
-          { username, password },
+          { username, password, remember },
         );
         if (epoch.current !== start)
           throw new Error("The sign-in request was cancelled.");
@@ -82,9 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRestoreError("");
         return response.user;
       },
-      logout: async () => {
+      logout: async (everywhere = false) => {
         ++epoch.current;
-        await api.post("/api/auth/logout");
+        await api.post("/api/auth/logout", everywhere ? { everywhere: true } : {});
         setToken(null);
         setUser(null);
       },

@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
 import Brand from "./Brand";
+import DevNotice from "./status/DevNotice";
 
 export default function PublicHeader({
   onAuth,
@@ -20,6 +21,8 @@ export default function PublicHeader({
       });
   }
   return (
+    <>
+    <DevNotice variant="public" />
     <header className="ld-header">
       <div className="ld-header-inner">
         <button
@@ -85,5 +88,6 @@ export default function PublicHeader({
         </nav>
       </div>
     </header>
+    </>
   );
 }

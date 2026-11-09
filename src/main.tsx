@@ -6,13 +6,18 @@ import { AuthProvider } from './auth';
 import './styles.css';
 import './themes/dark.css';
 import './confirmation';
+import ErrorBoundary from './components/status/ErrorBoundary';
+import ConnectionNotice from './components/status/ConnectionNotice';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <ErrorBoundary standalone>
+        <AuthProvider>
+          <App />
+          <ConnectionNotice />
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   </React.StrictMode>
 );

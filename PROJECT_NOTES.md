@@ -155,3 +155,11 @@ Final follow-up: all seven Harness checks passed after the sidebar visibility im
 - Not verified: real phone devices, live Vercel headers, real authenticator app.
 
 2026-11-09 release: Profile form is read-only for the superadmin (server enforces). Checks: build OK, Playwright 97/97, audit 0. Pushed with backend on main.
+
+2026-11-10 experience release (LOCAL, not deployed): New sign-up (grouped community roles, city, organisation, Terms/Privacy + 18+ required, optional email updates), 6-digit code confirmation and code-based password reset, "Keep me signed in", `/auth/not-me`, `/terms`, `/privacy`. Account split into Profile / Security (password, 2-step, sign out everywhere, View as) / Preferences (theme, Updates pop-up, email updates). StatusPage + ErrorBoundary + ConnectionNotice (offline/slow/unreachable) + friendly `api.ts` errors; real 404s (signed-out app paths still go to login). DevNotice site-wide; StartupLoader explains cold starts after 5 s and restore waits only for network/proxy failures. Updates page + once-per-post pop-up (needs server `preferences`; can be turned off).
+
+2026-11-10 Updates + polish: "Bulletin" replaced by DB-backed **Updates** (`/updates`, `/updates/:slug`, `/bulletin` redirects): type chips, debounced search in the URL, latest + pinned rail, card grid, load older, New badges, share, newer/older links, grouped patch notes, safe `RichText`. Admin editor `/admin/updates` (list with status filters; write/preview, change lines, members-only, pin, pop-up, schedule, draft/archive/delete, unsaved-changes guard). `UpdatesContext` gives the menu count and pop-up. Theme fix: root tokens were a leftover grey palette, so `--gold`/`--danger`/etc. inside the app were grey; now forest/gold/cream in both themes. Pages use full width (overview/PP/My racing caps removed, account sections in a grid), every navigation fades in (`.ws-page`), smoother menu/drawer, `/` focuses search.
+
+- Fixed during checks: code fields truncated pasted "123 456"; a reply without `user` could sign people out; connection notice duplicated page alerts.
+- Checks: build OK, Playwright 112/112 (new `tests/experience.spec.ts`), audit 0; screenshots at 375/1440 in both themes, no CSP violations or overflow.
+- Not verified: live deploy, real phones, real emails.

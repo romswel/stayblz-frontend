@@ -1,0 +1,33 @@
+.legal-body {
+  min-width: 0;
+  max-width: 72ch;
+}
+.legal-section {
+  padding: 0 0 28px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--ld-line);
+  scroll-margin-top: 24px;
+}
+.legal-section h2 {
+  font: 400 clamp(22px, 2.4vw, 30px) / 1.25 Georgia, serif;
+  margin: 0 0 14px;
+}
+.legal-section p,
+.legal-note {
+  color: var(--ld-muted);
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+.legal-note a {
+  color: var(--ld-gold);
+}
+@media (max-width: 760px) {
+  .legal-main .faq-layout {
+    grid-template-columns: 1fr;
+  }
+  .legal-main .faq-index {
+    position: static;
+  }
+}

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -19,6 +19,11 @@ import "./workspace.css";
 import "./my-racing/my-racing.css";
 import "./account/account.css";
 import { canUse, roleLabel } from "./account/roles";
+import DevNotice from "./status/DevNotice";
+import ErrorBoundary from "./status/ErrorBoundary";
+import UpdatesPopup from "./updates/UpdatesPopup";
+import { useUpdates } from "./updates/UpdatesContext";
+import "./updates/updates.css";
 
 const ICON_PROPS = {
   width: 17,
@@ -115,6 +120,18 @@ const MoonIcon = () => (
     <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
   </svg>
 );
+const UpdatesIcon = () => (
+  <svg {...ICON_PROPS}>
+    <path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1z" />
+    <path d="M16 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" />
+  </svg>
+);
+const PenIcon = () => (
+  <svg {...ICON_PROPS}>
+    <path d="M4 20h4L19 9l-4-4L4 16z" />
+    <path d="M13.5 6.5l4 4" />
+  </svg>
+);
 const MenuIcon = () => (
   <svg {...ICON_PROPS} width={20} height={20}>
     <path d="M4 7h16M4 12h16M4 17h16" />
@@ -154,6 +171,8 @@ const WORKSPACE_ITEMS = [
 export default function Layout() {
   const { active: stable, stables, select } = useWorkspace();
   const { user, logout } = useAuth();
+  const { unread: unreadUpdates } = useUpdates();
+  const unreadCount = unreadUpdates.length;
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -166,6 +185,19 @@ export default function Layout() {
   });
   const [theme, toggleTheme] = useTheme();
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  // Press "/" anywhere (outside a text field) to jump to search.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")) return;
+      event.preventDefault();
+      searchRef.current?.focus();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const [notice, setNotice] = useState("");
   const [cart, setCart] = useState(false);
   const { items: cartItems } = useCart();
@@ -298,16 +330,48 @@ export default function Layout() {
         ))}
       </details>
       <div className="ws-nav-group">Support</div>
+      <NavLink
+        className="ws-nav-item"
+        to="/updates"
+        aria-label={
+          unreadCount
+            ? `Updates (${unreadCount} new ${unreadCount === 1 ? "post" : "posts"})`
+            : "Updates"
+        }
+        title="Updates: releases, news & notices"
+        onClick={() => setOpen(false)}
+      >
+        <UpdatesIcon />
+        <span>Updates</span>
+        {unreadCount > 0 && (
+          <span className="up-count" aria-hidden="true">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </NavLink>
       {canUse(user, "admin") && (
-        <NavLink
-          className="ws-nav-item"
-          to="/administration"
-          aria-label="Administration"
-          title="Administration"
-        >
-          <StatsIcon />
-          <span>Administration</span>
-        </NavLink>
+        <>
+          <NavLink
+            className="ws-nav-item"
+            to="/admin/updates"
+            aria-label="Manage Updates"
+            title="Manage Updates"
+            onClick={() => setOpen(false)}
+          >
+            <PenIcon />
+            <span>Manage Updates</span>
+          </NavLink>
+          <NavLink
+            className="ws-nav-item"
+            to="/administration"
+            aria-label="Administration"
+            title="Administration"
+            onClick={() => setOpen(false)}
+          >
+            <StatsIcon />
+            <span>Administration</span>
+          </NavLink>
+        </>
       )}
       <Link
         className="ws-nav-item"
@@ -367,8 +431,10 @@ export default function Layout() {
             <path d="m16 16 5 5" />
           </svg>
           <input
+            ref={searchRef}
             aria-label="Search racing records"
-            placeholder="Search horses, races, people..."
+            aria-keyshortcuts="/"
+            placeholder="Search horses, races, people…  ( / )"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             type="search"
@@ -462,6 +528,7 @@ export default function Layout() {
         </Modal>
       )}
       <main id="workspace-content" className="ws-main" tabIndex={-1}>
+        <DevNotice />
         {notice && (
           <p className="ws-notice" role="status">
             {notice}
@@ -478,7 +545,7 @@ export default function Layout() {
               You're viewing Stayblz as <strong>{roleLabel(user.actingRole)}</strong>. Your{" "}
               {roleLabel(user.platformRole)} tools are hidden.
             </span>
-            <Link to="/account">Switch view</Link>
+            <Link to="/account/security">Switch view</Link>
           </p>
         )}
         <div
@@ -490,13 +557,23 @@ export default function Layout() {
               : "personal"
           }
         >
-          <Outlet />
+          {/* A crash in one page keeps the menu working; changing page resets it.
+              The wrapper replays a short entrance animation on every navigation. */}
+          <ErrorBoundary key={location.pathname}>
+            <div className="ws-page">
+              <Outlet />
+            </div>
+          </ErrorBoundary>
         </div>
         <footer className="ws-footer">
-          <span>STAYBLZ · Know the horse. Read the race.</span>
-          <Link to="/faq">Help & FAQ</Link>
+          <span>STAYBLZ · Know the horse. Read the race. · Development preview</span>
+          <span className="ws-footer-links">
+            <Link to="/updates">Updates</Link> <Link to="/faq">Help & FAQ</Link>{" "}
+            <Link to="/terms">Terms</Link> <Link to="/privacy">Privacy</Link>
+          </span>
         </footer>
       </main>
+      <UpdatesPopup />
       {cart && (
         <Modal label="Shopping cart" onClose={() => setCart(false)}>
           <div className="ws-dialog">

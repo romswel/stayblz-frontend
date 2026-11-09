@@ -70,7 +70,6 @@ export default function TwoStepSettings() {
       <input
         inputMode="numeric"
         autoComplete="one-time-code"
-        maxLength={6}
         value={code}
         onChange={(e) => setCode(digits(e.target.value))}
       />

@@ -24,6 +24,9 @@ export default function PublicFooter() {
           <span className="ld-kicker">EXPLORE</span>
           <Link to="/">Racing overview</Link>
           <Link to="/faq">Frequently asked questions</Link>
+          <Link to="/updates">Updates & news</Link>
+          <Link to="/terms">Terms of Use</Link>
+          <Link to="/privacy">Privacy Notice</Link>
           <Link to={user ? "/dashboard" : "/login"}>
             {user ? "Your account" : "Log in"}
           </Link>
@@ -32,7 +35,7 @@ export default function PublicFooter() {
       </div>
       <div className="ld-public-footer-bottom">
         <small>© {new Date().getFullYear()} Stayblz</small>
-        <span>ON & OFF THE TRACK</span>
+        <span>DEVELOPMENT PREVIEW · ON & OFF THE TRACK</span>
         <a href="#top">Back to top ↑</a>
       </div>
     </footer>
