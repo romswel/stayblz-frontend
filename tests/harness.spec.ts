@@ -252,7 +252,7 @@ test("signed-out old Harness links keep their new destination after login", asyn
   await page.goto("/pps/harness-pro?list=horses&sort=wins");
   await expect(page).toHaveURL(/\/login$/);
   await page
-    .getByLabel("Email or admin username", { exact: true })
+    .getByLabel("Email", { exact: true })
     .fill("test@example.test");
   await page.getByLabel("Password", { exact: true }).fill("TestPassword123");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();

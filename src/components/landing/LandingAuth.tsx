@@ -353,7 +353,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                 )}
                 <label className="ld-field">
                   {mode === "login" && !forgot
-                    ? "Email or admin username"
+                    ? "Email"
                     : "Email address"}
                   <input
                     name="email"
@@ -369,7 +369,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                     }
                     placeholder={
                       mode === "login" && !forgot
-                        ? "Email or superadmin"
+                        ? "you@example.com"
                         : "you@example.com"
                     }
                     maxLength={254}

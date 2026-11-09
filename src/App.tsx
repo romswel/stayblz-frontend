@@ -21,6 +21,8 @@ import FAQ from "./pages/FAQ";
 import Stables from "./pages/Stables";
 import Administration from "./pages/Administration";
 import { WorkspaceProvider, StableGate } from "./workspace";
+import MfaChallenge from "./components/account/MfaChallenge";
+import { canUse } from "./components/account/roles";
 import { Link } from "react-router-dom";
 
 function PPLoginRedirect() {
@@ -65,6 +67,9 @@ export default function App() {
       </Routes>
     );
   }
+
+  // 2-step login is on and not yet passed: nothing else opens until the code is entered.
+  if (user.mfaPending) return <MfaChallenge />;
 
   return (
     <Routes>
@@ -188,7 +193,7 @@ export default function App() {
         <Route
           path="/administration"
           element={
-            user.role === "superadmin" ? (
+            canUse(user, "admin") ? (
               <Administration />
             ) : (
               <Navigate to="/dashboard" replace />

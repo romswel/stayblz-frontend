@@ -1,0 +1,194 @@
+/* Account security: 2-step login gate, Profile security sections, administration lists. */
+.acct-gate {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.acct-gate-card {
+  width: min(100%, 420px);
+  padding: 28px 24px;
+}
+.acct-gate-card h1 {
+  font: 28px Georgia, serif;
+  margin: 18px 0 8px;
+}
+.acct-gate-card p,
+.acct-section p {
+  line-height: 1.7;
+  margin: 10px 0;
+}
+.acct-code {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  margin: 18px 0 14px;
+}
+.acct-code input {
+  width: 100%;
+  max-width: 220px;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: var(--input-bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font: 600 22px "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: 0.3em;
+}
+.acct-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.acct-actions .btn {
+  min-height: 42px;
+  margin: 0;
+}
+.acct-actions .btn-primary {
+  width: auto;
+}
+.acct-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--gold-tint-soft);
+  color: var(--gold-ink);
+  white-space: nowrap;
+}
+.acct-badge.is-off {
+  background: transparent;
+  color: var(--ink);
+}
+.acct-badge.is-warn {
+  background: var(--danger-tint);
+  border-color: var(--danger-line);
+  color: var(--danger-ink);
+}
+.acct-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 4px;
+  border: 0;
+  padding: 0;
+}
+.acct-views legend {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.acct-views label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 650;
+}
+.acct-views label:has(input:checked) {
+  border-color: var(--gold);
+  background: var(--gold-tint);
+}
+.acct-views input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.acct-qr {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  margin: 16px 0;
+}
+.acct-qr img {
+  width: 180px;
+  height: 180px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 6px;
+}
+.acct-qr code {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: 5px;
+}
+.acct-qr-help {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.acct-view-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+  background: var(--gold-tint-soft);
+  font-size: 13.5px;
+}
+.acct-view-banner a {
+  color: var(--gold-ink);
+  font-weight: 700;
+}
+.acct-table-wrap {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.acct-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.acct-table :is(th, td) {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+.acct-table th {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.acct-table td {
+  overflow-wrap: anywhere;
+}
+.acct-table .btn {
+  min-height: 40px;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+.acct-muted {
+  opacity: 0.75;
+  font-size: 12.5px;
+}
+.acct-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -17,6 +17,8 @@ import { useWorkspace } from "../workspace";
 import "./team.css";
 import "./workspace.css";
 import "./my-racing/my-racing.css";
+import "./account/account.css";
+import { canUse, roleLabel } from "./account/roles";
 
 const ICON_PROPS = {
   width: 17,
@@ -296,7 +298,7 @@ export default function Layout() {
         ))}
       </details>
       <div className="ws-nav-group">Support</div>
-      {user?.role === "superadmin" && (
+      {canUse(user, "admin") && (
         <NavLink
           className="ws-nav-item"
           to="/administration"
@@ -468,6 +470,15 @@ export default function Layout() {
         {logoutError && (
           <p className="form-error" role="alert">
             {logoutError}
+          </p>
+        )}
+        {user?.actingRole && (
+          <p className="acct-view-banner" role="status">
+            <span>
+              You're viewing Stayblz as <strong>{roleLabel(user.actingRole)}</strong>. Your{" "}
+              {roleLabel(user.platformRole)} tools are hidden.
+            </span>
+            <Link to="/account">Switch view</Link>
           </p>
         )}
         <div
