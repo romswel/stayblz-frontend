@@ -4,8 +4,11 @@ import { useAuth } from "../../auth";
 import { api, ApiError } from "../../api";
 import { countries } from "./countries";
 import PasswordField from "../PasswordField";
-import { accountTypes } from "../accountTypes";
+import CommunityRoleFields from "../account/CommunityRoleFields";
+import { TERMS_VERSION } from "../../content/legal";
+import type { User } from "../../types";
 import { useQuickTransition } from "../usePublicMotion";
+import "./auth-extra.css";
 
 interface Props {
   mode: "login" | "signup";
@@ -17,7 +20,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   { mode, onModeChange, destination, intent },
   ref,
 ) {
-  const { user, login, restoreError } = useAuth();
+  const { user, login, restoreError, acceptUser } = useAuth();
   const navigate = useNavigate();
   const { key: navigationKey } = useLocation();
   const operation = useRef(0);
@@ -29,6 +32,15 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   const [lastName, setLastName] = useState("");
   const [country, setCountry] = useState("");
   const [racingRole, setRacingRole] = useState("");
+  const [communityRoles, setCommunityRoles] = useState<string[]>([]);
+  const [city, setCity] = useState("");
+  const [organisation, setOrganisation] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [code, setCode] = useState("");
+  const [resetSent, setResetSent] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -48,6 +60,8 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     ++operation.current;
     setForgot(false);
     setVerification(false);
+    setResetSent(false);
+    setCode("");
     setError("");
     setNotice("");
     setPassword("");
@@ -97,6 +111,8 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     setNotice("");
     setForgot(false);
     setVerification(false);
+    setResetSent(false);
+    setCode("");
     setPassword("");
     setConfirmPassword("");
   }
@@ -105,19 +121,44 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     if (busy || submitRateLimited) return;
     setError("");
     setNotice("");
-    if (mode === "signup" && !forgot && password !== confirmPassword) {
+    if (((mode === "signup" && !forgot) || resetSent) && password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+    if (resetSent && !/^\d{6}$/.test(code)) {
+      setError("Enter the 6-digit code from the email.");
+      return;
+    }
+    if (mode === "signup" && !forgot && (!acceptTerms || !ageConfirmed)) {
+      setError("Confirm you are 18 or older and accept the Terms of Use and Privacy Notice.");
       return;
     }
     setBusy(true);
     const currentOperation = operation.current;
     try {
-      if (forgot) {
+      if (forgot && resetSent) {
+        // The code proves it's you; then the new password is saved and you log in again.
+        await api.post<{ user: User }>("/api/auth/confirm", {
+          email: email.trim(),
+          code,
+          type: "recovery",
+        });
+        await api.post("/api/auth/password", { password, confirmPassword });
+        if (operation.current !== currentOperation) return;
+        setForgot(false);
+        setResetSent(false);
+        setCode("");
+        setPassword("");
+        setConfirmPassword("");
+        setUsername(email.trim());
+        setNotice("Password changed. Log in with your new password.");
+      } else if (forgot) {
         const response = await api.post<{ message: string }>(
           "/api/auth/forgot-password",
           { email: email.trim() },
         );
         if (operation.current !== currentOperation) return;
+        setResetSent(true);
         setNotice(response.message);
       } else if (mode === "signup") {
         const response = await api.post<{
@@ -127,10 +168,17 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
           firstName,
           lastName,
           country,
+          city: city.trim(),
+          organisation: organisation.trim(),
           racingRole,
+          communityRoles,
           email: email.trim(),
           password,
           confirmPassword,
+          acceptTerms,
+          ageConfirmed,
+          marketingOptIn,
+          termsVersion: TERMS_VERSION,
         });
         if (operation.current !== currentOperation) return;
         if (!response.requiresVerification)
@@ -142,7 +190,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
         setVerification(true);
         setNotice(response.message);
       } else {
-        await login(username.trim(), password);
+        await login(username.trim(), password, remember);
         if (operation.current !== currentOperation) return;
         navigate(destination, { replace: true });
       }
@@ -179,6 +227,47 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       if (operation.current === currentOperation) setBusy(false);
     }
   }
+  async function confirmCode(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    if (!/^\d{6}$/.test(code)) {
+      setError("Enter the 6-digit code from the email.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setNotice("");
+    const currentOperation = operation.current;
+    try {
+      const response = await api.post<{ user: User }>("/api/auth/confirm", {
+        email: email.trim(),
+        code,
+        type: "signup",
+      });
+      if (operation.current !== currentOperation) return;
+      acceptUser(response.user);
+      navigate(destination, { replace: true });
+    } catch (reason) {
+      if (operation.current !== currentOperation) return;
+      reportError(reason, "The code could not be checked.", "email");
+      setCode("");
+    } finally {
+      if (operation.current === currentOperation) setBusy(false);
+    }
+  }
+  const codeField = (
+    <label className="ld-field ld-code-field">
+      6-digit code from the email
+      <input
+        name="code"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        required
+      />
+    </label>
+  );
   return (
     <section
       ref={ref}
@@ -234,9 +323,11 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
             </h2>
             <p className="ld-auth-description">
               {forgot
-                ? "We’ll send a password reset link."
+                ? resetSent
+                  ? "Enter the code from the email and choose a new password."
+                  : "We’ll email you a 6-digit code and a reset link."
                 : verification
-                  ? "Use the confirmation link to verify your address."
+                  ? "Enter the 6-digit code we emailed you, or use the button in the email."
                   : mode === "login"
                     ? "Access your account and racing records."
                     : "Create your profile and verify your email."}
@@ -260,9 +351,23 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
             {verification ? (
               <div className="ld-verification">
                 <p>{email}</p>
+                <form onSubmit={confirmCode} aria-label="Confirm your email with a code" noValidate>
+                  {codeField}
+                  <button
+                    className="ld-button ld-button-gold ld-submit"
+                    type="submit"
+                    disabled={busy}
+                  >
+                    {busy ? "Checking…" : "Confirm email"}
+                    <span aria-hidden="true">↗</span>
+                  </button>
+                </form>
+                <p className="ld-small-print">
+                  Didn't get it? Check spam, or request a new email. Codes expire after a short time.
+                </p>
                 <button
                   type="button"
-                  className="ld-button ld-button-gold ld-submit"
+                  className="ld-auth-link"
                   onClick={resend}
                   disabled={busy || emailRateLimited}
                 >
@@ -335,22 +440,36 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                         </select>
                       </label>
                       <label className="ld-field">
-                        Your connection to racing
-                        <select
-                          name="racingRole"
-                          value={racingRole}
-                          onChange={(e) => setRacingRole(e.target.value)}
-                          required
-                        >
-                          <option value="">Select an option</option>
-                          {accountTypes.map(type => (
-                            <option key={type.value} value={type.value}>{type.label}</option>
-                          ))}
-                        </select>
+                        Town or city <span className="ld-optional">(optional)</span>
+                        <input
+                          name="city"
+                          autoComplete="address-level2"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          maxLength={80}
+                        />
                       </label>
                     </div>
+                    <CommunityRoleFields
+                      variant="landing"
+                      primary={racingRole}
+                      extras={communityRoles}
+                      onPrimary={setRacingRole}
+                      onExtras={setCommunityRoles}
+                    />
+                    <label className="ld-field">
+                      Stable, farm or organisation <span className="ld-optional">(optional)</span>
+                      <input
+                        name="organisation"
+                        autoComplete="organization"
+                        value={organisation}
+                        onChange={(e) => setOrganisation(e.target.value)}
+                        maxLength={100}
+                      />
+                    </label>
                   </>
                 )}
+                {forgot && resetSent && codeField}
                 <label className="ld-field">
                   {mode === "login" && !forgot
                     ? "Email"
@@ -373,25 +492,39 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                         : "you@example.com"
                     }
                     maxLength={254}
+                    readOnly={forgot && resetSent}
                     required
                   />
                 </label>
-                {!forgot && (
+                {(!forgot || resetSent) && (
                   <>
                     <PasswordField
                       key={`${mode}:${navigationKey}`}
-                      label="Password"
+                      label={resetSent ? "New password" : "Password"}
                       name="password"
-                      autoComplete={mode === "login" ? "current-password" : "new-password"}
+                      autoComplete={mode === "login" && !resetSent ? "current-password" : "new-password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      minLength={mode === "signup" ? 12 : undefined}
+                      minLength={mode === "signup" || resetSent ? 12 : undefined}
                       maxLength={128}
-                      pattern={mode === "signup" ? "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}" : undefined}
-                      aria-describedby={mode === "signup" ? "ld-password-help" : undefined}
+                      pattern={mode === "signup" || resetSent ? "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}" : undefined}
+                      aria-describedby={mode === "signup" || resetSent ? "ld-password-help" : undefined}
                       required
                     />
-                    {mode === "signup" && (
+                    {mode === "login" && !forgot && (
+                      <label className="ld-check">
+                        <input
+                          type="checkbox"
+                          checked={remember}
+                          onChange={(e) => setRemember(e.target.checked)}
+                        />
+                        <span>
+                          Keep me signed in
+                          <small>Turn off on shared or public computers.</small>
+                        </span>
+                      </label>
+                    )}
+                    {(mode === "signup" || resetSent) && (
                       <>
                         <p className="ld-password-help" id="ld-password-help">
                           12–128 characters, with uppercase, lowercase, and a
@@ -407,6 +540,52 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                           maxLength={128}
                           required
                         />
+                        {mode === "signup" && !forgot && (
+                          <fieldset className="ld-agreements">
+                            <legend>Before you join</legend>
+                            <label className="ld-check">
+                              <input
+                                type="checkbox"
+                                name="acceptTerms"
+                                checked={acceptTerms}
+                                onChange={(e) => setAcceptTerms(e.target.checked)}
+                                required
+                              />
+                              <span>
+                                I agree to the{" "}
+                                <Link to="/terms" target="_blank" rel="noopener">
+                                  Terms of Use
+                                </Link>{" "}
+                                and{" "}
+                                <Link to="/privacy" target="_blank" rel="noopener">
+                                  Privacy Notice
+                                </Link>
+                                .
+                              </span>
+                            </label>
+                            <label className="ld-check">
+                              <input
+                                type="checkbox"
+                                name="ageConfirmed"
+                                checked={ageConfirmed}
+                                onChange={(e) => setAgeConfirmed(e.target.checked)}
+                                required
+                              />
+                              <span>I'm 18 or older.</span>
+                            </label>
+                            <label className="ld-check">
+                              <input
+                                type="checkbox"
+                                name="marketingOptIn"
+                                checked={marketingOptIn}
+                                onChange={(e) => setMarketingOptIn(e.target.checked)}
+                              />
+                              <span>
+                                Email me Stayblz news and updates <small>(optional, you can change this later)</small>
+                              </span>
+                            </label>
+                          </fieldset>
+                        )}
                       </>
                     )}
                   </>
@@ -421,7 +600,9 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                     : busy
                       ? "Please wait…"
                       : forgot
-                        ? "Send reset email"
+                        ? resetSent
+                          ? "Set new password"
+                          : "Send reset email"
                         : mode === "login"
                           ? "Sign in"
                           : "Create account"}
@@ -455,6 +636,18 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                     )}
                   </>
                 )}
+                {forgot && resetSent && (
+                  <button
+                    className="ld-auth-link"
+                    onClick={() => {
+                      setResetSent(false);
+                      setCode("");
+                      setNotice("");
+                    }}
+                  >
+                    Didn't get the email? Send it again
+                  </button>
+                )}
                 <p className="ld-auth-switch">
                   {forgot
                     ? "Remember your password?"
@@ -483,7 +676,8 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
             )}
           </div>
           <div className="ld-auth-foot">
-            Verified email · Private account access
+            Verified email · Private account access ·{" "}
+            <Link to="/terms">Terms</Link> · <Link to="/privacy">Privacy</Link>
           </div>
         </>
       )}

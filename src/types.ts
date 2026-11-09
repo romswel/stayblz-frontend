@@ -19,7 +19,12 @@ export interface User {
     lastName: string;
     country: string;
     racingRole: string;
+    communityRoles?: string[];
+    organisation?: string;
+    city?: string;
+    bio?: string;
   };
+  preferences?: { marketingOptIn: boolean; updatesSeenAt: string; updatesPopup: boolean };
 }
 
 export interface Message {

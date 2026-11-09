@@ -1,5 +1,5 @@
 .overview {
-  max-width: 1720px;
+  max-width: none;
   margin: auto;
   animation: ov-enter 220ms ease-out;
 }

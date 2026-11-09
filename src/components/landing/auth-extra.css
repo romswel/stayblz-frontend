@@ -1,0 +1,62 @@
+/* Sign-up extras on the dark auth panel: checkboxes, agreements, code field. */
+.ld-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #dce2d4;
+  cursor: pointer;
+}
+.ld-check input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: #c5a468;
+}
+.ld-check input:focus-visible {
+  outline: 2px solid #c5a468;
+  outline-offset: 2px;
+}
+.ld-check small {
+  display: block;
+  color: #aab59f;
+  font-size: 10.5px;
+}
+.ld-check a {
+  color: #e2c58f;
+  font-weight: 700;
+}
+.ld-agreements {
+  border: 1px solid #536348;
+  border-radius: 4px;
+  padding: 12px 12px 2px;
+  margin: 4px 0 16px;
+}
+.ld-agreements legend {
+  padding: 0 6px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #c5a468;
+}
+.ld-optional {
+  color: #93a18a;
+  font-size: 10px;
+}
+.ld-code-field input {
+  font: 700 22px "JetBrains Mono", ui-monospace, monospace !important;
+  letter-spacing: 0.35em;
+  text-align: center;
+}
+.ld-small-print {
+  font-size: 11px;
+  color: #aab59f;
+  line-height: 1.6;
+  margin: 10px 0 !important;
+}
+.ld-auth-foot a {
+  color: inherit;
+}

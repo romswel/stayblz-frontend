@@ -1,5 +1,5 @@
 .pps-page {
-  max-width: 1500px;
+  max-width: none;
   margin: 0 auto;
   animation: pp-enter 180ms ease-out;
 }

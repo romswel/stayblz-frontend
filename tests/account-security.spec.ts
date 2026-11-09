@@ -61,7 +61,7 @@ test("staff can view the site as a customer and switch back", async ({ page }) =
       json: { user: { ...superadmin, role, actingRole: role === "superadmin" ? null : role } },
     });
   });
-  await page.goto("/account");
+  await page.goto("/account/security");
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav.getByRole("link", { name: "Administration" })).toBeVisible();
   await expect(page.getByText("Superadmin account", { exact: true })).toBeVisible();
@@ -85,7 +85,7 @@ test("customers see no View as choice and set up 2-step login with a QR code", a
     verified = route.request().postDataJSON();
     return route.fulfill({ json: { user: { ...customer, mfa: { enabled: true, verified: true } } } });
   });
-  await page.goto("/account");
+  await page.goto("/account/security");
   await expect(page.getByRole("heading", { name: "View as" })).toHaveCount(0);
   const section = page.getByRole("region", { name: /2-step login/ });
   await expect(section.getByText("Off", { exact: true })).toBeVisible();

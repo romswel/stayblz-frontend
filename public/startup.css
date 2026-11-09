@@ -18,7 +18,7 @@ html[data-theme="dark"] .sb-startup {
   background: #09120f;
 }
 .sb-startup-content {
-  width: min(100%, 300px);
+  width: min(100%, 360px);
 }
 .sb-startup-mark {
   position: relative;
@@ -79,6 +79,15 @@ html[data-theme="dark"] .sb-startup {
   color: #b6c1ac;
   font-size: 12px;
   margin: 0;
+}
+.sb-startup-note {
+  margin: 18px auto 0;
+  padding: 10px 12px;
+  border: 1px solid #c5a46855;
+  border-radius: 6px;
+  color: #e4dccb;
+  font-size: 12px;
+  line-height: 1.6;
 }
 @keyframes sb-track {
   to {

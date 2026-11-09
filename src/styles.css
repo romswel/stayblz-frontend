@@ -1,11 +1,13 @@
-/* ————— Stayblz design system: turf & gold — dark + light themes ————— */
+/* ————— Stayblz design system: forest, warm gold & cream — dark + light themes —————
+   These shared tokens match the signed-in workspace (workspace.css) so every page, dialog
+   and status screen uses the same brand colours. Never reintroduce a separate palette. */
 
 :root {
   /* shared */
-  --gold: #aeb6bf;
-  --gold-bright: #d7dce2;
-  --gold-dim: #737d87;
-  --on-accent: #15181c;
+  --gold: #d9bc79;
+  --gold-bright: #e8d29a;
+  --gold-dim: #9c8150;
+  --on-accent: #10241a;
   --turf: #2e8560;
   --turf-deep: #1e6b48;
   --radius: 9px;
@@ -13,82 +15,83 @@
   --sidebar-w: 250px;
   --serif: 'Archivo', system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
   font-family: 'Archivo', system-ui, -apple-system, sans-serif;
 
   /* dark (default) */
-  --bg: #101316;
-  --bg-glow-a: rgba(199, 205, 212, 0.05);
-  --bg-glow-b: rgba(132, 142, 152, 0.06);
-  --surface: #171b20;
-  --surface-b: #14181d;
-  --surface-2: #1c2127;
-  --surface-3: #242a31;
-  --line: #2f363e;
-  --line-soft: #272d34;
-  --ink: #e9ebee;
-  --ink-soft: #99a1a9;
-  --ink-faint: #6b737b;
-  --gold-ink: #ccd3da;          /* accent used as text */
-  --gold-tint: rgba(174, 182, 191, 0.13);
-  --gold-tint-soft: rgba(174, 182, 191, 0.07);
-  --input-bg: #0d1013;
-  --input-placeholder: #5e666e;
-  --danger: #c65563;
-  --danger-tint: rgba(198, 85, 99, 0.12);
-  --danger-line: rgba(198, 85, 99, 0.45);
-  --danger-ink: #e9a7b0;
-  --amber: #d3a03c;
-  --green-ink: #55c092;
-  --green-tint: rgba(46, 133, 96, 0.14);
-  --green-line: rgba(85, 192, 146, 0.4);
-  --bar-track: #0d1013;
+  --bg: #121c18;
+  --bg-glow-a: rgba(217, 188, 121, 0.05);
+  --bg-glow-b: rgba(46, 133, 96, 0.07);
+  --surface: #1a2821;
+  --surface-b: #17241d;
+  --surface-2: #213329;
+  --surface-3: #2a3d31;
+  --line: #35473b;
+  --line-soft: #2b3b31;
+  --ink: #edece1;
+  --ink-soft: #afb9a9;
+  --ink-faint: #7f8a7b;
+  --gold-ink: #e3cb8f;          /* accent used as text */
+  --gold-tint: rgba(217, 188, 121, 0.14);
+  --gold-tint-soft: rgba(217, 188, 121, 0.07);
+  --input-bg: #14201a;
+  --input-placeholder: #6f7a6c;
+  --danger: #d06a6a;
+  --danger-tint: rgba(208, 106, 106, 0.13);
+  --danger-line: rgba(208, 106, 106, 0.45);
+  --danger-ink: #efb1aa;
+  --amber: #d9a441;
+  --green-ink: #7fcfa4;
+  --green-tint: rgba(46, 133, 96, 0.16);
+  --green-line: rgba(127, 207, 164, 0.4);
+  --bar-track: #14201a;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-pop: 0 8px 20px -6px rgba(0, 0, 0, 0.55);
-  --scrim: rgba(5, 8, 6, 0.65);
-  --selection: rgba(174, 182, 191, 0.35);
-  --grid-line: rgba(199, 205, 212, 0.028);
+  --shadow-pop: 0 10px 26px -8px rgba(0, 0, 0, 0.6);
+  --scrim: rgba(4, 10, 7, 0.66);
+  --selection: rgba(217, 188, 121, 0.3);
+  --grid-line: rgba(237, 236, 225, 0.03);
 }
 
 :root[data-theme='light'] {
-  --gold: #5f6b78;
-  --gold-bright: #78848f;
-  --gold-dim: #97a0a9;
-  --on-accent: #ffffff;
-  --bg: #e9eaec;
-  --bg-glow-a: rgba(255, 255, 255, 0.6);
-  --bg-glow-b: rgba(120, 130, 140, 0.08);
-  --surface: #f7f8f9;
-  --surface-b: #f2f3f5;
-  --surface-2: #eceef0;
-  --surface-3: #e1e4e8;
-  --line: #c8cdd3;
-  --line-soft: #d8dce0;
-  --ink: #22262b;
-  --ink-soft: #626a72;
-  --ink-faint: #8a9199;
-  --gold-ink: #46525f;
-  --gold-tint: rgba(95, 107, 120, 0.13);
-  --gold-tint-soft: rgba(95, 107, 120, 0.08);
-  --input-bg: #ffffff;
-  --input-placeholder: #a2a898;
-  --danger: #a63c49;
-  --danger-tint: rgba(166, 60, 73, 0.1);
-  --danger-line: rgba(166, 60, 73, 0.4);
-  --danger-ink: #a63c49;
+  --gold: #947030;
+  --gold-bright: #b08a45;
+  --gold-dim: #c5a468;
+  --on-accent: #fffef9;
+  --bg: #f2f0e9;
+  --bg-glow-a: rgba(255, 254, 249, 0.7);
+  --bg-glow-b: rgba(27, 75, 56, 0.06);
+  --surface: #fffef9;
+  --surface-b: #faf8f1;
+  --surface-2: #eae8de;
+  --surface-3: #e0ddd0;
+  --line: #d9d9cc;
+  --line-soft: #e6e4da;
+  --ink: #1e352c;
+  --ink-soft: #646d63;
+  --ink-faint: #8b9387;
+  --gold-ink: #7a5a22;
+  --gold-tint: rgba(148, 112, 48, 0.12);
+  --gold-tint-soft: rgba(148, 112, 48, 0.07);
+  --input-bg: #fffef9;
+  --input-placeholder: #9a9f92;
+  --danger: #a63c3c;
+  --danger-tint: rgba(166, 60, 60, 0.09);
+  --danger-line: rgba(166, 60, 60, 0.4);
+  --danger-ink: #a63c3c;
   --amber: #8f6a1a;
   --green-ink: #1e6b48;
   --green-tint: rgba(46, 133, 96, 0.12);
   --green-line: rgba(46, 133, 96, 0.4);
-  --bar-track: #dadee2;
-  --shadow: 0 1px 2px rgba(40, 42, 46, 0.08);
-  --shadow-pop: 0 8px 22px -8px rgba(40, 40, 30, 0.3);
-  --scrim: rgba(30, 32, 26, 0.45);
-  --selection: rgba(95, 107, 120, 0.3);
-  --grid-line: rgba(34, 38, 43, 0.035);
+  --bar-track: #e2e0d4;
+  --shadow: 0 1px 2px rgba(30, 53, 44, 0.08);
+  --shadow-pop: 0 10px 24px -8px rgba(30, 53, 44, 0.28);
+  --scrim: rgba(16, 36, 26, 0.45);
+  --selection: rgba(148, 112, 48, 0.25);
+  --grid-line: rgba(30, 53, 44, 0.035);
 }
 
 * { box-sizing: border-box; }
-.account-profile { padding: 24px; margin-bottom: 24px; max-width: 850px; }
+.account-profile { padding: 24px; margin-bottom: 24px; max-width: none; }
 .account-profile h2 { margin-bottom: 12px; }
 .account-profile p { margin: 12px 0; line-height: 1.7; }
 .account-profile .btn { margin: 12px 12px 0 0; }

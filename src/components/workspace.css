@@ -191,11 +191,26 @@
   border: 1px solid transparent;
   white-space: nowrap;
 }
+.ws-nav-item {
+  position: relative;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 220ms ease,
+    transform 160ms ease;
+}
 .ws-nav-item svg {
   flex: none;
+  transition: transform 200ms ease;
 }
 .ws-nav-item:hover {
   background: var(--ws-soft);
+  transform: translateX(2px);
+}
+.ws-nav-item:hover svg,
+.ws-nav-item.active svg {
+  transform: scale(1.08);
 }
 .ws-nav-item.active {
   color: var(--ws-green);
@@ -223,7 +238,7 @@
 .ws-main {
   margin-left: var(--ws-sidebar);
   min-width: 0;
-  padding: 32px clamp(20px, 2.8vw, 56px) 0;
+  padding: 28px clamp(16px, 2vw, 40px) 0;
   transition: margin-left 180ms ease;
   outline: none;
 }
@@ -346,6 +361,26 @@
 }
 .ws-drawer {
   padding: 18px;
+  animation: ws-drawer-in 220ms var(--ease-out, ease-out) both;
+}
+@keyframes ws-drawer-in {
+  from { opacity: 0; transform: translateX(-18px); }
+}
+/* Every page fades up a little on navigation (ws-page remounts per route). */
+.ws-page {
+  animation: ws-page-in 240ms var(--ease-out, ease-out) backwards;
+}
+@keyframes ws-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+.ws-page .panel {
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.ws-icon-button {
+  transition: background 160ms ease, transform 160ms ease;
+}
+.ws-icon-button:active {
+  transform: scale(0.94);
 }
 .ws-drawer nav {
   margin: 10px 0;
@@ -359,7 +394,7 @@
 }
 @media (min-width: 1800px) {
   .ws-main {
-    max-width: 2100px;
+    max-width: 2560px;
     margin-right: auto;
   }
   .workspace {
@@ -498,3 +533,10 @@
     transition: none !important;
   }
 }
+
+.ws-footer-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.ws-footer { flex-wrap: wrap; }

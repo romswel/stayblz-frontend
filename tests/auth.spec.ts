@@ -45,7 +45,7 @@ async function fillSignup(page: import("@playwright/test").Page) {
     .getByRole("combobox", { name: "Country", exact: true })
     .selectOption("PH");
   await page
-    .getByRole("combobox", { name: "Your connection to racing", exact: true })
+    .getByRole("combobox", { name: "Your main role in racing", exact: true })
     .selectOption("fan");
   await page
     .getByLabel("Email address", { exact: true })
@@ -56,6 +56,8 @@ async function fillSignup(page: import("@playwright/test").Page) {
   await page
     .getByLabel("Confirm password", { exact: true })
     .fill("TestOnlyPassword123");
+  await page.getByRole("checkbox", { name: /I agree to the Terms of Use/ }).check();
+  await page.getByRole("checkbox", { name: "I'm 18 or older." }).check();
 }
 test("signup validates profile, sends it once, and waits for email confirmation", async ({
   page,
@@ -91,6 +93,7 @@ test("signup validates profile, sends it once, and waits for email confirmation"
     email: "member@example.test",
   });
   expect(saved).not.toHaveProperty("role");
+  expect(saved).toMatchObject({ acceptTerms: true, ageConfirmed: true, termsVersion: "2026-11-10" });
   await expect(
     page.getByRole("link", { name: "Continue to dashboard" }),
   ).toHaveCount(0);
@@ -687,12 +690,12 @@ test.beforeEach(async ({ page }) => {
 
 test("signup has clear racing choices and separate Show controls for both passwords", async ({ page }) => {
   await page.goto("/signup");
-  const connection = page.getByRole("combobox", { name: "Your connection to racing", exact: true });
-  await expect(connection.locator("option")).toHaveText([
-    "Select an option", "Horse owner", "Trainer", "Jockey", "Stable staff", "Racing fan", "Other",
-  ]);
+  const connection = page.getByRole("combobox", { name: "Your main role in racing", exact: true });
+  await expect(connection.locator("optgroup")).toHaveCount(7);
+  await expect(connection.locator("option")).toHaveCount(22);
   await connection.selectOption({ label: "Racing fan" });
   await expect(connection).toHaveValue("fan");
+  await expect(page.getByText("Follows horses, jockeys and big races.")).toBeVisible();
   const password = page.getByLabel("Password", { exact: true });
   const confirmation = page.getByLabel("Confirm password", { exact: true });
   await password.fill("VisibleTestPassword123");

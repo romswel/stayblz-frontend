@@ -23,6 +23,16 @@ import Administration from "./pages/Administration";
 import { WorkspaceProvider, StableGate } from "./workspace";
 import MfaChallenge from "./components/account/MfaChallenge";
 import { canUse } from "./components/account/roles";
+import StatusPage from "./components/status/StatusPage";
+import Legal from "./pages/Legal";
+import NotMe from "./pages/NotMe";
+import Updates from "./pages/Updates";
+import UpdatePost from "./pages/UpdatePost";
+import UpdatesAdmin from "./pages/admin/UpdatesAdmin";
+import { UpdatesProvider } from "./components/updates/UpdatesContext";
+import AccountSecurity from "./pages/account/AccountSecurity";
+import AccountPreferences from "./pages/account/AccountPreferences";
+import { isAppPath } from "./appPaths";
 import { Link } from "react-router-dom";
 
 function PPLoginRedirect() {
@@ -39,6 +49,16 @@ function PPLoginRedirect() {
         intent: "view past performances",
       }}
     />
+  );
+}
+
+/** Signed out: known app pages go to log in; anything else is a real "not found". */
+function SignedOutFallback() {
+  const { pathname } = useLocation();
+  return isAppPath(pathname) ? (
+    <Navigate to="/login" replace />
+  ) : (
+    <StatusPage kind="not-found" standalone />
   );
 }
 
@@ -61,9 +81,15 @@ export default function App() {
           element={<InvitationEntry kind="conversation" />}
         />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/terms" element={<Legal kind="terms" />} />
+        <Route path="/privacy" element={<Legal kind="privacy" />} />
+        <Route path="/updates" element={<Updates />} />
+        <Route path="/updates/:slug" element={<UpdatePost />} />
+        <Route path="/bulletin" element={<Navigate to="/updates" replace />} />
         <Route path="/auth/confirm" element={<AuthConfirm />} />
+        <Route path="/auth/not-me" element={<NotMe />} />
         <Route path="/pps/*" element={<PPLoginRedirect />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<SignedOutFallback />} />
       </Routes>
     );
   }
@@ -77,12 +103,17 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Login />} />
       <Route path="/faq" element={<FAQ />} />
+      <Route path="/terms" element={<Legal kind="terms" />} />
+      <Route path="/privacy" element={<Legal kind="privacy" />} />
       <Route path="/auth/confirm" element={<AuthConfirm />} />
+      <Route path="/auth/not-me" element={<NotMe />} />
       <Route
         element={
           <WorkspaceProvider key={user.id}>
             <CartProvider key={user.id} accountId={user.id}>
-              <Layout />
+              <UpdatesProvider>
+                <Layout />
+              </UpdatesProvider>
             </CartProvider>
           </WorkspaceProvider>
         }
@@ -97,6 +128,11 @@ export default function App() {
         <Route path="/pps/:productId" element={<PastPerformances />} />
         <Route path="/pps/:productId/:view" element={<PastPerformances />} />
         <Route path="/account" element={<Profile />} />
+        <Route path="/account/security" element={<AccountSecurity />} />
+        <Route path="/account/preferences" element={<AccountPreferences />} />
+        <Route path="/updates" element={<Updates />} />
+        <Route path="/updates/:slug" element={<UpdatePost />} />
+        <Route path="/bulletin" element={<Navigate to="/updates" replace />} />
         <Route
           path="/racing-records/racecards"
           element={<PublishedRacing title="Racecards" kinds={["racecards"]} />}
@@ -190,6 +226,12 @@ export default function App() {
           element={<Navigate to="/my-racing" replace />}
         />
         <Route path="/stables" element={<Stables />} />
+        {canUse(user, "admin") && (
+          <>
+            <Route path="/admin/updates" element={<UpdatesAdmin />} />
+            <Route path="/admin/updates/:id" element={<UpdatesAdmin />} />
+          </>
+        )}
         <Route
           path="/administration"
           element={
@@ -203,19 +245,19 @@ export default function App() {
         <Route
           path="/betting"
           element={
-            <section className="panel ws-access">
-              <h1>Wagering</h1>
-              <p>
-                Wagering, deposits and payments are not connected yet. No
-                real-money bets can be placed on Stayblz.
-              </p>
-              <Link className="ws-button" to="/entries">
-                Explore racecards
-              </Link>
-            </section>
+            <StatusPage
+              kind="unavailable"
+              title="Wagering isn't available"
+              message="Wagering, deposits and payments are not connected. No real-money bets can be placed on Stayblz."
+              actions={
+                <Link className="btn btn-primary status-primary" to="/entries">
+                  Explore racecards
+                </Link>
+              }
+            />
           }
         />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<StatusPage kind="not-found" />} />
       </Route>
     </Routes>
   );

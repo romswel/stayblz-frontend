@@ -1,3 +1,5 @@
+import { netStatus } from "./netStatus";
+
 const TOKEN_KEY = "stayblz.token";
 let memoryToken: string | null = null;
 
@@ -43,6 +45,17 @@ const API_BASE = import.meta.env.PROD
   ? ""
   : (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/+$/, "");
 
+/** Friendly words for failures. Raw server or browser errors are never shown. */
+export const friendly = {
+  network:
+    "We can't reach Stayblz right now. Check your internet connection and try again.",
+  starting:
+    "Stayblz is starting up or busy. Please try again in a moment.",
+  server: "Something went wrong on our side. Please try again.",
+  notFound: "We couldn't find what you were looking for.",
+  unavailable: "This feature isn't available yet.",
+};
+
 let refreshPending: Promise<boolean> | null = null;
 async function request<T>(
   path: string,
@@ -50,15 +63,29 @@ async function request<T>(
   renewed = false,
 ): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  const settle = netStatus.track();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch (error) {
+    // Cancelled on purpose: let callers see the abort as before.
+    if (options.signal?.aborted || (error instanceof DOMException && error.name === "AbortError"))
+      throw error;
+    netStatus.unreachable();
+    throw new ApiError(0, friendly.network, "network");
+  } finally {
+    settle();
+  }
+  if ([502, 503, 504].includes(res.status)) netStatus.unreachable();
+  else netStatus.reachable();
   if (
     res.status === 401 &&
     !path.startsWith("/api/auth/") &&
@@ -82,9 +109,16 @@ async function request<T>(
   try {
     data = await res.json();
   } catch {
+    // Not our JSON: a proxy page, a sleeping server, or a missing route.
     throw new ApiError(
       res.status,
-      "The server returned an invalid response. Please try again.",
+      [502, 503, 504].includes(res.status)
+        ? friendly.starting
+        : res.status === 404
+          ? friendly.notFound
+          : friendly.server,
+      [502, 503, 504].includes(res.status) ? "server_unavailable" : undefined,
+      res.status === 503 ? 15 : 0,
     );
   }
   if (!res.ok) {
@@ -108,15 +142,22 @@ async function request<T>(
         res.status === 429 ? 60 : 0,
       ),
     );
+    const message =
+      typeof details.error === "string" && details.error.trim()
+        ? details.error
+        : res.status === 402
+          ? friendly.unavailable
+          : res.status >= 500
+            ? friendly.server
+            : "Something went wrong.";
     throw new ApiError(
       res.status,
-      data &&
-        typeof data === "object" &&
-        "error" in data &&
-        typeof data.error === "string"
-        ? data.error
-        : "Something went wrong.",
-      typeof details.code === "string" ? details.code : undefined,
+      message,
+      typeof details.code === "string"
+        ? details.code
+        : res.status === 402
+          ? "feature_unavailable"
+          : undefined,
       Math.ceil(retry),
     );
   }
@@ -148,4 +189,7 @@ export const api = {
       body: JSON.stringify(body),
       ...options,
     }),
+  put: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
