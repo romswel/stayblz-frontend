@@ -294,50 +294,26 @@ test("member profile persists through the API with shared stable navigation", as
   expect(profileBody).not.toHaveProperty("role");
 });
 
-test("late pagination cannot replace a newly selected standings category", async ({
+test("a late reply cannot replace a newly selected leaders category", async ({
   page,
 }) => {
   await page.route("**/api/auth/me", (route) =>
     route.fulfill({ json: { user } }),
   );
-  await page.route("**/api/racing/published/**", async (route) => {
-    const url = new URL(route.request().url());
-    if (url.searchParams.has("offset")) {
+  await page.route("**/api/public/racing/leaders**", async (route) => {
+    const role = new URL(route.request().url()).searchParams.get("role");
+    const row = (name: string) => ({ id: "00000000-0000-4000-8000-00000000000" + (role === "jockey" ? "1" : "2"), name, starts: 4, wins: 2, places: 1, shows: 0, earnings: 1000 });
+    if (role === "jockey") {
       await new Promise((resolve) => setTimeout(resolve, 350));
-      return route.fulfill({
-        json: {
-          records: [
-            { id: "late-horse", name: "Late horse response", figure: 90 },
-          ],
-          nextOffset: null,
-        },
-      });
+      return route.fulfill({ json: { leaders: [row("Late jockey response")] } });
     }
-    return route.fulfill({
-      json: {
-        records: [
-          {
-            id: url.pathname,
-            name: url.pathname.endsWith("jockeys")
-              ? "Current jockey"
-              : "Initial horse",
-            figure: 100,
-          },
-        ],
-        nextOffset: url.pathname.endsWith("horses") ? 50 : null,
-      },
-    });
+    return route.fulfill({ json: { leaders: [row("Current trainer")] } });
   });
   await page.goto("/statistics");
-  await page.getByRole("button", { name: "Load more", exact: true }).click();
-  await page.getByRole("button", { name: "Jockeys", exact: true }).click();
-  await expect(
-    page.getByRole("cell", { name: "Current jockey", exact: true }),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Trainers", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Current trainer", exact: true })).toBeVisible();
   await page.waitForTimeout(450);
-  await expect(
-    page.getByRole("cell", { name: "Late horse response", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByText("Late jockey response")).toHaveCount(0);
 });
 test("malformed full-view data shows an error instead of crashing", async ({
   page,
@@ -350,7 +326,7 @@ test("malformed full-view data shows an error instead of crashing", async ({
   await page.route("**/api/racing/published/**", (route) =>
     route.fulfill({ json: { records: null, nextOffset: null } }),
   );
-  await page.goto("/entries");
+  await page.goto("/racing-records/racecards");
   await expect(page.getByRole("alert")).toContainText(
     "records response was invalid",
   );

@@ -353,6 +353,16 @@ export default function Layout() {
         <>
           <NavLink
             className="ws-nav-item"
+            to="/admin/racing"
+            aria-label="Publish racing"
+            title="Publish racing"
+            onClick={() => setOpen(false)}
+          >
+            <EntriesIcon />
+            <span>Publish racing</span>
+          </NavLink>
+          <NavLink
+            className="ws-nav-item"
             to="/admin/updates"
             aria-label="Manage Updates"
             title="Manage Updates"

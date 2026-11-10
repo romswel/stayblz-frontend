@@ -25,20 +25,20 @@ test.beforeEach(async ({ page }) => {
 test("racing pages distinguish an empty result from loading", async ({
   page,
 }) => {
-  const cases = [
-    "entries",
-    "results",
-    "speed-figures",
-    "stakes",
-    "statistics",
-    "workouts",
+  const cases: [string, RegExp][] = [
+    ["entries", /No racing published for/],
+    ["results", /No racing published for/],
+    ["speed-figures", /Speed figures aren't available yet/],
+    ["stakes", /No upcoming stakes published/],
+    ["statistics", /No official results for these filters yet/],
+    ["workouts", /No published workouts for these dates/],
   ];
-  await page.route("**/api/racing/published/**", (route) =>
-    route.fulfill({ json: { records: [], nextOffset: null } }),
-  );
-  for (const path of cases) {
+  // Empty (and even incomplete) replies must show an empty state, never a stuck loader or a crash.
+  await page.route("**/api/public/racing/**", (route) => route.fulfill({ json: {} }));
+  for (const [path, empty] of cases) {
     await page.goto("/" + path);
-    await expect(page.getByText("No records published yet.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: empty })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: /Loading/ })).toHaveCount(0);
   }
   await page.goto("/betting");
   await expect(

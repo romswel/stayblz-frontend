@@ -30,6 +30,13 @@ import Updates from "./pages/Updates";
 import UpdatePost from "./pages/UpdatePost";
 import UpdatesAdmin from "./pages/admin/UpdatesAdmin";
 import { UpdatesProvider } from "./components/updates/UpdatesContext";
+import RaceDays from "./pages/racing/RaceDays";
+import RaceDayPage from "./pages/racing/RaceDayPage";
+import RacePage from "./pages/racing/RacePage";
+import { HorsePage, PersonPage } from "./pages/racing/ProfilePages";
+import { LeadersPage, StakesPage, WorkoutsPage } from "./pages/racing/ListPages";
+import RacingAdmin from "./pages/admin/RacingAdmin";
+import RaceDayEditor from "./pages/admin/RaceDayEditor";
 import AccountSecurity from "./pages/account/AccountSecurity";
 import AccountPreferences from "./pages/account/AccountPreferences";
 import { isAppPath } from "./appPaths";
@@ -192,35 +199,30 @@ export default function App() {
             </StableGate>
           }
         />
-        <Route
-          path="/entries"
-          element={<PublishedRacing title="Racecards" kinds={["racecards"]} />}
-        />
-        <Route
-          path="/results"
-          element={<PublishedRacing title="Results" kinds={["results"]} />}
-        />
-        <Route
-          path="/workouts"
-          element={<PublishedRacing title="Workouts" kinds={["workouts"]} />}
-        />
+        <Route path="/entries" element={<RaceDays mode="entries" />} />
+        <Route path="/results" element={<RaceDays mode="results" />} />
+        <Route path="/workouts" element={<WorkoutsPage />} />
+        <Route path="/stakes" element={<StakesPage />} />
+        <Route path="/statistics" element={<LeadersPage />} />
         <Route
           path="/speed-figures"
-          element={<PublishedRacing title="Speed figures" kinds={["horses"]} />}
-        />
-        <Route
-          path="/statistics"
           element={
-            <PublishedRacing
-              title="Statistics"
-              kinds={["horses", "jockeys", "trainers"]}
+            <StatusPage
+              kind="unavailable"
+              title="Speed figures aren't available yet"
+              message="Stayblz doesn't publish its own speed figures yet. Official results, charts and leaders are available now."
+              actions={
+                <Link className="btn btn-primary status-primary" to="/results">
+                  See results
+                </Link>
+              }
             />
           }
         />
-        <Route
-          path="/stakes"
-          element={<PublishedRacing title="Stakes" kinds={["stakes"]} />}
-        />
+        <Route path="/racing/days/:id" element={<RaceDayPage />} />
+        <Route path="/racing/races/:id" element={<RacePage />} />
+        <Route path="/racing/horses/:id" element={<HorsePage />} />
+        <Route path="/racing/people/:id" element={<PersonPage />} />
         <Route
           path="/virtual-stable"
           element={<Navigate to="/my-racing" replace />}
@@ -230,6 +232,8 @@ export default function App() {
           <>
             <Route path="/admin/updates" element={<UpdatesAdmin />} />
             <Route path="/admin/updates/:id" element={<UpdatesAdmin />} />
+            <Route path="/admin/racing" element={<RacingAdmin />} />
+            <Route path="/admin/racing/days/:id" element={<RaceDayEditor />} />
           </>
         )}
         <Route
