@@ -5,6 +5,8 @@ const prefixes = [
   "/pps",
   "/account",
   "/racing-records",
+  "/racing",
+  "/admin",
   "/messages",
   "/team-messages",
   "/my-racing",

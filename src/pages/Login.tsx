@@ -44,6 +44,7 @@ export default function Login() {
     typeof routeState?.destination === "string" &&
       (destinations.has(routeState.destination) ||
         /^\/updates(\/[a-z0-9-]{1,80})?$/.test(routeState.destination) ||
+        /^\/racing\/(days|races|horses|people)\/[0-9a-f-]{36}$/.test(routeState.destination) ||
         isPPDestination(routeState.destination))
       ? routeState.destination
       : "/dashboard",
