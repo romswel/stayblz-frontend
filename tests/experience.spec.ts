@@ -415,3 +415,16 @@ test.describe("account area", () => {
     }
   });
 });
+
+test.describe("navigation", () => {
+  test("pressing / jumps to search, but not while typing in a field", async ({ page }) => {
+    await api(page, member);
+    await page.goto("/updates");
+    await expect(page.getByRole("heading", { name: "Updates", level: 1 })).toBeVisible();
+    await page.keyboard.press("/");
+    await expect(page.getByRole("searchbox", { name: "Search racing records" })).toBeFocused();
+    await page.getByRole("searchbox", { name: "Search updates" }).click();
+    await page.keyboard.type("a/b");
+    await expect(page.getByRole("searchbox", { name: "Search updates" })).toHaveValue("a/b");
+  });
+});

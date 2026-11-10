@@ -434,7 +434,8 @@ export default function Layout() {
             ref={searchRef}
             aria-label="Search racing records"
             aria-keyshortcuts="/"
-            placeholder="Search horses, races, people…  ( / )"
+            placeholder="Search horses, races, people..."
+            title="Search (shortcut: /)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             type="search"
