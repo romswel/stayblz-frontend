@@ -31,3 +31,118 @@
     position: static;
   }
 }
+
+/* Combined page (/legal) and the sign-up dialog */
+.legal-back {
+  margin-bottom: 18px;
+}
+.legal-main .sb-back {
+  background: transparent;
+  border-color: var(--ld-line);
+  color: var(--ld-paper);
+}
+.legal-index-group + .legal-index-group {
+  margin-top: 26px;
+}
+.legal-index-group > a {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ld-line);
+  font-size: 13px;
+  text-decoration: none;
+}
+.legal-index-group > a span:first-child {
+  color: var(--ld-gold);
+  font: 10px "JetBrains Mono", monospace;
+}
+.legal-index-group > a:hover {
+  color: var(--ld-gold);
+}
+.legal-doc + .legal-doc {
+  margin-top: 40px;
+}
+.legal-doc-title {
+  font: 400 clamp(26px, 3vw, 36px) / 1.2 Georgia, serif;
+  margin: 0 0 22px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ld-gold, var(--gold));
+  scroll-margin-top: 24px;
+}
+.legal-section h3 {
+  font: 400 clamp(19px, 2vw, 24px) / 1.3 Georgia, serif;
+  margin: 0 0 12px;
+}
+
+/* Dark dialog used on the sign-up panel (the landing is always dark). */
+.modal.modal-landing {
+  --surface: #16251d;
+  --surface-2: #1f3023;
+  --line: #35483b;
+  --ink: #f4f0e6;
+  --ink-soft: #abb7a5;
+  --gold: #c5a468;
+  --gold-bright: #d9bc79;
+  --gold-dim: #9c8150;
+  --gold-ink: #e3cb8f;
+  --gold-tint: rgba(197, 164, 104, 0.15);
+  --on-accent: #0f1e19;
+  background: var(--surface);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.legal-dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px clamp(18px, 4vw, 28px);
+  overscroll-behavior: contain;
+}
+.legal-dialog-body .legal-section p {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.legal-dialog-body .legal-doc-title {
+  border-color: var(--gold);
+  font-size: 24px;
+}
+.legal-dialog-jump {
+  display: flex;
+  gap: 8px;
+  padding: 10px clamp(18px, 4vw, 28px);
+  border-bottom: 1px solid var(--line);
+}
+.legal-dialog-jump :is(a, button) {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+.legal-dialog-jump :is(a, button):hover {
+  border-color: var(--gold);
+}
+.legal-dialog-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px clamp(18px, 4vw, 28px) calc(14px + var(--safe-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.legal-dialog-foot .btn {
+  width: auto;
+}
+@media (max-width: 560px) {
+  .legal-dialog-foot .btn {
+    flex: 1 1 auto;
+  }
+}

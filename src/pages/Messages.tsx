@@ -5,6 +5,7 @@ import type { Conversation, ConversationPreview, Message } from "../types";
 import { api as personalApi } from "../api";
 import ConversationInvites from "../components/my-racing/ConversationInvites";
 import { createRequestId } from "../requestId";
+import { accountDraftKey, useDraft } from "../components/ui/useDraft";
 export default function Messages({
   mode = "personal",
 }: {
@@ -24,7 +25,10 @@ export default function Messages({
   const [threadLoading, setThreadLoading] = useState(false);
   const [error, setError] = useState("");
   const [sendError, setSendError] = useState("");
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // Unsent replies, per conversation, kept on this device until sent (cleared on log out).
+  const [drafts, setDrafts] = useDraft<Record<string, string>>(accountDraftKey(user?.id, `messages.${mode}`), {}, {
+    isEmpty: (all) => Object.values(all).every((text) => !text.trim()),
+  });
   const [sending, setSending] = useState<string[]>([]);
   const pending = useRef(new Set<string>());
   const deliveries = useRef(

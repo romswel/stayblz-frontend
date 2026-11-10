@@ -1,17 +1,27 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../auth";
 import usePublicMotion from "../components/usePublicMotion";
 import PublicHeader from "../components/PublicHeader";
 import PublicFooter from "../components/PublicFooter";
-import { privacy, terms, TERMS_UPDATED } from "../content/legal";
+import BackButton from "../components/ui/BackButton";
+import LegalDocs, { legalDocs, type LegalKind } from "../components/legal/LegalDocs";
+import { TERMS_UPDATED } from "../content/legal";
 import "./landing.css";
 import "./faq.css";
 import "./legal.css";
 
-/** Terms of Use and Privacy Notice. Public pages, readable without an account. */
-export default function Legal({ kind }: { kind: "terms" | "privacy" }) {
+const titles: Record<LegalKind, string> = {
+  terms: "Terms of Use",
+  privacy: "Privacy Notice",
+  all: "Terms of Use & Privacy Notice",
+};
+
+/** Terms of Use, Privacy Notice, or both on one page (/legal). Public, readable without an account. */
+export default function Legal({ kind }: { kind: LegalKind }) {
   const pageRef = usePublicMotion();
-  const sections = kind === "terms" ? terms : privacy;
-  const title = kind === "terms" ? "Terms of Use" : "Privacy Notice";
+  const { user } = useAuth();
+  const docs = legalDocs(kind);
+  const title = titles[kind];
   return (
     <div className="landing" id="top" ref={pageRef}>
       <a className="ld-skip" href="#legal-main">
@@ -19,9 +29,10 @@ export default function Legal({ kind }: { kind: "terms" | "privacy" }) {
       </a>
       <PublicHeader />
       <main className="faq-main legal-main" id="legal-main">
+        <BackButton className="legal-back" signedIn={!!user} />
         <div className="faq-intro">
           <div>
-            <span className="ld-kicker">STAYBLZ / {kind === "terms" ? "TERMS" : "PRIVACY"}</span>
+            <span className="ld-kicker">STAYBLZ / {kind === "all" ? "TERMS & PRIVACY" : kind === "terms" ? "TERMS" : "PRIVACY"}</span>
             <h1>{title}</h1>
             <p>
               Last updated {TERMS_UPDATED}. Written in plain English for the Stayblz development preview.
@@ -30,30 +41,29 @@ export default function Legal({ kind }: { kind: "terms" | "privacy" }) {
         </div>
         <div className="faq-layout">
           <aside className="faq-index" aria-label="Sections">
-            <span className="ld-kicker">ON THIS PAGE</span>
-            {sections.map((section, i) => (
-              <a href={`#${section.id}`} key={section.id}>
-                <span>0{i + 1}</span>
-                {section.heading}
-              </a>
+            {docs.map((doc) => (
+              <div key={doc.key} className="legal-index-group">
+                <span className="ld-kicker">{kind === "all" ? doc.title.toUpperCase() : "ON THIS PAGE"}</span>
+                {doc.sections.map((section, i) => (
+                  <a href={`#${section.id}`} key={section.id}>
+                    <span>0{i + 1}</span>
+                    {section.heading}
+                  </a>
+                ))}
+              </div>
             ))}
-            <div className="faq-account">
-              <h2>{kind === "terms" ? "Privacy Notice" : "Terms of Use"}</h2>
-              <p>{kind === "terms" ? "How we handle your information." : "The rules for using Stayblz."}</p>
-              <Link to={kind === "terms" ? "/privacy" : "/terms"}>
-                Read it <span aria-hidden="true">↗</span>
-              </Link>
-            </div>
+            {kind !== "all" && (
+              <div className="faq-account">
+                <h2>{kind === "terms" ? "Privacy Notice" : "Terms of Use"}</h2>
+                <p>{kind === "terms" ? "How we handle your information." : "The rules for using Stayblz."}</p>
+                <Link to="/legal">
+                  Read both on one page <span aria-hidden="true">↗</span>
+                </Link>
+              </div>
+            )}
           </aside>
           <div className="legal-body">
-            {sections.map((section) => (
-              <section key={section.id} id={section.id} aria-labelledby={`${section.id}-h`} className="legal-section">
-                <h2 id={`${section.id}-h`}>{section.heading}</h2>
-                {section.paragraphs.map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
-                ))}
-              </section>
-            ))}
+            <LegalDocs kind={kind} />
             <p className="legal-note">
               Questions about these pages? Start with <Link to="/faq">Help & FAQ</Link>.
             </p>

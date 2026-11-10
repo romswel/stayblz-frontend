@@ -10,6 +10,7 @@ import {
 } from "react";
 import { api, ApiError, setToken } from "./api";
 import type { User } from "./types";
+import { clearAccountDrafts } from "./components/ui/useDraft";
 
 interface AuthState {
   user: User | null;
@@ -114,6 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout: async (everywhere = false) => {
         ++epoch.current;
         await api.post("/api/auth/logout", everywhere ? { everywhere: true } : {});
+        // Unsent drafts belong to this account; don't leave them for the next person on this device.
+        clearAccountDrafts(user?.id);
         setToken(null);
         setUser(null);
       },

@@ -5,11 +5,13 @@ import RaceEditor, { RaceFields, raceForm } from "../../components/racing/admin/
 import { TEMPLATE_HEADER, toImportRows } from "../../components/racing/admin/csv";
 import { breedLabels, dateLabel } from "../../components/racing/format";
 import type { RaceDay } from "../../components/racing/types";
+import { useConfirm } from "../../components/ui/Confirm";
 import "../../components/racing/racing.css";
 import "../../components/updates/updates.css";
 
 /** Publishing tool for one race day: import or type entries, enter results, publish. */
 export default function RaceDayEditor() {
+  const confirm = useConfirm();
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const [day, setDay] = useState<RaceDay | null>(null);
@@ -122,12 +124,26 @@ export default function RaceDayEditor() {
             type="button"
             className={`btn ${published ? "btn-quiet" : "btn-primary"}`}
             disabled={busy}
-            onClick={() =>
+            onClick={async () => {
+              const sure = await confirm(
+                published
+                  ? {
+                      title: "Unpublish this race day?",
+                      message: "The card disappears from Entries and Results for everyone until you publish it again.",
+                      confirmLabel: "Unpublish",
+                    }
+                  : {
+                      title: "Publish this race day?",
+                      message: "Everyone, including visitors without an account, can see this card on Entries. Check the races and runners first.",
+                      confirmLabel: "Publish race day",
+                    },
+              );
+              if (!sure) return;
               void save(
                 () => api.post<{ day: RaceDay }>(`/api/admin/racing/days/${day.id}/${published ? "unpublish" : "publish"}`, {}),
                 published ? "Unpublished. Only admins can see this card now." : "Published. The card is live on Entries.",
-              )
-            }
+              );
+            }}
           >
             {published ? "Unpublish" : "Publish race day"}
           </button>

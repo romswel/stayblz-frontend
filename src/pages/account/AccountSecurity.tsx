@@ -5,6 +5,7 @@ import { useAuth } from "../../auth";
 import TwoStepSettings from "../../components/account/TwoStepSettings";
 import ViewAsSettings from "../../components/account/ViewAsSettings";
 import AccountHeader from "./AccountNav";
+import { useConfirm } from "../../components/ui/Confirm";
 
 function ChangePassword() {
   const { acceptUser } = useAuth();
@@ -62,12 +63,20 @@ function ChangePassword() {
 }
 
 function Devices() {
+  const confirm = useConfirm();
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function everywhere() {
     if (busy) return;
+    const sure = await confirm({
+      title: "Sign out on every device?",
+      message: "Every phone, tablet and computer signed in to this account is signed out, including this one.",
+      confirmLabel: "Sign out everywhere",
+      tone: "danger",
+    });
+    if (!sure) return;
     setBusy(true);
     setError("");
     try {

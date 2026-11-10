@@ -201,6 +201,11 @@ test("only admins see the publishing tool; admins import, publish and enter resu
   });
 
   await page.getByRole("button", { name: "Publish race day" }).click();
+  // Publishing makes the card public, so it asks first.
+  await page
+    .getByRole("alertdialog", { name: "Publish this race day?" })
+    .getByRole("button", { name: "Publish race day" })
+    .click();
   await expect(page.getByText("Published. The card is live on Entries.")).toBeVisible();
   await expect(page.getByRole("link", { name: "View public card" })).toBeVisible();
 

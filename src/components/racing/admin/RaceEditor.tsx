@@ -3,6 +3,7 @@ import { api } from "../../../api";
 import LookupField, { type Picked } from "./LookupField";
 import { conditionLabels, raceTypeLabels, raceTitle, surfaceLabels } from "../format";
 import type { Payout, Race, RaceDay, Runner } from "../types";
+import { useConfirm } from "../../ui/Confirm";
 
 type Save = (request: () => Promise<{ day: RaceDay | null }>, done: string) => Promise<boolean>;
 
@@ -318,6 +319,7 @@ function ResultsForm({ race, save }: { race: Race; save: Save }) {
 
 /** Everything for one race in the publishing tool. */
 export default function RaceEditor({ race, harness, save }: { race: Race; harness: boolean; save: Save }) {
+  const confirm = useConfirm();
   const [tab, setTab] = useState<"runners" | "details" | "results">("runners");
   const [details, setDetails] = useState(() => raceForm(race));
   const [editing, setEditing] = useState<string | null>(null);
@@ -424,7 +426,15 @@ export default function RaceEditor({ race, harness, save }: { race: Race; harnes
                           type="button"
                           className="btn btn-quiet up-danger"
                           aria-label={`Remove ${runner.horse.name}`}
-                          onClick={() => void save(() => api.delete<{ day: RaceDay }>(`/api/admin/racing/runners/${runner.id}`), `${runner.horse.name} removed.`)}
+                          onClick={async () => {
+                            const sure = await confirm({
+                              title: `Remove ${runner.horse.name}?`,
+                              message: "The runner is taken off this race. To keep them listed as a non-runner, scratch them instead.",
+                              confirmLabel: "Remove runner",
+                              tone: "danger",
+                            });
+                            if (sure) void save(() => api.delete<{ day: RaceDay }>(`/api/admin/racing/runners/${runner.id}`), `${runner.horse.name} removed.`);
+                          }}
                         >
                           Remove
                         </button>

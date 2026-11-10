@@ -24,6 +24,9 @@ import ErrorBoundary from "./status/ErrorBoundary";
 import UpdatesPopup from "./updates/UpdatesPopup";
 import { useUpdates } from "./updates/UpdatesContext";
 import "./updates/updates.css";
+import BackButton from "./ui/BackButton";
+import { useConfirm } from "./ui/Confirm";
+import DialogHead from "./ui/DialogHead";
 
 const ICON_PROPS = {
   width: 17,
@@ -126,17 +129,26 @@ const UpdatesIcon = () => (
     <path d="M16 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" />
   </svg>
 );
-const PenIcon = () => (
-  <svg {...ICON_PROPS}>
-    <path d="M4 20h4L19 9l-4-4L4 16z" />
-    <path d="M13.5 6.5l4 4" />
-  </svg>
-);
 const MenuIcon = () => (
   <svg {...ICON_PROPS} width={20} height={20}>
     <path d="M4 7h16M4 12h16M4 17h16" />
   </svg>
 );
+
+const ChevronIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+);
+const LogoutIcon = () => (
+  <svg {...ICON_PROPS}>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <path d="M16 17l5-5-5-5M21 12H9" />
+  </svg>
+);
+
+/** Pages with their own top bar (no shared Back bar). */
+const OWN_BACK = (path: string) => path === "/dashboard" || path === "/pps" || path.startsWith("/pps/");
 
 const GROUPS = [
   {
@@ -218,8 +230,17 @@ export default function Layout() {
       /* Layout still works. */
     }
   }, [collapsed]);
+  const confirm = useConfirm();
   async function handleLogout() {
     if (signingOut) return;
+    const sure = await confirm({
+      title: "Log out of Stayblz?",
+      message: "You'll need your email and password to sign in again on this device. Unsent drafts for this account are removed.",
+      confirmLabel: "Log out",
+      cancelLabel: "Stay signed in",
+    });
+    if (!sure) return;
+    setOpen(false);
     setSigningOut(true);
     setLogoutError("");
     try {
@@ -363,16 +384,6 @@ export default function Layout() {
           </NavLink>
           <NavLink
             className="ws-nav-item"
-            to="/admin/updates"
-            aria-label="Manage Updates"
-            title="Manage Updates"
-            onClick={() => setOpen(false)}
-          >
-            <PenIcon />
-            <span>Manage Updates</span>
-          </NavLink>
-          <NavLink
-            className="ws-nav-item"
             to="/administration"
             aria-label="Administration"
             title="Administration"
@@ -388,6 +399,7 @@ export default function Layout() {
         to="/faq"
         aria-label="Help & FAQ"
         title="Help & FAQ"
+        onClick={() => setOpen(false)}
       >
         <span aria-hidden="true">?</span>
         <span>Help & FAQ</span>
@@ -409,6 +421,7 @@ export default function Layout() {
         >
           <MenuIcon />
         </button>
+        {!OWN_BACK(location.pathname) && <BackButton iconOnly className="ws-mobile-back" />}
         <Link
           className="ws-brand"
           to="/dashboard"
@@ -505,39 +518,51 @@ export default function Layout() {
       <aside className="ws-sidebar" aria-label="Workspace navigation">
         {navigation}
         <div className="ws-sidebar-bottom">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!collapsed}
-          >
-            <span aria-hidden="true">{collapsed ? ">>" : "<<"}</span>
-            <span className="ws-collapse-label">Collapse sidebar</span>
-          </button>
-          <button onClick={handleLogout} disabled={signingOut} title="Log out">
-            <span aria-hidden="true">↪</span>
+          <button className="ws-logout" onClick={handleLogout} disabled={signingOut} title="Log out">
+            <LogoutIcon />
             <span className="ws-collapse-label">
               {signingOut ? "Signing out..." : "Log out"}
             </span>
           </button>
         </div>
       </aside>
+      {/* The sidebar's edge: click anywhere along it, or the small round button, to collapse or expand. */}
+      <div className="ws-edge">
+        <button
+          type="button"
+          className="ws-edge-line"
+          tabIndex={-1}
+          aria-hidden="true"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={() => setCollapsed(!collapsed)}
+        />
+        <button
+          type="button"
+          className="ws-collapse"
+          onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <ChevronIcon />
+        </button>
+      </div>
       {open && (
-        <Modal label="Navigation" onClose={() => setOpen(false)}>
+        <Modal label="Navigation" className="modal-drawer" onClose={() => setOpen(false)}>
           <div className="ws-drawer">
-            <button className="ws-button" onClick={() => setOpen(false)}>
-              Close menu
-            </button>
+            <DialogHead title="Menu" kicker="Stayblz" onClose={() => setOpen(false)} closeLabel="Close menu" />
             {navigation}
             <button
-              className="ws-button"
+              className="ws-button ws-drawer-logout"
               onClick={handleLogout}
               disabled={signingOut}
             >
-              Log out
+              <LogoutIcon /> Log out
             </button>
           </div>
         </Modal>
       )}
+      <div className="sb-progress" key={location.pathname} aria-hidden="true" />
       <main id="workspace-content" className="ws-main" tabIndex={-1}>
         <DevNotice />
         {notice && (
@@ -571,6 +596,11 @@ export default function Layout() {
           {/* A crash in one page keeps the menu working; changing page resets it.
               The wrapper replays a short entrance animation on every navigation. */}
           <ErrorBoundary key={location.pathname}>
+            {!OWN_BACK(location.pathname) && (
+              <div className="ws-pagebar">
+                <BackButton />
+              </div>
+            )}
             <div className="ws-page">
               <Outlet />
             </div>
@@ -587,11 +617,9 @@ export default function Layout() {
       <UpdatesPopup />
       {cart && (
         <Modal label="Shopping cart" onClose={() => setCart(false)}>
-          <div className="ws-dialog">
-            <button className="ws-button" onClick={() => setCart(false)}>
-              Close
-            </button>
-            <CartReview onNavigate={() => setCart(false)} />
+          <DialogHead title="Your cart" kicker="Cart preview" onClose={() => setCart(false)} />
+          <div className="dlg">
+            <CartReview inDialog onNavigate={() => setCart(false)} />
           </div>
         </Modal>
       )}

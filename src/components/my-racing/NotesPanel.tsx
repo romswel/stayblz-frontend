@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../../api";
+import { useAuth } from "../../auth";
+import { accountDraftKey, useDraft } from "../ui/useDraft";
 interface Note {
   id: string;
   title: string;
@@ -7,15 +9,23 @@ interface Note {
   updated_at: string;
 }
 export default function NotesPanel() {
+  const { user } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [notice, setNotice] = useState("");
   const [version, setVersion] = useState(0);
-  const [id, setId] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  // The note being written is kept on this device until it's saved (cleared on log out).
+  const [note, setNote] = useDraft<{ id: string | null; title: string; body: string }>(accountDraftKey(user?.id, "notebook"), {
+    id: null,
+    title: "",
+    body: "",
+  });
+  const { id, title, body } = note;
+  const setId = (value: string | null) => setNote((current) => ({ ...current, id: value }));
+  const setTitle = (value: string) => setNote((current) => ({ ...current, title: value }));
+  const setBody = (value: string) => setNote((current) => ({ ...current, body: value }));
   const [busy, setBusy] = useState(false);
   const [remove, setRemove] = useState<string | null>(null);
   useEffect(() => {
@@ -29,6 +39,10 @@ export default function NotesPanel() {
           if (!Array.isArray(d.notes))
             throw Error("Your notes could not be loaded.");
           setNotes(d.notes);
+          // A kept draft may point at a note deleted since (elsewhere); save it as a new note instead.
+          setNote((current) =>
+            current.id && !d.notes.some((n) => n.id === current.id) ? { ...current, id: null } : current,
+          );
         }
       })
       .catch((e) => {

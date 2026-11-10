@@ -60,3 +60,94 @@
 .ld-auth-foot a {
   color: inherit;
 }
+
+/* Field labels: the label text is one block, so "Optional" never pushes a box out of line. */
+.ld-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 16px;
+  line-height: 1.4;
+}
+.ld-optional {
+  flex: none;
+  padding: 0 7px;
+  border: 1px solid #46543e;
+  border-radius: 999px;
+  color: #a9b79f;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 15px;
+}
+/* Paired fields share one baseline even if a label wraps. */
+.ld-auth .ld-field-pair {
+  align-items: end;
+}
+.ld-auth .ld-field select,
+.ld-auth .ld-field input {
+  font-size: 13px;
+  height: 43px;
+  min-height: 43px;
+}
+@media (max-width: 640px) {
+  .ld-auth .ld-field select,
+  .ld-auth .ld-field input {
+    font-size: 16px; /* stops iOS zooming into the field */
+    height: 46px;
+    min-height: 46px;
+  }
+}
+@media (max-width: 380px) {
+  .ld-auth .ld-field-pair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+.ld-auth .ld-password-help {
+  animation: none;
+}
+.roles-landing .roles-more {
+  margin-bottom: 15px;
+}
+.roles-landing .roles-more summary {
+  font-size: 11.5px;
+}
+.ld-check small {
+  margin-top: 2px;
+}
+.ld-inline-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #e2c58f;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.ld-inline-link:hover {
+  color: #f0d9a8;
+}
+.ld-kept {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin: 0 0 16px !important;
+  padding: 9px 12px;
+  border: 1px dashed #6c784e;
+  border-radius: 4px;
+  background: #c5a46812;
+  color: #dce2d4;
+  font-size: 11px;
+  line-height: 1.5;
+  animation: sb-rise 220ms var(--ease-out) both;
+}
+.ld-kept .ld-auth-link {
+  margin: 0;
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { canUse } from "../components/account/roles";
+import UpdatesHeader from "../components/updates/UpdatesHeader";
 import { useUpdates } from "../components/updates/UpdatesContext";
 import { CardSkeleton, UpdateCard } from "../components/updates/UpdateParts";
 import { kindFilters, type UpdateFeed, type UpdateKind, type UpdatePost } from "../components/updates/types";
@@ -203,8 +203,7 @@ function Feed({ seenAt }: { seenAt: string | null }) {
 }
 
 function SignedInUpdates() {
-  const { user } = useAuth();
-  const { seenAt, unread, popupOn, markSeen, setPopup } = useUpdates();
+  const { seenAt, unread, markSeen } = useUpdates();
   // Badges compare with the read time from when the page opened, then the page counts as read.
   const [openedSeenAt] = useState(seenAt);
   useEffect(() => {
@@ -213,24 +212,7 @@ function SignedInUpdates() {
   }, []);
   return (
     <div className="up-page">
-      <header className="up-hero">
-        <div>
-          <div className="eyebrow">Releases, news & notices</div>
-          <h1>Updates</h1>
-          <p className="sub">What's new on Stayblz, what we fixed, and anything you should know, newest first.</p>
-        </div>
-        <div className="up-hero-actions">
-          <label className="acct-toggle up-popup-toggle">
-            <input type="checkbox" checked={popupOn} onChange={(e) => void setPopup(e.target.checked)} />
-            <span>Pop-up for new posts</span>
-          </label>
-          {canUse(user, "admin") && (
-            <Link className="btn btn-primary" to="/admin/updates/new">
-              Write a post
-            </Link>
-          )}
-        </div>
-      </header>
+      <UpdatesHeader />
       <Feed seenAt={openedSeenAt} />
     </div>
   );

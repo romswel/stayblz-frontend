@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { canonicalPPPath } from "./components/pps/legacyRoutes";
 import { isPPDestination } from "./components/pps/catalog";
 import { useAuth } from "./auth";
@@ -59,6 +59,12 @@ function PPLoginRedirect() {
   );
 }
 
+/** Old "Manage Updates" links keep working. */
+function OldUpdatesAdminLink() {
+  const { id = "" } = useParams();
+  return <Navigate to={`/updates/manage/${id}`} replace />;
+}
+
 /** Signed out: known app pages go to log in; anything else is a real "not found". */
 function SignedOutFallback() {
   const { pathname } = useLocation();
@@ -90,8 +96,10 @@ export default function App() {
         <Route path="/faq" element={<FAQ />} />
         <Route path="/terms" element={<Legal kind="terms" />} />
         <Route path="/privacy" element={<Legal kind="privacy" />} />
+        <Route path="/legal" element={<Legal kind="all" />} />
         <Route path="/updates" element={<Updates />} />
         <Route path="/updates/:slug" element={<UpdatePost />} />
+        <Route path="/updates/manage/*" element={<Navigate to="/login" replace />} />
         <Route path="/bulletin" element={<Navigate to="/updates" replace />} />
         <Route path="/auth/confirm" element={<AuthConfirm />} />
         <Route path="/auth/not-me" element={<NotMe />} />
@@ -112,6 +120,7 @@ export default function App() {
       <Route path="/faq" element={<FAQ />} />
       <Route path="/terms" element={<Legal kind="terms" />} />
       <Route path="/privacy" element={<Legal kind="privacy" />} />
+      <Route path="/legal" element={<Legal kind="all" />} />
       <Route path="/auth/confirm" element={<AuthConfirm />} />
       <Route path="/auth/not-me" element={<NotMe />} />
       <Route
@@ -139,6 +148,15 @@ export default function App() {
         <Route path="/account/preferences" element={<AccountPreferences />} />
         <Route path="/updates" element={<Updates />} />
         <Route path="/updates/:slug" element={<UpdatePost />} />
+        {/* Admin tools for posts live inside Updates (one menu entry). The API checks the role again. */}
+        <Route
+          path="/updates/manage"
+          element={canUse(user, "admin") ? <UpdatesAdmin /> : <StatusPage kind="not-found" />}
+        />
+        <Route
+          path="/updates/manage/:id"
+          element={canUse(user, "admin") ? <UpdatesAdmin /> : <StatusPage kind="not-found" />}
+        />
         <Route path="/bulletin" element={<Navigate to="/updates" replace />} />
         <Route
           path="/racing-records/racecards"
@@ -230,8 +248,8 @@ export default function App() {
         <Route path="/stables" element={<Stables />} />
         {canUse(user, "admin") && (
           <>
-            <Route path="/admin/updates" element={<UpdatesAdmin />} />
-            <Route path="/admin/updates/:id" element={<UpdatesAdmin />} />
+            <Route path="/admin/updates" element={<Navigate to="/updates/manage" replace />} />
+            <Route path="/admin/updates/:id" element={<OldUpdatesAdminLink />} />
             <Route path="/admin/racing" element={<RacingAdmin />} />
             <Route path="/admin/racing/days/:id" element={<RaceDayEditor />} />
           </>

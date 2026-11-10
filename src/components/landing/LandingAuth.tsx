@@ -5,10 +5,28 @@ import { api, ApiError } from "../../api";
 import { countries } from "./countries";
 import PasswordField from "../PasswordField";
 import CommunityRoleFields from "../account/CommunityRoleFields";
-import { TERMS_VERSION } from "../../content/legal";
+import { TERMS_UPDATED, TERMS_VERSION } from "../../content/legal";
+import Modal from "../Modal";
+import DialogHead from "../ui/DialogHead";
+import LegalDocs from "../legal/LegalDocs";
+import { useDraft } from "../ui/useDraft";
 import type { User } from "../../types";
 import { useQuickTransition } from "../usePublicMotion";
 import "./auth-extra.css";
+
+/** Sign-up details kept on this device until the account is confirmed. Never passwords or codes. */
+const emptySignup = {
+  firstName: "",
+  lastName: "",
+  country: "",
+  city: "",
+  organisation: "",
+  racingRole: "",
+  communityRoles: [] as string[],
+  email: "",
+  marketingOptIn: false,
+};
+type SignupDraft = typeof emptySignup;
 
 interface Props {
   mode: "login" | "signup";
@@ -24,20 +42,28 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   const navigate = useNavigate();
   const { key: navigationKey } = useLocation();
   const operation = useRef(0);
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+  // What people type is kept on this device (see useDraft), so a reload or a trip to another page loses nothing.
+  const [username, setUsername, clearUsername] = useDraft("guest.login", "", { maxAgeDays: 30 });
+  const [signup, setSignup, clearSignup, signupRestored] = useDraft<SignupDraft>("guest.signup", emptySignup);
+  const field =
+    <K extends keyof SignupDraft>(key: K) =>
+    (value: SignupDraft[K]) =>
+      setSignup((current) => ({ ...current, [key]: value }));
+  const { firstName, lastName, country, city, organisation, racingRole, communityRoles, email, marketingOptIn } = signup;
+  const setFirstName = field("firstName");
+  const setLastName = field("lastName");
+  const setCountry = field("country");
+  const setCity = field("city");
+  const setOrganisation = field("organisation");
+  const setEmail = field("email");
+  const setRacingRole = field("racingRole");
+  const setCommunityRoles = field("communityRoles");
+  const setMarketingOptIn = field("marketingOptIn");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [country, setCountry] = useState("");
-  const [racingRole, setRacingRole] = useState("");
-  const [communityRoles, setCommunityRoles] = useState<string[]>([]);
-  const [city, setCity] = useState("");
-  const [organisation, setOrganisation] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
-  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [legalOpen, setLegalOpen] = useState(false);
   const [remember, setRemember] = useState(true);
   const [code, setCode] = useState("");
   const [resetSent, setResetSent] = useState(false);
@@ -192,6 +218,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       } else {
         await login(username.trim(), password, remember);
         if (operation.current !== currentOperation) return;
+        clearUsername();
         navigate(destination, { replace: true });
       }
     } catch (reason) {
@@ -245,6 +272,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
         type: "signup",
       });
       if (operation.current !== currentOperation) return;
+      clearSignup();
       acceptUser(response.user);
       navigate(destination, { replace: true });
     } catch (reason) {
@@ -257,7 +285,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   }
   const codeField = (
     <label className="ld-field ld-code-field">
-      6-digit code from the email
+      <span className="ld-label">6-digit code from the email</span>
       <input
         name="code"
         inputMode="numeric"
@@ -397,9 +425,25 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
               >
                 {mode === "signup" && !forgot && (
                   <>
+                    {signupRestored && (firstName || lastName || email) && (
+                      <p className="ld-kept" role="status">
+                        <span>We kept the details you typed earlier on this device. Passwords are never saved.</span>
+                        <button
+                          type="button"
+                          className="ld-auth-link"
+                          onClick={() => {
+                            clearSignup();
+                            setAcceptTerms(false);
+                            setAgeConfirmed(false);
+                          }}
+                        >
+                          Clear form
+                        </button>
+                      </p>
+                    )}
                     <div className="ld-field-pair">
                       <label className="ld-field">
-                        First name
+                        <span className="ld-label">First name</span>
                         <input
                           name="firstName"
                           autoComplete="given-name"
@@ -410,7 +454,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                         />
                       </label>
                       <label className="ld-field">
-                        Last name
+                        <span className="ld-label">Last name</span>
                         <input
                           name="lastName"
                           autoComplete="family-name"
@@ -423,7 +467,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                     </div>
                     <div className="ld-field-pair">
                       <label className="ld-field">
-                        Country
+                        <span className="ld-label">Country</span>
                         <select
                           name="country"
                           autoComplete="country"
@@ -440,7 +484,9 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                         </select>
                       </label>
                       <label className="ld-field">
-                        Town or city <span className="ld-optional">(optional)</span>
+                        <span className="ld-label">
+                          Town or city <span className="ld-optional">Optional</span>
+                        </span>
                         <input
                           name="city"
                           autoComplete="address-level2"
@@ -458,7 +504,9 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                       onExtras={setCommunityRoles}
                     />
                     <label className="ld-field">
-                      Stable, farm or organisation <span className="ld-optional">(optional)</span>
+                      <span className="ld-label">
+                        Stable, farm or organisation <span className="ld-optional">Optional</span>
+                      </span>
                       <input
                         name="organisation"
                         autoComplete="organization"
@@ -471,9 +519,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                 )}
                 {forgot && resetSent && codeField}
                 <label className="ld-field">
-                  {mode === "login" && !forgot
-                    ? "Email"
-                    : "Email address"}
+                  <span className="ld-label">{mode === "login" && !forgot ? "Email" : "Email address"}</span>
                   <input
                     name="email"
                     type={mode === "login" && !forgot ? "text" : "email"}
@@ -553,14 +599,10 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                               />
                               <span>
                                 I agree to the{" "}
-                                <Link to="/terms" target="_blank" rel="noopener">
-                                  Terms of Use
-                                </Link>{" "}
-                                and{" "}
-                                <Link to="/privacy" target="_blank" rel="noopener">
-                                  Privacy Notice
-                                </Link>
-                                .
+                                <button type="button" className="ld-inline-link" onClick={() => setLegalOpen(true)}>
+                                  Terms of Use and Privacy Notice
+                                </button>
+                                .<small>Both are on one page. Read them here without leaving this form.</small>
                               </span>
                             </label>
                             <label className="ld-check">
@@ -581,7 +623,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                                 onChange={(e) => setMarketingOptIn(e.target.checked)}
                               />
                               <span>
-                                Email me Stayblz news and updates <small>(optional, you can change this later)</small>
+                                Email me Stayblz news and updates <small>Optional. You can change this later.</small>
                               </span>
                             </label>
                           </fieldset>
@@ -618,7 +660,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                       className="ld-auth-link"
                       onClick={() => {
                         setForgot(true);
-                        setEmail(username.includes("@") ? username : "");
+                        if (username.includes("@")) setEmail(username);
                         setError("");
                         setNotice("");
                       }}
@@ -677,8 +719,46 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
           </div>
           <div className="ld-auth-foot">
             Verified email · Private account access ·{" "}
-            <Link to="/terms">Terms</Link> · <Link to="/privacy">Privacy</Link>
+            <Link to="/legal">Terms &amp; Privacy</Link>
           </div>
+          {legalOpen && (
+            <Modal label="Terms of Use and Privacy Notice" className="modal-wide modal-landing" onClose={() => setLegalOpen(false)}>
+              <DialogHead
+                kicker={`Updated ${TERMS_UPDATED}`}
+                title="Terms of Use & Privacy Notice"
+                onClose={() => setLegalOpen(false)}
+              />
+              <div className="legal-dialog-jump" role="group" aria-label="Jump to">
+                {(["terms", "privacy"] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => document.getElementById(`dlg-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  >
+                    {key === "terms" ? "Terms of Use" : "Privacy Notice"}
+                  </button>
+                ))}
+              </div>
+              <div className="legal-dialog-body" tabIndex={0} role="region" aria-label="Terms of Use and Privacy Notice text">
+                <LegalDocs kind="all" idPrefix="dlg-" />
+              </div>
+              <div className="legal-dialog-foot">
+                <button type="button" className="btn btn-quiet" onClick={() => setLegalOpen(false)}>
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setAcceptTerms(true);
+                    setLegalOpen(false);
+                  }}
+                >
+                  I agree to both
+                </button>
+              </div>
+            </Modal>
+          )}
         </>
       )}
     </section>

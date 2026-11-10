@@ -1,16 +1,25 @@
 import { Link } from "react-router-dom";
 import { ppProducts } from "./catalog";
 import { cartKey, useCart } from "./CartContext";
+import { useConfirm } from "../ui/Confirm";
 export default function CartReview({
   onNavigate,
+  inDialog = false,
 }: {
   onNavigate?: () => void;
+  /** In the cart pop-up the dialog header already shows the title. */
+  inDialog?: boolean;
 }) {
+  const confirm = useConfirm();
   const { items, remove, clear, storageError, catalogueChanged } = useCart();
   return (
     <div className="pp-cart-review">
-      <span className="pp-kicker">CART PREVIEW</span>
-      <h2>Your cart</h2>
+      {!inDialog && (
+        <>
+          <span className="pp-kicker">CART PREVIEW</span>
+          <h2>Your cart</h2>
+        </>
+      )}
       <p>
         Racing products and checkout are not available yet. These selections are
         saved in this browser tab for your account. They are not orders or
@@ -61,7 +70,13 @@ export default function CartReview({
               </li>
             ))}
           </ul>
-          <button className="ws-button" onClick={clear}>
+          <button
+            className="ws-button"
+            onClick={async () => {
+              if (await confirm({ title: "Clear your cart?", message: "All selections are removed from this preview.", confirmLabel: "Clear cart" }))
+                clear();
+            }}
+          >
             Clear cart
           </button>
         </>

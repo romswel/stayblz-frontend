@@ -1,0 +1,340 @@
+/* Stayblz shared UI: buttons, dialogs, Back button, page motion.
+   One place for the look and feel every page reuses. Theme tokens only (light + dark).
+   Motion is quick (120–280 ms), never blocks input, and is switched off by
+   prefers-reduced-motion in styles.css. */
+
+:root {
+  --dur-fast: 130ms;
+  --dur: 200ms;
+  --dur-slow: 280ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-pop: cubic-bezier(0.3, 1.3, 0.5, 1);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* ————— Buttons: one size, one shape, one feel ————— */
+.btn,
+.ws-button {
+  min-height: 40px;
+  border-radius: var(--radius-sm, 6px);
+  line-height: 1.2;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    box-shadow var(--dur) ease,
+    transform var(--dur-fast) var(--ease-out);
+}
+.btn:active:not(:disabled),
+.ws-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 16px -8px var(--gold);
+  transform: translateY(-1px);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+  box-shadow: none;
+}
+.btn-quiet:disabled,
+.ws-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 16px -8px var(--danger);
+}
+.ws-button {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+}
+.ws-button:hover:not(:disabled) {
+  border-color: var(--ws-gold, var(--gold));
+}
+
+/* ————— Dialogs ————— */
+.modal-overlay {
+  animation: sb-fade-in var(--dur) ease both;
+  padding: max(16px, var(--safe-top)) max(16px, var(--safe-right)) max(16px, var(--safe-bottom)) max(16px, var(--safe-left));
+}
+.modal {
+  border: 1px solid var(--line);
+  animation: sb-dialog-in var(--dur-slow) var(--ease-out) both;
+  overscroll-behavior: contain;
+}
+.modal-sm {
+  max-width: 420px;
+}
+.modal-wide {
+  max-width: 820px;
+}
+@keyframes sb-fade-in {
+  from { opacity: 0; }
+}
+@keyframes sb-dialog-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+}
+
+.dlg {
+  padding: 24px clamp(18px, 4vw, 28px) 22px;
+  color: var(--ink);
+}
+.dlg-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px clamp(18px, 4vw, 28px) 14px;
+  border-bottom: 1px solid var(--line);
+}
+.dlg-head + .dlg {
+  padding-top: 18px;
+}
+.dlg-head-text {
+  min-width: 0;
+}
+.dlg-kicker {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+.dlg-title {
+  font: 400 clamp(21px, 2.6vw, 26px) / 1.25 Georgia, serif;
+  overflow-wrap: anywhere;
+}
+.dlg-close {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  margin: -6px -8px 0 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur) var(--ease-out);
+}
+.dlg-close:hover {
+  background: var(--gold-tint);
+  color: var(--ink);
+  transform: rotate(90deg);
+}
+.dlg-text {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.dlg-text p + p {
+  margin-top: 8px;
+}
+.dlg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+.dlg-actions .btn {
+  width: auto;
+  min-width: 112px;
+}
+.dlg-confirm {
+  text-align: left;
+}
+.dlg-confirm-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 14px;
+  border-radius: 50%;
+  background: var(--gold-tint);
+  color: var(--gold-ink);
+  font: 700 19px/1 Georgia, serif;
+  animation: sb-pop var(--dur-slow) var(--ease-pop) 60ms both;
+}
+.dlg-confirm.is-danger .dlg-confirm-icon {
+  background: var(--danger-tint);
+  color: var(--danger-ink);
+}
+@keyframes sb-pop {
+  from { opacity: 0; transform: scale(0.5); }
+}
+
+/* Phones: dialogs become bottom sheets that slide up, easy to reach with a thumb. */
+@media (max-width: 560px) {
+  .modal-overlay {
+    place-items: end stretch;
+    padding: var(--safe-top) 0 0;
+  }
+  .modal,
+  .workspace .modal {
+    width: 100%;
+    max-width: none;
+    max-height: 88dvh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    padding-bottom: var(--safe-bottom);
+    animation: sb-sheet-in var(--dur-slow) var(--ease-out) both;
+  }
+  .modal::before {
+    content: "";
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 4px;
+    background: var(--line);
+  }
+  .dlg-actions {
+    flex-direction: column-reverse;
+  }
+  .dlg-actions .btn {
+    width: 100%;
+  }
+}
+@keyframes sb-sheet-in {
+  from { transform: translateY(40%); opacity: 0; }
+}
+
+/* ————— Back button ————— */
+.sb-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--dur-fast) ease, background var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
+}
+.sb-back svg {
+  transition: transform var(--dur) var(--ease-out);
+}
+.sb-back:hover {
+  border-color: var(--gold);
+}
+.sb-back:hover svg {
+  transform: translateX(-3px);
+}
+.sb-back:active {
+  transform: scale(0.96);
+}
+.sb-back.is-icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* ————— Page motion ————— */
+/* Each page's top-level blocks rise in, one after another (quick: the whole page settles in ~300 ms). */
+.ws-page > * > *,
+.sb-stagger > * {
+  animation: sb-rise 260ms var(--ease-out) backwards;
+}
+.ws-page > * > :nth-child(2),
+.sb-stagger > :nth-child(2) { animation-delay: 35ms; }
+.ws-page > * > :nth-child(3),
+.sb-stagger > :nth-child(3) { animation-delay: 70ms; }
+.ws-page > * > :nth-child(4),
+.sb-stagger > :nth-child(4) { animation-delay: 100ms; }
+.ws-page > * > :nth-child(n + 5),
+.sb-stagger > :nth-child(n + 5) { animation-delay: 125ms; }
+@keyframes sb-rise {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+/* Thin gold bar across the top on every page change. */
+.sb-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 90;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--gold-dim, #9c8150), var(--gold-bright, #e8d29a));
+  transform-origin: left;
+  animation: sb-progress 520ms var(--ease-out) forwards;
+}
+@keyframes sb-progress {
+  0% { transform: scaleX(0); opacity: 1; }
+  60% { transform: scaleX(0.85); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+/* Small interaction details used across pages. */
+.panel {
+  transition: border-color var(--dur) ease, box-shadow var(--dur) ease, transform var(--dur) var(--ease-out);
+}
+details > summary {
+  cursor: pointer;
+}
+details[open] > :not(summary) {
+  animation: sb-rise 200ms var(--ease-out) backwards;
+}
+
+/* Public pages (landing, FAQ, legal, updates): clear the notch in the installed app. */
+.landing {
+  padding-top: var(--safe-top);
+}
+
+/* Back button on the dark public pages (FAQ, legal, public posts). */
+.landing .public-back,
+.landing .legal-back {
+  margin-bottom: 18px;
+  background: transparent;
+  border-color: var(--ld-line, #35483b);
+  color: var(--ld-paper, #f4f0e6);
+}
+.landing .public-back:hover,
+.landing .legal-back:hover {
+  border-color: var(--ld-gold, #c5a468);
+}
+
+/* Public pages reset every <button>; give the shared buttons their look back there too. */
+.landing .btn-primary {
+  background: var(--gold);
+  border: 1px solid var(--gold-dim);
+  color: var(--on-accent);
+}
+.landing .btn-primary:hover:not(:disabled) {
+  background: var(--gold-bright, var(--gold));
+}
+.landing .btn-quiet {
+  border: 1px solid var(--line, var(--ld-line));
+  color: var(--ink, var(--ld-paper));
+}
+.landing .btn-danger {
+  background: var(--danger);
+  border: 1px solid var(--danger);
+  color: #fff;
+}
+.landing .dlg-close:hover {
+  background: var(--gold-tint);
+}
