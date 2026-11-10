@@ -681,6 +681,30 @@
 }
 
 /* Public pages (signed out) */
+.up-public {
+  /* The public pages always sit on the dark landing background, in both themes. */
+  --bg: #0f1e19;
+  --surface: #16251d;
+  --surface-2: #1f3023;
+  --surface-3: #2a3d31;
+  --line: #35483b;
+  --ink: #f4f0e6;
+  --ink-soft: #abb7a5;
+  --gold: #c5a468;
+  --gold-ink: #e3cb8f;
+  --gold-dim: #9c8150;
+  --gold-tint: rgba(197, 164, 104, 0.15);
+  --gold-tint-soft: rgba(197, 164, 104, 0.07);
+  --on-accent: #0f1e19;
+  --input-bg: #0b1612;
+  --green-ink: #7fcfa4;
+  --green-tint: rgba(46, 133, 96, 0.18);
+  --green-line: rgba(127, 207, 164, 0.4);
+  --danger-tint: rgba(208, 106, 106, 0.13);
+  --danger-line: rgba(208, 106, 106, 0.45);
+  --shadow-pop: 0 10px 26px -8px rgba(0, 0, 0, 0.6);
+  color: var(--ink);
+}
 .up-public-body {
   width: min(100% - 32px, 1500px);
   margin: 0 auto clamp(40px, 6vw, 80px);
