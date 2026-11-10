@@ -168,3 +168,5 @@ Final follow-up: all seven Harness checks passed after the sidebar visibility im
 
 2026-11-10 racing pages + publishing tool (LOCAL): Entries/Results by date (day strip marks racing days), race card, race page (entries or official chart with payouts), horse and person profiles, Workouts, Stakes, Leaders (published Stayblz results only), honest Speed figures page. Admin: Publish racing (days, tracks, workouts) and race-day editor (CSV/paste import with loose headers, races, runners with search-or-create, scratches, results + payouts, publish/unpublish, delete drafts). Fixed: payouts table forced 680px min width on phones.
 - Checks: build, `tests/racing.spec.ts` 4/4, two old flat-record tests retargeted (late replies now on Leaders; malformed data on `/racing-records`).
+
+2026-11-11 RELEASED racing pages + Publish racing (`80cea8c`). Checks: build, Playwright 118/118, audit 0. Live guest smoke at 375/1440: landing, Updates, posts, FAQ, Terms, sign-up, 404, and /entries, /racing/days/:id, /admin/racing redirect to login; no CSP errors or overflow. Not verified live: signed-in racing pages and the admin tool with real data.
