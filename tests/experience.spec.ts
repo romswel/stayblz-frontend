@@ -178,7 +178,11 @@ test.describe("Updates", () => {
     expect(saved).toEqual({ updatesPopup: false, updatesSeen: true });
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /^Updates/ }).click();
     await expect(page.getByRole("heading", { name: "Updates", exact: true, level: 1 })).toBeVisible();
-    await expect(page.getByRole("checkbox", { name: "Pop-up for new posts" })).not.toBeChecked();
+    // The pop-up preference lives in the small Updates settings menu.
+    await page.getByRole("button", { name: "Settings" }).click();
+    await expect(page.getByRole("checkbox", { name: /Pop-up for new posts/ })).not.toBeChecked();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("checkbox", { name: /Pop-up for new posts/ })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Safer accounts and admin tools" })).toBeVisible();
   });
 
@@ -212,7 +216,10 @@ test.describe("Updates", () => {
     await expect(page.getByRole("heading", { name: "Updates", level: 1 })).toBeVisible();
     await expect(page.getByRole("link", { name: "Write a post" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Manage Updates" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Updates sections" })).toHaveCount(0);
     await page.goto("/admin/updates");
+    await expect(page.getByRole("heading", { name: "This page isn't on the card" })).toBeVisible();
+    await page.goto("/updates/manage");
     await expect(page.getByRole("heading", { name: "This page isn't on the card" })).toBeVisible();
 
     const admin = { ...member, role: "admin", platformRole: "admin" };
@@ -252,7 +259,15 @@ test.describe("Updates", () => {
         { tag: "fixed", text: "Long names no longer overlap." },
       ],
     });
-    await expect(page).toHaveURL(/\/admin\/updates\/00000000-0000-4000-8000-000000000009$/);
+    await expect(page).toHaveURL(/\/updates\/manage\/00000000-0000-4000-8000-000000000009$/);
+    // Managing posts lives inside Updates: no separate menu entry, and old links still work.
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /Manage/ })).toHaveCount(0);
+    await page.goto("/admin/updates");
+    await expect(page).toHaveURL(/\/updates\/manage$/);
+    await expect(page.getByRole("heading", { name: "Manage posts", level: 1 })).toBeVisible();
+    const sections = page.getByRole("navigation", { name: "Updates sections" });
+    await sections.getByRole("link", { name: "Feed" }).click();
+    await expect(page.getByRole("heading", { name: "Updates", level: 1 })).toBeVisible();
   });
 });
 
@@ -397,6 +412,8 @@ test.describe("account area", () => {
     await sections.getByRole("link", { name: "Security" }).click();
     await expect(page.getByRole("heading", { name: "Password" })).toBeVisible();
     await page.getByRole("button", { name: "Sign out of all devices" }).click();
+    const sure = page.getByRole("alertdialog", { name: "Sign out on every device?" });
+    await sure.getByRole("button", { name: "Sign out everywhere" }).click();
     await expect(page).toHaveURL(/\/login$/);
     expect(logoutBody).toEqual({ everywhere: true });
   });
@@ -421,8 +438,11 @@ test.describe("navigation", () => {
     await api(page, member);
     await page.goto("/updates");
     await expect(page.getByRole("heading", { name: "Updates", level: 1 })).toBeVisible();
-    await page.keyboard.press("/");
-    await expect(page.getByRole("searchbox", { name: "Search racing records" })).toBeFocused();
+    // Under a busy test run the key can arrive before the shortcut listener is attached; retry it.
+    await expect(async () => {
+      await page.keyboard.press("/");
+      await expect(page.getByRole("searchbox", { name: "Search racing records" })).toBeFocused({ timeout: 1000 });
+    }).toPass({ timeout: 8000 });
     await page.getByRole("searchbox", { name: "Search updates" }).click();
     await page.keyboard.type("a/b");
     await expect(page.getByRole("searchbox", { name: "Search updates" })).toHaveValue("a/b");

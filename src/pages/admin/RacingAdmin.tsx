@@ -4,6 +4,7 @@ import { api } from "../../api";
 import LookupField, { type Picked } from "../../components/racing/admin/LookupField";
 import { breedLabels, dateLabel, shiftDate, surfaceLabels, todayISO } from "../../components/racing/format";
 import type { RaceDay, Track, Workout } from "../../components/racing/types";
+import { useConfirm } from "../../components/ui/Confirm";
 import "../../components/racing/racing.css";
 import "../../components/updates/updates.css";
 
@@ -254,6 +255,7 @@ function TracksTab({ tracks, reload }: { tracks: Track[]; reload: () => void }) 
 type WorkForm = { id: string; horse: Picked; trackId: string; date: string; distance: string; unit: string; surface: string; time: string; rank: string; rankOf: string; note: string; status: "draft" | "published" };
 const emptyWork = (): WorkForm => ({ id: "", horse: null, trackId: "", date: todayISO(), distance: "", unit: "furlongs", surface: "dirt", time: "", rank: "", rankOf: "", note: "", status: "published" });
 function WorkoutsTab({ tracks }: { tracks: Track[] }) {
+  const confirm = useConfirm();
   const list = useList<{ workouts: Workout[] }>(`/api/admin/racing/workouts?from=${shiftDate(todayISO(), -30)}&to=${todayISO()}`);
   const [form, setForm] = useState<WorkForm>(emptyWork);
   const [error, setError] = useState("");
@@ -340,6 +342,13 @@ function WorkoutsTab({ tracks }: { tracks: Track[] }) {
                         className="btn btn-quiet up-danger"
                         aria-label={`Delete workout for ${w.horse.name}`}
                         onClick={async () => {
+                          const sure = await confirm({
+                            title: `Delete this workout for ${w.horse.name}?`,
+                            message: "It's removed from the public Workouts list and can't be brought back.",
+                            confirmLabel: "Delete workout",
+                            tone: "danger",
+                          });
+                          if (!sure) return;
                           try {
                             await api.delete(`/api/admin/racing/workouts/${w.id}`);
                             list.reload();

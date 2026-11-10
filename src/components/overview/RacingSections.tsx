@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import DialogHead from "../ui/DialogHead";
 import Modal from "../Modal";
 import type { RacingRecord, SectionKey } from "../landing/useRacingOverview";
 
@@ -143,14 +144,8 @@ export function RecordDialog({
 }) {
   return (
     <Modal label={record.name} onClose={onClose}>
+      <DialogHead kicker={`${sectionNames[kind]} · Published record`} title={record.name} onClose={onClose} />
       <div className="ws-dialog">
-        <button className="ws-button" onClick={onClose}>
-          Close
-        </button>
-        <span className="ov-kicker">
-          {sectionNames[kind]} · Published record
-        </span>
-        <h2>{record.name}</h2>
         <dl className="ov-record-details">
           {Object.entries(record)
             .filter(

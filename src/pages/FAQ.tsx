@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import usePublicMotion from "../components/usePublicMotion";
 import PublicHeader from "../components/PublicHeader";
 import PublicFooter from "../components/PublicFooter";
+import BackButton from "../components/ui/BackButton";
+import { useAuth } from "../auth";
 import "./landing.css";
 import "./faq.css";
 
@@ -120,6 +122,7 @@ const topics = [
 
 export default function FAQ() {
   const pageRef = usePublicMotion();
+  const signedIn = !!useAuth().user;
   const [search, setSearch] = useState("");
   const query = search.trim().toLowerCase();
   const filtered = topics
@@ -141,6 +144,7 @@ export default function FAQ() {
       </a>
       <PublicHeader />
       <main className="faq-main" id="faq-main">
+        <BackButton className="legal-back public-back" signedIn={signedIn} />
         <div className="faq-intro">
           <div>
             <span className="ld-kicker">THE HELP DESK / STAYBLZ</span>

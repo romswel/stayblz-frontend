@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../../api";
+import { useConfirm } from "../ui/Confirm";
 export default function ConversationInvites({
   conversationId,
 }: {
   conversationId: string;
 }) {
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [link, setLink] = useState("");
@@ -53,6 +55,13 @@ export default function ConversationInvites({
   }
   async function revoke(id: string) {
     if (busy) return;
+    const sure = await confirm({
+      title: "Cancel this invitation?",
+      message: "The link stops working. Anyone who hasn't joined yet will need a new invitation.",
+      confirmLabel: "Cancel invitation",
+      cancelLabel: "Keep it",
+    });
+    if (!sure) return;
     setBusy(true);
     setError("");
     try {

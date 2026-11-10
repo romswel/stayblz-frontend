@@ -32,11 +32,11 @@
   --ws-header: #10271c;
 }
 .ws-header {
-  height: 88px;
+  height: calc(88px + var(--safe-top, 0px));
   display: flex;
   align-items: center;
   gap: 28px;
-  padding: 0 28px;
+  padding: var(--safe-top, 0px) 28px 0;
   background: var(--ws-header);
   color: #f6f2e4;
   position: sticky;
@@ -154,7 +154,7 @@
 }
 .ws-sidebar {
   position: fixed;
-  top: 88px;
+  top: calc(88px + var(--safe-top, 0px));
   bottom: 0;
   left: 0;
   width: var(--ws-sidebar);
@@ -220,20 +220,111 @@
 }
 .ws-sidebar-bottom {
   border-top: 1px solid var(--ws-line);
-  padding: 12px;
+  padding: 10px 12px calc(10px + var(--safe-bottom, 0px));
 }
-.ws-sidebar-bottom button {
+.ws-logout {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 11px;
   width: 100%;
+  min-height: 40px;
   padding: 9px 12px;
   background: none;
   color: var(--ws-muted);
-  border: 0;
-  font-size: 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
 }
-.ws-sidebar-bottom button:hover {
+.ws-logout:hover:not(:disabled) {
+  color: var(--danger-ink);
+  background: var(--danger-tint);
+  border-color: var(--danger-line);
+}
+.ws-logout svg {
+  flex: none;
+}
+
+/* Sidebar edge: the whole border line is clickable, plus a small round button near the top. */
+.ws-edge {
+  position: fixed;
+  top: calc(88px + var(--safe-top, 0px));
+  bottom: 0;
+  left: calc(var(--ws-sidebar) - 6px);
+  width: 12px;
+  z-index: 25;
+  transition: left 180ms ease;
+}
+.ws-edge-line {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.ws-edge-line::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  background: var(--ws-gold);
+  opacity: 0;
+  transform: scaleY(0.4);
+  transition: opacity 160ms ease, transform 220ms var(--ease-out, ease-out);
+}
+.ws-edge-line:hover::after,
+.ws-edge:has(.ws-collapse:hover) .ws-edge-line::after {
+  opacity: 0.8;
+  transform: none;
+}
+.ws-collapse {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--ws-line);
+  background: var(--ws-paper);
+  color: var(--ws-muted);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: color 160ms ease, border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+/* A larger invisible touch area around the small button. */
+.ws-collapse::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+.ws-collapse:hover {
   color: var(--ws-ink);
+  border-color: var(--ws-gold);
+  transform: scale(1.1);
+}
+.ws-collapse svg {
+  transition: transform 220ms var(--ease-out, ease-out);
+}
+.ws-collapsed .ws-collapse svg {
+  transform: rotate(180deg);
+}
+
+/* Back bar above every page (desktop); phones use the arrow in the header. */
+.ws-pagebar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  animation: ws-page-in 200ms var(--ease-out, ease-out) backwards;
+}
+.ws-header .ws-mobile-back {
+  display: none;
 }
 .ws-main {
   margin-left: var(--ws-sidebar);
@@ -270,7 +361,7 @@
   justify-content: center;
   padding: 12px;
 }
-.ws-collapsed .ws-sidebar-bottom button {
+.ws-collapsed .ws-logout {
   justify-content: center;
 }
 .ws-mobile-menu {
@@ -359,19 +450,46 @@
   margin-right: 10px;
   margin-top: 10px;
 }
+/* Phone menu: a panel that slides in from the left. */
+.workspace .modal.modal-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(330px, 88vw);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0 16px 16px 0;
+  border-left: 0;
+  padding: var(--safe-top, 0px) 0 var(--safe-bottom, 0px) var(--safe-left, 0px);
+  animation: ws-drawer-in 260ms var(--ease-out, ease-out) both;
+}
+.workspace .modal.modal-drawer::before {
+  display: none;
+}
 .ws-drawer {
-  padding: 18px;
-  animation: ws-drawer-in 220ms var(--ease-out, ease-out) both;
+  padding: 0 0 18px;
+}
+.ws-drawer nav {
+  padding: 0 14px;
+}
+.ws-drawer-logout {
+  margin: 8px 14px 0;
+  width: calc(100% - 28px);
 }
 @keyframes ws-drawer-in {
-  from { opacity: 0; transform: translateX(-18px); }
+  from { transform: translateX(-100%); }
 }
-/* Every page fades up a little on navigation (ws-page remounts per route). */
+/* Every page fades in on navigation (ws-page remounts per route); its blocks rise in (ui.css). */
 .ws-page {
-  animation: ws-page-in 240ms var(--ease-out, ease-out) backwards;
+  animation: ws-page-fade 180ms ease backwards;
+}
+@keyframes ws-page-fade {
+  from { opacity: 0; }
 }
 @keyframes ws-page-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
 }
 .ws-page .panel {
   transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -383,7 +501,7 @@
   transform: scale(0.94);
 }
 .ws-drawer nav {
-  margin: 10px 0;
+  margin: 4px 0 10px;
 }
 .ws-drawer .ws-nav-item {
   font-size: 14px;
@@ -407,7 +525,7 @@
 @media (max-width: 1150px) {
   .ws-header {
     gap: 16px;
-    padding: 0 20px;
+    padding: var(--safe-top, 0px) 20px 0;
   }
   .ws-account > div {
     display: none;
@@ -441,7 +559,7 @@
     height: auto;
     min-height: 76px;
     flex-wrap: wrap;
-    padding: 12px 16px;
+    padding: calc(12px + var(--safe-top, 0px)) 16px 12px;
     gap: 10px;
   }
   .ws-mobile-menu {
@@ -480,8 +598,18 @@
     width: 29px;
     height: 29px;
   }
-  .ws-sidebar {
+  .ws-sidebar,
+  .ws-edge,
+  .ws-pagebar {
     display: none;
+  }
+  .ws-header .ws-mobile-back {
+    display: inline-flex;
+    border-color: #ffffff30;
+    background: transparent;
+    color: inherit;
+    width: 36px;
+    height: 36px;
   }
   .ws-main {
     margin-left: 0;
@@ -501,7 +629,7 @@
 }
 @media (max-width: 380px) {
   .ws-header {
-    padding: 10px;
+    padding: calc(10px + var(--safe-top, 0px)) 10px 10px;
     gap: 5px;
   }
   .ws-brand > span {
@@ -540,3 +668,20 @@
   gap: 4px 14px;
 }
 .ws-footer { flex-wrap: wrap; }
+
+/* Installed app on phones with a notch: keep content clear of the screen edges. */
+@media (max-width: 800px) {
+  .ws-main {
+    padding-bottom: var(--safe-bottom, 0px);
+  }
+}
+/* Small phones: with the Back arrow in the header, show the crest only so every icon fits on one row. */
+@media (max-width: 480px) {
+  .ws-header:has(.ws-mobile-back) .ws-brand > span {
+    display: none;
+  }
+  .ws-header .ws-mobile-back {
+    width: 34px;
+    height: 34px;
+  }
+}

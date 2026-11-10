@@ -5,9 +5,15 @@ interface Props {
   onClose: () => void;
   children: ReactNode;
   label: string;
+  /** "alertdialog" for confirmations that need an answer. */
+  role?: 'dialog' | 'alertdialog';
+  /** Extra class for the dialog box, e.g. "modal-sm" or "modal-wide". */
+  className?: string;
+  /** Element (by id) that describes the dialog, for screen readers. */
+  describedBy?: string;
 }
 
-export default function Modal({ onClose, children, label }: Props) {
+export default function Modal({ onClose, children, label, role = 'dialog', className, describedBy }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -18,7 +24,13 @@ export default function Modal({ onClose, children, label }: Props) {
       'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     ) ?? []).filter((element) => element.getClientRects().length > 0);
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeRef.current();
+      // With dialogs on top of each other (menu → "Log out?"), only the top-most one handles keys.
+      const dialogs = document.querySelectorAll('.modal');
+      if (dialogs[dialogs.length - 1] !== dialogRef.current) return;
+      if (e.key === 'Escape') {
+        closeRef.current();
+        return;
+      }
       if (e.key !== 'Tab') return;
       const elements = focusable();
       const first = elements[0];
@@ -36,7 +48,8 @@ export default function Modal({ onClose, children, label }: Props) {
     }
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
-    (focusable()[0] ?? dialogRef.current)?.focus();
+    const preferred = dialogRef.current?.querySelector<HTMLElement>('[data-autofocus]');
+    (preferred ?? focusable()[0] ?? dialogRef.current)?.focus();
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = previousOverflow;
@@ -47,12 +60,13 @@ export default function Modal({ onClose, children, label }: Props) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal panel"
+        className={`modal panel${className ? ` ${className}` : ''}`}
         ref={dialogRef}
         tabIndex={-1}
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-label={label}
+        aria-describedby={describedBy}
         onClick={(e) => e.stopPropagation()}
       >
         {children}

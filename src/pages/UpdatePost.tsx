@@ -10,6 +10,7 @@ import StatusPage from "../components/status/StatusPage";
 import usePublicMotion from "../components/usePublicMotion";
 import PublicHeader from "../components/PublicHeader";
 import PublicFooter from "../components/PublicFooter";
+import BackButton from "../components/ui/BackButton";
 import "../components/updates/updates.css";
 import "./landing.css";
 import "./faq.css";
@@ -188,6 +189,7 @@ export default function UpdatePost() {
       <PublicHeader />
       <main className="faq-main up-public" id="updates-main">
         <div className="up-public-body up-public-post" key={slug}>
+          <BackButton className="public-back" signedIn={false} />
           <PostBody slug={slug} signedIn={false} />
         </div>
       </main>

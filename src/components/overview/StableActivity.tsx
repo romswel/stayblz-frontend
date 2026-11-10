@@ -7,6 +7,8 @@ import type {
   TrackedHorse,
 } from "../../types";
 import { OverviewSection } from "./RacingSections";
+import { useAuth } from "../../auth";
+import { accountDraftKey, useDraft } from "../ui/useDraft";
 
 interface Post {
   id: string;
@@ -30,7 +32,9 @@ export default function StableActivity() {
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(hasStable);
   const [retry, setRetry] = useState(0);
-  const [draft, setDraft] = useState("");
+  const { user } = useAuth();
+  // The feed post being written is kept per stable on this device until it's posted.
+  const [draft, setDraft] = useDraft(stable?.id ? accountDraftKey(user?.id, `feed.${stable.id}`) : null, "");
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState("");
   useEffect(() => {

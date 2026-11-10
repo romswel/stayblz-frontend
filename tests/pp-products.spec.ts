@@ -190,6 +190,10 @@ test("horse history excludes Harness records and blocks stale cart selections", 
   await page.getByRole("link", { name: "View cart", exact: true }).click();
   await expect(page.locator(".pp-cart-items")).toContainText("Test Horse");
   await page.getByRole("button", { name: "Clear cart", exact: true }).click();
+  await page
+    .getByRole("alertdialog", { name: "Clear your cart?" })
+    .getByRole("button", { name: "Clear cart", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Your cart is empty.", exact: true }),
   ).toBeVisible();

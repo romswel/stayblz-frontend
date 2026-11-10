@@ -346,6 +346,13 @@ test("failed logout reports the error and does not pretend the cookie session en
   );
   await page.goto("/dashboard");
   await page.getByRole("button", { name: "Log out", exact: true }).click();
+  // Logging out always asks first; "Stay signed in" keeps you here.
+  const sure = page.getByRole("alertdialog", { name: "Log out of Stayblz?" });
+  await sure.getByRole("button", { name: "Stay signed in" }).click();
+  await expect(sure).toHaveCount(0);
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await sure.getByRole("button", { name: "Log out", exact: true }).click();
   await expect(page.getByRole("alert")).toHaveText(
     "Sign-out could not be confirmed.",
   );
@@ -353,7 +360,8 @@ test("failed logout reports the error and does not pretend the cookie session en
   await page.route("**/api/auth/logout", (route) =>
     route.fulfill({ json: { ok: true } }),
   );
-  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await page.getByRole("button", { name: "Log out", exact: true }).first().click();
+  await sure.getByRole("button", { name: "Log out", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Sign in", exact: true }),
   ).toBeVisible();

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import Modal from "../Modal";
+import DialogHead from "../ui/DialogHead";
 import { PostMeta, UpdateItems } from "./UpdateParts";
 import { useUpdates } from "./UpdatesContext";
 import "./updates.css";
@@ -20,42 +21,51 @@ export default function UpdatesPopup() {
     void markSeen();
   };
   return (
-    <Modal label="Stayblz Updates" onClose={dismiss}>
+    <Modal label="Stayblz Updates" onClose={dismiss} className="modal-up">
       <div className={`up-pop kind-${post.kind}`}>
-        <div className="up-pop-ribbon" aria-hidden="true">
-          <span>✦</span> What's happening on Stayblz
-        </div>
-        <PostMeta post={post} />
-        <h2>{post.title}</h2>
-        {post.summary && <p>{post.summary}</p>}
-        <UpdateItems post={post} limit={4} />
-        {more > 0 && (
-          <p className="up-pop-more">
-            {more === 1 ? "1 more new post" : `${more} more new posts`} on the Updates page.
+        <DialogHead
+          kicker={
+            <>
+              <span className="up-pop-spark" aria-hidden="true">
+                ✦
+              </span>{" "}
+              New on Stayblz
+            </>
+          }
+          title={post.title}
+          onClose={dismiss}
+        />
+        <div className="dlg up-pop-body">
+          <PostMeta post={post} />
+          {post.summary && <p className="up-pop-summary">{post.summary}</p>}
+          <UpdateItems post={post} limit={4} />
+          {more > 0 && (
+            <p className="up-pop-more">
+              {more === 1 ? "1 more new post" : `${more} more new posts`} on the Updates page.
+            </p>
+          )}
+          <div className="dlg-actions">
+            <button type="button" className="btn btn-quiet" onClick={dismiss} data-autofocus>
+              Got it
+            </button>
+            <Link className="btn btn-primary" to={`/updates/${post.slug}`} onClick={dismiss}>
+              Read the full post
+            </Link>
+          </div>
+          <p className="up-pop-note">
+            Every post stays on <strong>Updates</strong> in the menu.{" "}
+            <button
+              type="button"
+              className="up-link-button"
+              onClick={() => {
+                setClosed(true);
+                void setPopup(false);
+              }}
+            >
+              Don't show pop-ups again
+            </button>
           </p>
-        )}
-        <div className="up-pop-actions">
-          <Link className="btn btn-primary" to={`/updates/${post.slug}`} onClick={dismiss}>
-            Read the full post
-          </Link>
-          <button type="button" className="btn btn-quiet" onClick={dismiss}>
-            Got it
-          </button>
-          <button
-            type="button"
-            className="btn btn-quiet up-pop-off"
-            onClick={() => {
-              setClosed(true);
-              void setPopup(false);
-            }}
-          >
-            Don't show pop-ups again
-          </button>
         </div>
-        <p className="up-pop-note">
-          Every post stays on <strong>Updates</strong> in the menu. You can switch pop-ups back on there or in
-          Preferences.
-        </p>
       </div>
     </Modal>
   );

@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api";
+import { useAuth } from "../../auth";
+import UpdatesHeader from "../../components/updates/UpdatesHeader";
+import { useConfirm } from "../../components/ui/Confirm";
+import { accountDraftKey, useDraft } from "../../components/ui/useDraft";
 import RichText from "../../components/updates/RichText";
 import { PostMeta, UpdateItems } from "../../components/updates/UpdateParts";
 import { useUpdates } from "../../components/updates/UpdatesContext";
@@ -119,21 +123,7 @@ function PostList() {
   }, [posts]);
   return (
     <div className="up-admin">
-      <header className="up-hero">
-        <div>
-          <div className="eyebrow">Administration</div>
-          <h1>Manage Updates</h1>
-          <p className="sub">
-            Post release notes, announcements, news, maintenance notices and events. Published posts appear on{" "}
-            <Link to="/updates">Updates</Link> and can pop up once for each member.
-          </p>
-        </div>
-        <div className="up-hero-actions">
-          <Link className="btn btn-primary" to="/admin/updates/new">
-            New post
-          </Link>
-        </div>
-      </header>
+      <UpdatesHeader manage />
       <div className="up-toolbar">
         <div className="up-chips" role="group" aria-label="Status">
           {(["", "published", "draft", "archived"] as const).map((status) => (
@@ -171,7 +161,7 @@ function PostList() {
                 <span className={`up-status status-${isScheduled(post) ? "scheduled" : post.status}`}>
                   {isScheduled(post) ? "Scheduled" : statusLabels[post.status]}
                 </span>
-                <Link to={`/admin/updates/${post.id}`} className="up-admin-title">
+                <Link to={`/updates/manage/${post.id}`} className="up-admin-title">
                   {post.title}
                 </Link>
                 <small>
@@ -185,7 +175,7 @@ function PostList() {
                     View
                   </Link>
                 )}
-                <Link className="btn btn-quiet" to={`/admin/updates/${post.id}`}>
+                <Link className="btn btn-quiet" to={`/updates/manage/${post.id}`}>
                   Edit
                 </Link>
               </div>
@@ -201,11 +191,18 @@ function Editor({ id }: { id: string | null }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { reload: reloadMenu } = useUpdates();
+  const { user } = useAuth();
+  const confirm = useConfirm();
   const { posts, loading, error: loadError, reload } = useAdminUpdates();
   const existing = id ? posts?.find((post) => post.id === id) : null;
-  const [draft, setDraft] = useState<Draft>(empty);
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  // Unsaved writing is kept on this device (per account and per post) until it's saved or discarded.
+  const [kept, setKept, clearKept, restored] = useDraft<Draft | null>(accountDraftKey(user?.id, `update.${id ?? "new"}`), null, {
+    maxAgeDays: 14,
+  });
+  const [draft, setDraft] = useState<Draft>(() => kept ?? empty);
+  const [slugTouched, setSlugTouched] = useState(() => !!kept?.slug);
+  const [dirty, setDirty] = useState(() => !!kept);
+  const usedKept = useRef(restored);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState(() => {
@@ -213,15 +210,23 @@ function Editor({ id }: { id: string | null }) {
     return typeof state?.notice === "string" ? state.notice : "";
   });
   const [view, setView] = useState<"write" | "preview">("write");
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (existing) {
+      // Keep restored unsaved changes the first time the post loads.
+      if (usedKept.current) {
+        usedKept.current = false;
+        setSlugTouched(true);
+        return;
+      }
       setDraft(fromPost(existing));
       setSlugTouched(true);
       setDirty(false);
     }
   }, [existing?.id, existing?.updatedAt]);
+  useEffect(() => {
+    if (dirty) setKept(draft);
+  }, [draft, dirty, setKept]);
   // Warn before leaving with unsaved changes.
   useEffect(() => {
     if (!dirty) return;
@@ -253,6 +258,26 @@ function Editor({ id }: { id: string | null }) {
 
   async function save(status: UpdatePost["status"]) {
     if (busy) return;
+    if ((draft.slug || slugify(draft.title)) === "manage") {
+      setError('The web address "manage" is used by the admin page. Choose another one.');
+      return;
+    }
+    if (existing?.status === "published" && status !== "published") {
+      const sure = await confirm(
+        status === "archived"
+          ? {
+              title: "Archive this post?",
+              message: "It disappears from Updates for everyone. You can publish it again later.",
+              confirmLabel: "Archive post",
+            }
+          : {
+              title: "Unpublish this post?",
+              message: "It goes back to a draft that only admins can see.",
+              confirmLabel: "Unpublish",
+            },
+      );
+      if (!sure) return;
+    }
     setBusy(true);
     setError("");
     setNotice("");
@@ -277,6 +302,7 @@ function Editor({ id }: { id: string | null }) {
         ? await api.put<{ update: UpdatePost }>(`/api/admin/updates/${id}`, body)
         : await api.post<{ update: UpdatePost }>("/api/admin/updates", body);
       setDirty(false);
+      clearKept();
       reloadMenu();
       const message =
         status === "draft"
@@ -286,7 +312,7 @@ function Editor({ id }: { id: string | null }) {
             : isScheduled(result.update)
               ? `Scheduled for ${formatDate(result.update.publishedAt, true)}.`
               : "Published. It's live on Updates.";
-      if (!id) navigate(`/admin/updates/${result.update.id}`, { replace: true, state: { notice: message } });
+      if (!id) navigate(`/updates/manage/${result.update.id}`, { replace: true, state: { notice: message } });
       else {
         reload();
         setNotice(message);
@@ -300,13 +326,21 @@ function Editor({ id }: { id: string | null }) {
 
   async function remove() {
     if (!id || busy) return;
+    const sure = await confirm({
+      title: "Delete this post for good?",
+      message: "It's removed from Updates and can't be brought back. Archive it instead if you might need it again.",
+      confirmLabel: "Delete post",
+      tone: "danger",
+    });
+    if (!sure) return;
     setBusy(true);
     setError("");
     try {
       await api.delete(`/api/admin/updates/${id}`);
       setDirty(false);
+      clearKept();
       reloadMenu();
-      navigate("/admin/updates", { replace: true });
+      navigate("/updates/manage", { replace: true });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The post could not be deleted.");
       setBusy(false);
@@ -318,7 +352,7 @@ function Editor({ id }: { id: string | null }) {
     return (
       <div className="up-empty">
         <h2>That post no longer exists</h2>
-        <Link className="btn btn-quiet" to="/admin/updates">
+        <Link className="btn btn-quiet" to="/updates/manage">
           Back to all posts
         </Link>
       </div>
@@ -352,7 +386,9 @@ function Editor({ id }: { id: string | null }) {
   return (
     <div className="up-admin up-editor-page">
       <nav className="up-crumbs" aria-label="Breadcrumb">
-        <Link to="/admin/updates">Manage Updates</Link>
+        <Link to="/updates">Updates</Link>
+        <span aria-hidden="true">/</span>
+        <Link to="/updates/manage">Manage posts</Link>
         <span aria-hidden="true">/</span>
         <span aria-current="page">{id ? "Edit post" : "New post"}</span>
       </nav>
@@ -531,6 +567,23 @@ function Editor({ id }: { id: string | null }) {
               {notice}
             </p>
           )}
+          {dirty && restored && (
+            <p className="up-kept" role="status">
+              We kept your unsaved changes from last time.{" "}
+              <button
+                type="button"
+                className="up-link-button"
+                onClick={() => {
+                  clearKept();
+                  setDraft(existing ? fromPost(existing) : empty);
+                  setSlugTouched(!!existing);
+                  setDirty(false);
+                }}
+              >
+                Discard them
+              </button>
+            </p>
+          )}
           <div className="up-form-actions">
             <button className="btn btn-primary" disabled={busy}>
               {busy ? "Saving…" : published ? "Save and keep published" : draft.publishAt && Date.parse(draft.publishAt) > Date.now() ? "Schedule" : "Publish"}
@@ -543,21 +596,10 @@ function Editor({ id }: { id: string | null }) {
                 Archive
               </button>
             )}
-            {id && !confirmDelete && (
-              <button type="button" className="btn btn-quiet up-danger" disabled={busy} onClick={() => setConfirmDelete(true)}>
+            {id && (
+              <button type="button" className="btn btn-quiet up-danger" disabled={busy} onClick={() => void remove()}>
                 Delete
               </button>
-            )}
-            {id && confirmDelete && (
-              <span className="up-confirm" role="group" aria-label="Confirm delete">
-                Delete for good?
-                <button type="button" className="btn btn-quiet up-danger" disabled={busy} onClick={() => void remove()}>
-                  Yes, delete
-                </button>
-                <button type="button" className="btn btn-quiet" onClick={() => setConfirmDelete(false)}>
-                  Keep it
-                </button>
-              </span>
             )}
           </div>
         </form>
