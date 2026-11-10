@@ -163,3 +163,5 @@ Final follow-up: all seven Harness checks passed after the sidebar visibility im
 - Fixed during checks: code fields truncated pasted "123 456"; a reply without `user` could sign people out; connection notice duplicated page alerts.
 - Checks: build OK, Playwright 112/112 (new `tests/experience.spec.ts`), audit 0; screenshots at 375/1440 in both themes, no CSP violations or overflow.
 - Not verified: live deploy, real phones, real emails.
+
+2026-11-10 RELEASED on `main` (`906ae43`, then `085f7c0`: public Updates pages forced to the dark landing palette — chips were unreadable on the always-dark landing in light mode, found by the live smoke test). Checks: build, Playwright 114/114 (+25 re-run after the fix), audit 0. Live guest smoke at 375/1440: landing, /updates, a post, members-only post (asks to log in), /bulletin redirect, FAQ, Terms, /pps -> login, sign-up role picker, 404; no CSP errors or overflow. Not verified live: signed-in pages, pop-up, admin editor, real phones.
