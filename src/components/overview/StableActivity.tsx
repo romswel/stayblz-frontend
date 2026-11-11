@@ -222,10 +222,10 @@ export default function StableActivity() {
                 Messages <Link to="/team-messages">Open ↗</Link>
               </h3>
               {messages.slice(0, 3).map((m) => (
-                <Link className="ov-message" key={m.id} to="/team-messages">
+                <Link className="ov-message" key={m.id} to={`/team-messages/${m.id}`}>
                   <strong>
                     {m.title}
-                    {m.unread > 0 && <span>{m.unread}</span>}
+                    {m.unread && <span>New</span>}
                   </strong>
                   <p>{m.lastMessage}</p>
                 </Link>
