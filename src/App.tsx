@@ -190,9 +190,9 @@ export default function App() {
           path="/racing-records/notes"
           element={<PublishedRacing title="Racing notes" kinds={["notes"]} />}
         />
-        <Route path="/messages" element={<Messages />} />
+        <Route path="/messages/:chatId?" element={<Messages />} />
         <Route
-          path="/team-messages"
+          path="/team-messages/:chatId?"
           element={
             <StableGate>
               <Messages mode="team" />

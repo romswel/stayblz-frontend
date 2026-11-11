@@ -66,7 +66,16 @@ export function clearAccountDrafts(accountId?: string) {
 export function useDraft<T>(
   key: string | null,
   initial: T,
-  { maxAgeDays = 7, isEmpty }: { maxAgeDays?: number; isEmpty?: (value: T) => boolean } = {},
+  {
+    maxAgeDays = 7,
+    isEmpty,
+    delayMs = 250,
+  }: {
+    maxAgeDays?: number;
+    isEmpty?: (value: T) => boolean;
+    /** Wait this long after the last change before saving (0 = save right away, e.g. unsent messages). */
+    delayMs?: number;
+  } = {},
 ): [T, Dispatch<SetStateAction<T>>, () => void, boolean] {
   const initialRef = useRef(initial);
   const [state, setState] = useState(() => (key ? read(key, initial, maxAgeDays) : { value: initial, restored: false }));
@@ -92,7 +101,7 @@ export function useDraft<T>(
       } catch {
         /* Full or blocked storage: the form still works, it just isn't saved. */
       }
-    }, 250);
+    }, delayMs);
     return () => window.clearTimeout(timer);
     // isEmpty is expected to be stable in behaviour.
   }, [key, state.value]);

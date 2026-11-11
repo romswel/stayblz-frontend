@@ -9,11 +9,17 @@ const conversationId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const conversation = {
   id: conversationId,
   title: "Race day conversation",
-  participants: ["Racing Customer"],
+  kind: "group",
+  participants: [],
   lastMessage: "",
+  lastMessageMine: false,
   lastMessageAt: "2026-11-03T00:00:00Z",
-  unread: 0,
+  unread: false,
+  request: false,
+  waiting: false,
   canInvite: true,
+  members: [{ id: "11111111-1111-4111-8111-111111111111", name: "Racing Customer", me: true, pending: false }],
+  reads: [],
   messages: [],
 };
 test.beforeEach(async ({ page }) => {
@@ -116,6 +122,8 @@ test.beforeEach(async ({ page }) => {
       if (method === "PATCH") preferences = req.postDataJSON();
       return route.fulfill({ json: { preferences, deliveryAvailable: false } });
     }
+    if (path === "/api/messages/unread")
+      return route.fulfill({ json: { personal: 0, requests: 0, team: 0 } });
     if (path === "/api/messages") {
       expect(req.headers()["x-stayblz-stable"]).toBeUndefined();
       if (method === "POST") {
@@ -271,15 +279,13 @@ test("personal conversations and private invitations require an account but no s
   await expect(
     page.getByRole("heading", { name: "Messages", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/No stable membership is needed/)).toBeVisible();
-  await page
-    .getByRole("button", { name: "New conversation", exact: true })
-    .click();
-  await page.getByLabel("Conversation title").fill("Race day conversation");
-  await page
-    .getByRole("button", { name: "Create conversation", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Invite someone" }).click();
+  await expect(page.getByText(/No stable needed/)).toBeVisible();
+  await page.getByRole("button", { name: "New chat", exact: true }).first().click();
+  await page.getByRole("button", { name: "Group", exact: true }).click();
+  await page.getByLabel("Group name").fill("Race day conversation");
+  await page.getByRole("button", { name: "Create group", exact: true }).click();
+  // A new group opens its details with the invite form ready.
+  await expect(page).toHaveURL(new RegExp(`/messages/${conversationId}$`));
   await page.getByLabel("Recipient email").fill("friend@example.test");
   await page.getByRole("button", { name: "Create private invitation" }).click();
   await expect(page.getByLabel("Private conversation invitation")).toHaveValue(
@@ -288,6 +294,7 @@ test("personal conversations and private invitations require an account but no s
   await expect(
     page.getByText(/They will be able to read this conversation/),
   ).toBeVisible();
+  await page.keyboard.press("Escape");
   let requestBody: any;
   await page.route("**/api/messages/*/messages", (route) => {
     expect(route.request().headers()["x-stayblz-stable"]).toBeUndefined();
@@ -296,10 +303,14 @@ test("personal conversations and private invitations require an account but no s
       json: {
         message: {
           id: "message-1",
+          senderId: self.id,
           from: self.displayName,
           body: requestBody.body,
           sentAt: "2026-11-03T00:00:00Z",
           mine: true,
+          removed: false,
+          reactions: [],
+          replyTo: null,
         },
       },
     });
@@ -307,9 +318,11 @@ test("personal conversations and private invitations require an account but no s
   await page.getByLabel("Write a message").fill("See you at the races.");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(
-    page.locator(".bubble").getByText("See you at the races."),
+    page.locator(".mx-bubble").getByText("See you at the races."),
   ).toBeVisible();
+  await expect(page.getByText("Sent", { exact: true })).toBeVisible();
   expect(requestBody.clientId).toBeTruthy();
+  expect(requestBody.replyTo).toBeNull();
 });
 
 test("conversation invitations survive account loading and are consumed without stable setup", async ({
@@ -325,15 +338,11 @@ test("conversation invitations survive account loading and are consumed without 
     token,
   );
   await expect(page).toHaveURL(/\/messages$/);
-  await page
-    .getByRole("button", { name: "Accept conversation invitation" })
-    .click();
-  await expect(
-    page.getByText("Conversation invitation accepted."),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Join group" }).click();
+  await expect(page).toHaveURL(new RegExp(`/messages/${conversationId}$`));
   await expect(
     page
-      .locator(".thread-head")
+      .locator(".mx-thread-head")
       .getByText("Race day conversation", { exact: true }),
   ).toBeVisible();
 });

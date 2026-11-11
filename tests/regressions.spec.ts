@@ -81,13 +81,16 @@ test("late thread responses cannot replace the latest selected conversation", as
     });
   });
   await page.goto("/messages");
-  await page.getByRole("button", { name: /Thread b/ }).click();
+  // Open the slow chat, then switch before it answers.
+  await page.getByRole("link", { name: /Thread a/ }).click();
+  await page.getByRole("link", { name: /Thread b/ }).click();
   await expect(page.getByText("Body b", { exact: true })).toBeVisible();
   await page.waitForTimeout(500);
   await expect(page.getByText("Body a", { exact: true })).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Send", exact: true }),
-  ).toBeDisabled();
+  await expect(page.locator(".mx-thread-head")).toContainText("Thread b");
+  // Empty box: no Send button, just the quick thumbs up.
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send a thumbs up" })).toBeVisible();
 });
 
 test("watch updates reject duplicate clicks and show failures without losing the list", async ({

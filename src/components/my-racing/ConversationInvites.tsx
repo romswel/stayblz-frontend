@@ -3,11 +3,13 @@ import { api } from "../../api";
 import { useConfirm } from "../ui/Confirm";
 export default function ConversationInvites({
   conversationId,
+  initiallyOpen = false,
 }: {
   conversationId: string;
+  initiallyOpen?: boolean;
 }) {
   const confirm = useConfirm();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [email, setEmail] = useState("");
   const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false);

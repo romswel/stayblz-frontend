@@ -27,27 +27,8 @@ export interface User {
   preferences?: { marketingOptIn: boolean; updatesSeenAt: string; updatesPopup: boolean };
 }
 
-export interface Message {
-  id: string;
-  from: string;
-  body: string;
-  sentAt: string;
-  mine: boolean;
-}
-
-export interface ConversationPreview {
-  canInvite?: boolean;
-  id: string;
-  title: string;
-  participants: string[];
-  lastMessage: string;
-  lastMessageAt: string;
-  unread: number;
-}
-
-export interface Conversation extends ConversationPreview {
-  messages: Message[];
-}
+/** Chat list rows from /api/messages and /api/team-messages. */
+export type { ChatPreview as ConversationPreview } from "./components/messenger/types";
 
 export interface InventoryItem {
   id: string;

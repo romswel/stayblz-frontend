@@ -186,7 +186,7 @@ test("owners can create shareable invitations and members cannot see team admini
   ).toHaveCount(0);
 });
 
-test("messages save only after the server confirms; failed sends retain the draft and retry ID", async ({
+test("messages save only after the server confirms; failed sends keep the text and reuse the retry ID", async ({
   page,
 }) => {
   await page.addInitScript(() =>
@@ -197,20 +197,27 @@ test("messages save only after the server confirms; failed sends retain the draf
   );
   const conversation = {
     id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-    title: "Training plan",
-    participants: ["Owner User", "Teammate"],
+    kind: "direct",
+    title: "Teammate",
+    participants: ["Teammate"],
     lastMessage: "",
     lastMessageAt: "2026-11-03T00:00:00Z",
-    unread: 0,
+    unread: false,
+    members: [],
+    reads: [],
     messages: [],
   };
   await page.route("**/api/team-messages", (route) =>
-    route.fulfill({
-      json:
-        route.request().method() === "POST"
-          ? { conversation }
-          : { conversations: [] },
-    }),
+    route.fulfill({ json: { conversations: [] } }),
+  );
+  let started: any;
+  await page.route("**/api/team-messages/direct", (route) => {
+    started = route.request().postDataJSON();
+    expect(route.request().headers()["x-stayblz-stable"]).toBe(stableId);
+    return route.fulfill({ json: { conversation, before: null } });
+  });
+  await page.route(`**/api/team-messages/${conversation.id}`, (route) =>
+    route.fulfill({ json: { conversation, before: null } }),
   );
   let calls = 0;
   const ids: string[] = [];
@@ -229,34 +236,35 @@ test("messages save only after the server confirms; failed sends retain the draf
           json: {
             message: {
               id: "saved",
+              senderId: member.id,
               from: "Owner User",
               body: body.body,
               sentAt: "2026-11-03T01:00:00Z",
               mine: true,
+              removed: false,
+              reactions: [],
+              replyTo: null,
             },
           },
         });
   });
   await page.goto("/team-messages");
-  await page
-    .getByRole("button", { name: "New conversation", exact: true })
-    .click();
-  await page.getByLabel("Conversation title").fill("Training plan");
-  await page.getByLabel("Teammate", { exact: true }).check();
-  await page
-    .getByRole("button", { name: "Create conversation", exact: true })
-    .click();
+  await page.getByRole("button", { name: "New chat", exact: true }).first().click();
+  await page.getByRole("checkbox", { name: "Teammate", exact: true }).check();
+  await page.getByRole("button", { name: "Start chat", exact: true }).click();
+  expect(started).toEqual({ memberId: "22222222-2222-4222-8222-222222222222" });
   const draft = page.getByLabel("Write a message");
   await draft.fill("Keep this message");
   await page.getByRole("button", { name: "Send", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Sending…" })).toBeDisabled();
-  await expect(page.getByRole("alert")).toHaveText("Could not save message");
-  await expect(draft).toHaveValue("Keep this message");
-  await page.getByRole("button", { name: "Send", exact: true }).click();
-  await expect(draft).toHaveValue("");
-  await expect(
-    page.locator(".bubble").getByText("Keep this message"),
-  ).toBeVisible();
+  await expect(page.getByText("Sending…")).toBeVisible();
+  await expect(page.locator(".mx-notice")).toContainText("Could not save message");
+  // The text lives on in the failed bubble (and on this device) until it's sent.
+  await expect(page.locator(".mx-bubble.is-failed")).toHaveText("Keep this message");
+  await page.reload();
+  await expect(page.locator(".mx-bubble.is-failed")).toHaveText("Keep this message");
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(page.locator(".mx-bubble", { hasText: "Keep this message" })).not.toHaveClass(/is-failed/);
+  await expect(page.getByText("Not sent.")).toHaveCount(0);
   expect(ids[0]).toBe(ids[1]);
 });
 

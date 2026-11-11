@@ -23,6 +23,7 @@ import DevNotice from "./status/DevNotice";
 import ErrorBoundary from "./status/ErrorBoundary";
 import UpdatesPopup from "./updates/UpdatesPopup";
 import { useUpdates } from "./updates/UpdatesContext";
+import { useChatBadge } from "./messenger/useChatBadge";
 import "./updates/updates.css";
 import BackButton from "./ui/BackButton";
 import { useConfirm } from "./ui/Confirm";
@@ -149,6 +150,9 @@ const LogoutIcon = () => (
 
 /** Pages with their own top bar (no shared Back bar). */
 const OWN_BACK = (path: string) => path === "/dashboard" || path === "/pps" || path.startsWith("/pps/");
+/** Switching between chats is one page, not a new one (no remount, no reload of the chat list). */
+const pageKey = (path: string) => path.replace(/^\/(messages|team-messages)\/[^/]+$/, "/$1");
+const countLabel = (n: number) => (n > 9 ? "9+" : String(n));
 
 const GROUPS = [
   {
@@ -185,6 +189,11 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { unread: unreadUpdates } = useUpdates();
   const unreadCount = unreadUpdates.length;
+  const chats = useChatBadge(!!user && !user.passwordSetupRequired);
+  const navBadge: Record<string, number> = {
+    "/messages": chats.personal + chats.requests,
+    "/team-messages": chats.team,
+  };
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -283,8 +292,14 @@ export default function Layout() {
             <Fragment key={item.to}>
               <NavLink
                 to={item.to}
-                end
-                aria-label={item.to === "/dashboard" ? "Overview" : item.label}
+                end={item.to !== "/messages"}
+                aria-label={
+                  item.to === "/dashboard"
+                    ? "Overview"
+                    : navBadge[item.to]
+                      ? `${item.label} (${navBadge[item.to]} unread)`
+                      : item.label
+                }
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
                   `ws-nav-item${isActive ? " active" : ""}`
@@ -295,6 +310,11 @@ export default function Layout() {
                 <span>
                   {item.to === "/dashboard" ? "Overview" : item.label}
                 </span>
+                {navBadge[item.to] > 0 && (
+                  <span className="up-count" aria-hidden="true">
+                    {countLabel(navBadge[item.to])}
+                  </span>
+                )}
               </NavLink>
               {item.to === "/dashboard" && (
                 <PPNavigation
@@ -341,12 +361,17 @@ export default function Layout() {
             key={item.to}
             className="ws-nav-item"
             to={item.to}
-            aria-label={item.label}
+            aria-label={navBadge[item.to] ? `${item.label} (${navBadge[item.to]} unread)` : item.label}
             title={item.label}
             onClick={() => setOpen(false)}
           >
             {item.icon}
             <span>{item.label}</span>
+            {navBadge[item.to] > 0 && (
+              <span className="up-count" aria-hidden="true">
+                {countLabel(navBadge[item.to])}
+              </span>
+            )}
           </NavLink>
         ))}
       </details>
@@ -562,7 +587,7 @@ export default function Layout() {
           </div>
         </Modal>
       )}
-      <div className="sb-progress" key={location.pathname} aria-hidden="true" />
+      <div className="sb-progress" key={pageKey(location.pathname)} aria-hidden="true" />
       <main id="workspace-content" className="ws-main" tabIndex={-1}>
         <DevNotice />
         {notice && (
@@ -587,7 +612,7 @@ export default function Layout() {
         <div
           key={
             ["/workspace", "/inventory", "/tracker", "/team-messages"].includes(
-              location.pathname,
+              pageKey(location.pathname),
             )
               ? (stable?.id ?? "no-stable")
               : "personal"
@@ -595,7 +620,7 @@ export default function Layout() {
         >
           {/* A crash in one page keeps the menu working; changing page resets it.
               The wrapper replays a short entrance animation on every navigation. */}
-          <ErrorBoundary key={location.pathname}>
+          <ErrorBoundary key={pageKey(location.pathname)}>
             {!OWN_BACK(location.pathname) && (
               <div className="ws-pagebar">
                 <BackButton />
