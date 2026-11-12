@@ -685,3 +685,32 @@
     height: 34px;
   }
 }
+
+/* Version label beside the logo (from package.json, see src/version.ts). */
+.ws-brand {
+  width: auto;
+  min-width: 190px;
+}
+.ws-version {
+  align-self: flex-start;
+  margin: 6px 0 0 -4px;
+  padding: 1px 6px;
+  border: 1px solid #e6d49b66;
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  color: #e6d49b;
+  white-space: nowrap;
+}
+@media (max-width: 800px) {
+  .ws-brand {
+    min-width: 0;
+  }
+  .ws-version {
+    margin-top: 2px;
+    font-size: 9px;
+  }
+}

@@ -45,5 +45,11 @@ export function useChatBadge(enabled: boolean): UnreadCounts {
       document.removeEventListener("visibilitychange", load);
     };
   }, [enabled]);
+  // "(3) Stayblz" in the browser tab when chats are waiting.
+  useEffect(() => {
+    const total = counts.personal + counts.requests + counts.team;
+    const base = document.title.replace(/^\(\d+\+?\) /, "");
+    document.title = total ? `(${total > 99 ? "99+" : total}) ${base}` : base;
+  }, [counts]);
   return counts;
 }

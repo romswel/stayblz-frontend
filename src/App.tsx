@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { canonicalPPPath } from "./components/pps/legacyRoutes";
 import { isPPDestination } from "./components/pps/catalog";
@@ -6,7 +7,9 @@ import { CartProvider } from "./components/pps/CartContext";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Messages from "./pages/Messages";
+// Stayblz Chat is its own download, so the rest of the site stays light.
+const Messages = lazy(() => import("./pages/Messages"));
+const chatLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Opening chat…</p>;
 import Inventory from "./pages/Inventory";
 import HorseTracker from "./pages/HorseTracker";
 import MyRacing from "./pages/MyRacing";
@@ -190,12 +193,21 @@ export default function App() {
           path="/racing-records/notes"
           element={<PublishedRacing title="Racing notes" kinds={["notes"]} />}
         />
-        <Route path="/messages/:chatId?" element={<Messages />} />
+        <Route
+          path="/messages/:chatId?"
+          element={
+            <Suspense fallback={chatLoading}>
+              <Messages />
+            </Suspense>
+          }
+        />
         <Route
           path="/team-messages/:chatId?"
           element={
             <StableGate>
-              <Messages mode="team" />
+              <Suspense fallback={chatLoading}>
+                <Messages mode="team" />
+              </Suspense>
             </StableGate>
           }
         />

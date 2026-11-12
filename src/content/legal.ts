@@ -70,7 +70,7 @@ export const privacy: LegalSection[] = [
     heading: "What we collect",
     paragraphs: [
       "Account details: your name, email, country, and optionally your city, organisation, short bio and roles in racing.",
-      "What you add: follows, notes, messages, stable and horse records, and settings such as your theme or update pop-ups.",
+      "What you add: follows, notes, messages and the photos or files you send in Stayblz Chat, friends and people you block, stable and horse records, and settings such as your theme or update pop-ups.",
       "Security records: when you sign in, change your password or 2-step login, and similar account events. We keep these to protect your account.",
     ],
   },
@@ -88,6 +88,7 @@ export const privacy: LegalSection[] = [
     heading: "Who can see it",
     paragraphs: [
       "Other members see what you share with them, such as your name in a conversation or stable team.",
+      "In Stayblz Chat, signed-in members can find you by name and see when you're active. You can turn either off in chat settings. Photos and files you send are stored privately and shown only to the people in that chat; unsending one deletes it.",
       "Service providers that run Stayblz for us (hosting, database and sign-in, email delivery) process data on our behalf. We don't sell your personal information.",
     ],
   },
