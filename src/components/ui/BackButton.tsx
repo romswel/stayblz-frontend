@@ -7,8 +7,8 @@ export function parentOf(pathname: string, signedIn = true): { to: string; label
   if (pathname.startsWith("/updates/")) return { to: "/updates", label: "Updates" };
   if (pathname.startsWith("/admin/racing/")) return { to: "/admin/racing", label: "Publish racing" };
   if (pathname.startsWith("/racing/")) return { to: "/entries", label: "Entries" };
-  if (pathname.startsWith("/messages/")) return { to: "/messages", label: "Messages" };
-  if (pathname.startsWith("/team-messages/")) return { to: "/team-messages", label: "Team messages" };
+  if (pathname.startsWith("/messages/")) return { to: "/messages", label: "Stayblz Chat" };
+  if (pathname.startsWith("/team-messages/")) return { to: "/team-messages", label: "Team chat" };
   if (pathname.startsWith("/account/")) return { to: "/account", label: "My account" };
   if (pathname.startsWith("/pps/")) return { to: "/pps", label: "Past performances" };
   return home;

@@ -1,0 +1,519 @@
+/* Stayblz Chat — chat info panel, dropdown menus, dialog contents, photo viewer. */
+
+/* ————— Chat info ————— */
+.mx-info {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: calc(16px + var(--safe-bottom, 0px));
+}
+.mx-info-head {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 8px 0;
+}
+.mx-info-hero {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 0 16px 14px;
+  text-align: center;
+}
+.mx-info-hero h2 {
+  margin-top: 6px;
+  font: 400 21px/1.25 Georgia, serif;
+  overflow-wrap: anywhere;
+}
+.mx-info-hero p {
+  font-size: 12.5px;
+  color: var(--mx-muted);
+}
+.mx-info-quick {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+.mx-info-quick button {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 64px;
+  border: 0;
+  background: none;
+  color: var(--mx-ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mx-info-quick button > svg {
+  width: 40px;
+  height: 40px;
+  padding: 10px;
+  border-radius: 50%;
+  background: var(--mx-soft);
+  box-sizing: border-box;
+}
+.mx-info-quick button[aria-pressed="true"] > svg {
+  background: var(--mx-active);
+  color: var(--gold-ink);
+}
+.mx-info-quick button:disabled {
+  opacity: 0.5;
+}
+.mx-info-sec {
+  border-top: 1px solid var(--mx-line);
+}
+.mx-info-sec summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.mx-info-sec summary::-webkit-details-marker {
+  display: none;
+}
+.mx-info-sec summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--mx-muted);
+  border-bottom: 2px solid var(--mx-muted);
+  transform: rotate(45deg);
+  transition: transform var(--dur-fast, 130ms) ease;
+}
+.mx-info-sec[open] summary::after {
+  transform: rotate(-135deg);
+}
+.mx-info-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+.mx-info-body .btn {
+  justify-self: start;
+}
+.mx-info-invite .mr-conversation-invites {
+  padding: 0;
+  border: 0;
+  max-height: none;
+  overflow: visible;
+}
+.mx-info-invite .mr-conversation-invites form,
+.mx-info-invite .mr-conversation-invites label {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.mx-pins {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.mx-pins button {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--mx-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--mx-ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.mx-pins button:hover {
+  border-color: var(--gold);
+}
+.mx-pins span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mx-pins small {
+  font-size: 11.5px;
+  color: var(--mx-muted);
+}
+.mx-rename {
+  display: flex;
+  gap: 8px;
+}
+.mx-rename input {
+  flex: 1;
+  min-width: 0;
+}
+.mx-media-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.mx-media-grid .mx-photo {
+  width: 100%;
+  aspect-ratio: 1 !important;
+  border-radius: 8px;
+}
+.mx-info-body .mx-file {
+  width: 100%;
+}
+.mx-info-actions {
+  display: grid;
+  gap: 2px;
+}
+.mx-info-actions .mx-field {
+  margin-bottom: 8px;
+}
+.mx-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--mx-ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.mx-action-row:hover {
+  background: var(--mx-hover);
+}
+.mx-action-row.is-danger {
+  color: var(--danger-ink, var(--danger));
+}
+
+/* ————— Dropdown menu (rendered at the end of <body>) ————— */
+.mx-menu {
+  position: fixed;
+  z-index: 75;
+  min-width: 210px;
+  max-width: min(300px, calc(100vw - 16px));
+  max-height: min(70vh, 460px);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.55);
+  animation: mx-pop var(--dur-fast, 130ms) var(--ease-out, ease-out) both;
+}
+.mx-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.mx-menu button:hover,
+.mx-menu button:focus-visible {
+  background: var(--gold-tint);
+  outline: none;
+}
+.mx-menu button.is-danger {
+  color: var(--danger-ink, var(--danger));
+}
+.mx-menu button:disabled {
+  opacity: 0.5;
+}
+.mx-menu-icon {
+  width: 18px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--ink-soft);
+}
+.mx-menu button span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mx-menu-check {
+  color: var(--gold-ink);
+  font-weight: 700;
+}
+.mx-menu-section {
+  margin: 6px 10px 2px;
+  min-height: 1px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* ————— Dialog contents ————— */
+.mx-new,
+.mx-settings {
+  display: grid;
+  gap: 12px;
+}
+.mx-settings > .btn,
+.mx-new > .mx-link {
+  justify-self: start;
+}
+.mx-field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mx-field .ld-label span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.mx-field em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.mx-new .mx-search {
+  background: var(--surface-2);
+}
+.mx-pick {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.mx-pick:empty {
+  display: none;
+}
+.mx-pick li + li {
+  border-top: 1px solid var(--line);
+}
+.mx-pick label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.mx-pick label > span:not(.mx-av):not(.mx-tag) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mx-picker-people {
+  display: grid;
+  gap: 8px;
+}
+.mx-picker-people .mx-list-label {
+  margin: 4px 0 0;
+}
+.mx-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mx-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 6px;
+  border-radius: 999px;
+  background: var(--gold-tint);
+  font-size: 13px;
+  font-weight: 600;
+}
+.mx-chips button {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.mx-forward-preview {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-size: 13px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mx-details-h {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.mx-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.mx-toggle span {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+}
+.mx-toggle small {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.mx-toggle input {
+  flex: none;
+  appearance: none;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--line);
+  position: relative;
+  cursor: pointer;
+  transition: background var(--dur-fast, 130ms) ease;
+}
+.mx-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform var(--dur-fast, 130ms) var(--ease-out, ease-out);
+}
+.mx-toggle input:checked {
+  background: var(--gold);
+}
+.mx-toggle input:checked::after {
+  transform: translateX(18px);
+}
+.mx-toggle input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.mx-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.mx-rows li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  font-size: 14px;
+}
+.mx-rows li > span:not(.mx-av) {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mx-meter-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.mx-meter-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--gold);
+}
+.mx-meter .mx-hint {
+  margin-top: 6px;
+}
+.mx-about-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  font-size: 13px;
+}
+.mx-about ul {
+  margin: 10px 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+/* ————— Photo viewer ————— */
+.modal.mx-lightbox {
+  max-width: min(1100px, 96vw);
+  width: 100%;
+}
+.mx-lightbox-body {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: #0d1411;
+}
+.mx-lightbox-body img {
+  max-width: 100%;
+  max-height: 72dvh;
+  object-fit: contain;
+}
+.mx-lightbox-actions {
+  margin: 0;
+  padding: 12px 16px;
+}
+.mx-lightbox-actions .btn {
+  gap: 6px;
+}
+
+/* ————— Floating reaction panels (rendered at the end of <body>, outside .mx) ————— */
+.mx-popover {
+  --mx-pane: var(--surface);
+  --mx-line: var(--line);
+  --mx-soft: var(--surface-2);
+  --mx-ink: var(--ink);
+  --mx-muted: var(--ink-soft);
+  --mx-hover: var(--gold-tint-soft, rgba(0, 0, 0, 0.05));
+  --mx-active: var(--gold-tint);
+  position: fixed;
+  z-index: 74;
+}
+.mx-popover .mx-picker {
+  position: static;
+}

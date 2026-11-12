@@ -164,6 +164,59 @@ async function request<T>(
   return data as T;
 }
 
+/**
+ * Raw request with the same session handling as `api` (cookie or dev token, one silent session
+ * renewal on 401). For bodies and answers that aren't JSON: chat file uploads and downloads.
+ * Errors still come back as friendly `ApiError`s.
+ */
+export async function apiRaw(path: string, init: RequestInit = {}, renewed = false): Promise<Response> {
+  const token = getToken();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      credentials: "include",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
+    });
+  } catch (error) {
+    if (init.signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
+    netStatus.unreachable();
+    throw new ApiError(0, friendly.network, "network");
+  }
+  if (res.status === 401 && !renewed && !init.signal?.aborted) {
+    if (!refreshPending)
+      refreshPending = fetch(`${API_BASE}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((response) => response.ok)
+        .catch(() => false)
+        .finally(() => {
+          refreshPending = null;
+        });
+    if (await refreshPending) return apiRaw(path, init, true);
+  }
+  if (!res.ok) {
+    let details: Record<string, unknown> = {};
+    try {
+      details = (await res.json()) as Record<string, unknown>;
+    } catch {
+      /* Not JSON. */
+    }
+    throw new ApiError(
+      res.status,
+      typeof details.error === "string" && details.error.trim()
+        ? details.error
+        : res.status >= 500
+          ? friendly.starting
+          : friendly.server,
+      typeof details.code === "string" ? details.code : undefined,
+    );
+  }
+  return res;
+}
+
 export const api = {
   get: <T>(
     path: string,

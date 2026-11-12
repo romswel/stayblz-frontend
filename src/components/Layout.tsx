@@ -24,6 +24,8 @@ import ErrorBoundary from "./status/ErrorBoundary";
 import UpdatesPopup from "./updates/UpdatesPopup";
 import { useUpdates } from "./updates/UpdatesContext";
 import { useChatBadge } from "./messenger/useChatBadge";
+import { CHAT_NAME, TEAM_CHAT_NAME } from "./messenger/brand";
+import { VERSION_LABEL, VERSION_TITLE } from "../version";
 import "./updates/updates.css";
 import BackButton from "./ui/BackButton";
 import { useConfirm } from "./ui/Confirm";
@@ -153,6 +155,8 @@ const OWN_BACK = (path: string) => path === "/dashboard" || path === "/pps" || p
 /** Switching between chats is one page, not a new one (no remount, no reload of the chat list). */
 const pageKey = (path: string) => path.replace(/^\/(messages|team-messages)\/[^/]+$/, "/$1");
 const countLabel = (n: number) => (n > 9 ? "9+" : String(n));
+/** Chat pages run as a full-window app: no page padding, page bar, notices or footer. */
+const APP_PAGE = (path: string) => /^\/(messages|team-messages)(\/|$)/.test(path);
 
 const GROUPS = [
   {
@@ -171,7 +175,7 @@ const GROUPS = [
     label: "My racing",
     items: [
       { to: "/my-racing", label: "Following & notebook", icon: <StableIcon /> },
-      { to: "/messages", label: "Messages", icon: <MessagesIcon /> },
+      { to: "/messages", label: CHAT_NAME, icon: <MessagesIcon /> },
       { to: "/account", label: "My account", icon: <TrackerIcon /> },
     ],
   },
@@ -180,7 +184,7 @@ const WORKSPACE_ITEMS = [
   { to: "/workspace", label: "Workspace overview", icon: <DashboardIcon /> },
   { to: "/inventory", label: "Inventory", icon: <InventoryIcon /> },
   { to: "/tracker", label: "Horse Tracker", icon: <TrackerIcon /> },
-  { to: "/team-messages", label: "Team messages", icon: <MessagesIcon /> },
+  { to: "/team-messages", label: TEAM_CHAT_NAME, icon: <MessagesIcon /> },
   { to: "/stables", label: "My stables & team", icon: <StableIcon /> },
 ];
 
@@ -456,6 +460,9 @@ export default function Layout() {
           <span>
             STAYBLZ<small>THE RACING LEDGER</small>
           </span>
+          <em className="ws-version" title={VERSION_TITLE}>
+            {VERSION_LABEL}
+          </em>
         </Link>
         <form
           className="ws-search"
@@ -588,8 +595,8 @@ export default function Layout() {
         </Modal>
       )}
       <div className="sb-progress" key={pageKey(location.pathname)} aria-hidden="true" />
-      <main id="workspace-content" className="ws-main" tabIndex={-1}>
-        <DevNotice />
+      <main id="workspace-content" className={`ws-main${APP_PAGE(location.pathname) ? " is-app" : ""}`} tabIndex={-1}>
+        {!APP_PAGE(location.pathname) && <DevNotice />}
         {notice && (
           <p className="ws-notice" role="status">
             {notice}
@@ -621,7 +628,7 @@ export default function Layout() {
           {/* A crash in one page keeps the menu working; changing page resets it.
               The wrapper replays a short entrance animation on every navigation. */}
           <ErrorBoundary key={pageKey(location.pathname)}>
-            {!OWN_BACK(location.pathname) && (
+            {!OWN_BACK(location.pathname) && !APP_PAGE(location.pathname) && (
               <div className="ws-pagebar">
                 <BackButton />
               </div>
@@ -631,13 +638,15 @@ export default function Layout() {
             </div>
           </ErrorBoundary>
         </div>
-        <footer className="ws-footer">
-          <span>STAYBLZ · Know the horse. Read the race. · Development preview</span>
-          <span className="ws-footer-links">
-            <Link to="/updates">Updates</Link> <Link to="/faq">Help & FAQ</Link>{" "}
-            <Link to="/terms">Terms</Link> <Link to="/privacy">Privacy</Link>
-          </span>
-        </footer>
+        {!APP_PAGE(location.pathname) && (
+          <footer className="ws-footer">
+            <span>STAYBLZ · Know the horse. Read the race. · Development preview</span>
+            <span className="ws-footer-links">
+              <Link to="/updates">Updates</Link> <Link to="/faq">Help & FAQ</Link>{" "}
+              <Link to="/terms">Terms</Link> <Link to="/privacy">Privacy</Link>
+            </span>
+          </footer>
+        )}
       </main>
       <UpdatesPopup />
       {cart && (

@@ -1778,3 +1778,19 @@
     transform: none;
   }
 }
+
+/* Version label beside the logo (from package.json, see src/version.ts). */
+.ld-version {
+  align-self: flex-start;
+  margin: 4px 0 0 -2px;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  white-space: nowrap;
+  opacity: 0.85;
+}

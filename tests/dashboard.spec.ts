@@ -124,7 +124,7 @@ test("members get the overview, visible tools, filtered records and useful detai
   await expect(
     page
       .getByRole("navigation", { name: "Main" })
-      .getByRole("link", { name: "Messages", exact: true }),
+      .getByRole("link", { name: "Stayblz Chat", exact: true }),
   ).toBeVisible();
   await page
     .getByRole("combobox", { name: "Filter overview by track" })
@@ -153,10 +153,10 @@ test("members get the overview, visible tools, filtered records and useful detai
   await page.getByRole("button", { name: "Clear search" }).click();
   await page
     .getByRole("navigation", { name: "Main" })
-    .getByRole("link", { name: "Messages", exact: true })
+    .getByRole("link", { name: "Stayblz Chat", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Messages", exact: true }),
+    page.getByRole("heading", { name: "Stayblz Chat", exact: true }),
   ).toBeVisible();
   await expect.poll(() => privateRequests.length).toBeGreaterThan(0);
   for (const url of privateRequests)

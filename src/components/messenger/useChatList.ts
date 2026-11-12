@@ -25,11 +25,12 @@ export function useChatList(chatApi: ChatApi) {
         const data = await chatApi.list(signal);
         if (signal?.aborted) return;
         loaded.current = true;
-        setItems(byNewest(data.conversations));
+        const rows = Array.isArray(data?.conversations) ? data.conversations : [];
+        setItems(byNewest(rows));
         setStatus("ready");
         setError("");
         setStale(false);
-        const key = data.conversations
+        const key = rows
           .filter((c) => c.unread || c.request)
           .map((c) => c.id)
           .join();

@@ -277,14 +277,13 @@ test("personal conversations and private invitations require an account but no s
 }) => {
   await page.goto("/messages");
   await expect(
-    page.getByRole("heading", { name: "Messages", exact: true }),
+    page.getByRole("heading", { name: "Stayblz Chat", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/No stable needed/)).toBeVisible();
   await page.getByRole("button", { name: "New chat", exact: true }).first().click();
-  await page.getByRole("button", { name: "Group", exact: true }).click();
+  // No one picked + a name = an empty group shared by invite link.
   await page.getByLabel("Group name").fill("Race day conversation");
   await page.getByRole("button", { name: "Create group", exact: true }).click();
-  // A new group opens its details with the invite form ready.
+  // A new group opens Chat info with the invite form ready.
   await expect(page).toHaveURL(new RegExp(`/messages/${conversationId}$`));
   await page.getByLabel("Recipient email").fill("friend@example.test");
   await page.getByRole("button", { name: "Create private invitation" }).click();
@@ -294,7 +293,6 @@ test("personal conversations and private invitations require an account but no s
   await expect(
     page.getByText(/They will be able to read this conversation/),
   ).toBeVisible();
-  await page.keyboard.press("Escape");
   let requestBody: any;
   await page.route("**/api/messages/*/messages", (route) => {
     expect(route.request().headers()["x-stayblz-stable"]).toBeUndefined();
@@ -320,7 +318,7 @@ test("personal conversations and private invitations require an account but no s
   await expect(
     page.locator(".mx-bubble").getByText("See you at the races."),
   ).toBeVisible();
-  await expect(page.getByText("Sent", { exact: true })).toBeVisible();
+  await expect(page.locator(".mx-status").filter({ hasText: "Sent" })).toBeVisible();
   expect(requestBody.clientId).toBeTruthy();
   expect(requestBody.replyTo).toBeNull();
 });

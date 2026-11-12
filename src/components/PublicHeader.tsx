@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
 import Brand from "./Brand";
+import { VERSION_LABEL, VERSION_TITLE } from "../version";
 import DevNotice from "./status/DevNotice";
 
 export default function PublicHeader({
@@ -43,6 +44,9 @@ export default function PublicHeader({
             </strong>
             <small>THE RACING LEDGER</small>
           </span>
+          <em className="ld-version" title={VERSION_TITLE}>
+            {VERSION_LABEL}
+          </em>
         </button>
         <nav className="ld-header-account" aria-label="Public navigation">
           {pathname === "/faq" && (
