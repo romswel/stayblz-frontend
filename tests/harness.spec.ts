@@ -311,6 +311,7 @@ test("Harness pages fit phone, tablet and desktop in both themes", async ({
 test("the active Harness destination stays visible inside the sidebar", async ({
   page,
 }) => {
+  test.skip(true, "PP sidebar menu is hidden for now (SHOW_PP_NAV in src/components/Layout.tsx)");
   await page.goto("/pps/harness-workspace");
   const menu = page.locator(".pp-nav-children");
   const selected = menu.locator('a[href="/pps/harness-workspace"]');
