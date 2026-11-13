@@ -163,3 +163,82 @@
 .ld-kept .ld-auth-link {
   margin: 0;
 }
+
+/* Sign-up page 2: "Back" under "Create account", same width. */
+.ld-step-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+.landing .ld-step-actions .ld-submit {
+  margin-top: 0;
+}
+.landing .ld-button-quiet {
+  background: transparent;
+  border-color: #c5a468;
+  color: #e2c58f;
+}
+.landing .ld-button-quiet:hover:enabled {
+  background: #c5a46824;
+}
+.landing .ld-step-back {
+  gap: 8px;
+  width: 100%;
+}
+
+/* Tighter spacing inside the account card (log in and sign up). The top padding is half of
+   what it was (26px → 13px), so the STAYBLZ ACCOUNT label sits closer to the tabs. */
+.ld-auth .ld-auth-body {
+  /* Bottom halved again (20 → 4px; the link's 40px tap area adds the rest) for the
+     "Already have an account?" line. */
+  padding: 13px 20px 4px;
+}
+.ld-auth .ld-auth-body h2 {
+  margin-top: 6px;
+}
+.ld-auth .ld-auth-description {
+  margin: 6px 0 14px !important;
+}
+.ld-auth .ld-field {
+  gap: 5px;
+  margin-bottom: 11px;
+}
+.ld-auth .ld-field-pair {
+  gap: 10px;
+}
+.ld-auth .ld-password-help {
+  margin: -3px 0 11px !important;
+}
+.ld-auth .ld-check {
+  margin-bottom: 9px;
+}
+.ld-auth .ld-agreements {
+  margin: 2px 0 12px;
+}
+.ld-auth .roles-landing .roles-more {
+  margin-bottom: 11px;
+}
+.landing .ld-auth .ld-submit {
+  margin-top: 14px;
+}
+.landing .ld-auth .ld-step-actions {
+  margin-top: 14px;
+}
+.landing .ld-auth .ld-step-actions .ld-submit {
+  margin-top: 0;
+}
+/* "Already have an account? / New here?" — space above and below is half what it was. */
+.ld-auth .ld-account-links {
+  align-items: center;
+  margin-top: 7px;
+}
+.ld-auth .ld-auth-switch {
+  margin-top: 0 !important;
+}
+/* Log in: "New here? Sign up" on the same line as "Forgot password?", on the right. */
+.ld-auth .ld-links-login .ld-auth-switch {
+  width: auto;
+  margin-left: auto !important;
+  text-align: right;
+}

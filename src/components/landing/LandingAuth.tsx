@@ -79,9 +79,28 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
   const [verification, setVerification] = useState(false);
+  // Sign-up has two pages: 1 = name, email and password; 2 = location, racing roles and agreements.
+  const [signupStep, setSignupStep] = useState<1 | 2>(1);
+  const signingUp = mode === "signup" && !forgot;
+  const step2 = signingUp && signupStep === 2;
+  // Set when the person moves between pages, so focus goes to that page's first field.
+  const stepMoved = useRef(false);
   const bodyRef = useQuickTransition(
-    `${mode}:${forgot}:${verification}:${user?.id ?? "guest"}`,
+    `${mode}:${forgot}:${verification}:${signupStep}:${user?.id ?? "guest"}`,
   );
+  useEffect(() => {
+    if (!stepMoved.current) return;
+    stepMoved.current = false;
+    bodyRef.current
+      ?.querySelector<HTMLElement>("form input:not([type=hidden]), form select")
+      ?.focus();
+  }, [signupStep]);
+  function goToStep(step: 1 | 2) {
+    stepMoved.current = true;
+    setError("");
+    setNotice("");
+    setSignupStep(step);
+  }
   const [retrySeconds, setRetrySeconds] = useState(0);
   const [retryUntil, setRetryUntil] = useState(0);
   const [retryScope, setRetryScope] = useState<"email" | "login">("email");
@@ -102,6 +121,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     setNotice("");
     setPassword("");
     setConfirmPassword("");
+    setSignupStep(1);
     setBusy(false);
     return () => {
       ++operation.current;
@@ -163,14 +183,20 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     setCode("");
     setPassword("");
     setConfirmPassword("");
+    setSignupStep(1);
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy || submitRateLimited) return;
     setError("");
     setNotice("");
-    if (((mode === "signup" && !forgot) || resetSent) && password !== confirmPassword) {
+    if ((signingUp || resetSent) && password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+    if (signingUp && signupStep === 1) {
+      // The browser has already checked the required fields on this page.
+      goToStep(2);
       return;
     }
     if (resetSent && !resetVerified && !/^\d{6}$/.test(code)) {
@@ -274,6 +300,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
           );
         setPassword("");
         setConfirmPassword("");
+        setSignupStep(1);
         setVerifyEmail(email.trim());
         setVerification(true);
         setNotice(response.message);
@@ -300,6 +327,14 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
         setNotice(reason.message);
         return;
       }
+      // The email address was refused: go back to page 1, where that field is.
+      if (
+        signingUp &&
+        reason instanceof ApiError &&
+        reason.status !== 429 &&
+        /email/i.test(reason.code ?? "")
+      )
+        setSignupStep(1);
       reportError(
         reason,
         "The request failed. Please try again.",
@@ -469,7 +504,9 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                   ? "Enter the 6-digit code we emailed you."
                   : mode === "login"
                     ? "Access your account and racing records."
-                    : "Create your profile and verify your email."}
+                    : signupStep === 1
+                      ? "Step 1 of 2 · Your name and login details."
+                      : "Step 2 of 2 · Where you are and your part in racing."}
             </p>
             {intent && (
               <p className="ld-auth-intent" role="status">
@@ -537,7 +574,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                       : "Create your Stayblz account"
                 }
               >
-                {mode === "signup" && !forgot && (
+                {signingUp && signupStep === 1 && (
                   <>
                     {signupRestored && (firstName || lastName || email) && (
                       <p className="ld-kept" role="status">
@@ -579,6 +616,86 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                         />
                       </label>
                     </div>
+                  </>
+                )}
+                {forgot && resetSent && !resetVerified && codeField}
+                {forgot && resetSent && resetMfa && mfaField}
+                {!step2 && (
+                  <label className="ld-field">
+                    <span className="ld-label">{mode === "login" && !forgot ? "Email" : "Email address"}</span>
+                    <input
+                      name="email"
+                      type={mode === "login" && !forgot ? "text" : "email"}
+                      autoComplete={
+                        mode === "login" && !forgot ? "username" : "email"
+                      }
+                      value={mode === "login" && !forgot ? username : email}
+                      onChange={(e) =>
+                        mode === "login" && !forgot
+                          ? setUsername(e.target.value)
+                          : setEmail(e.target.value)
+                      }
+                      placeholder={
+                        mode === "login" && !forgot
+                          ? "you@example.com"
+                          : "you@example.com"
+                      }
+                      maxLength={254}
+                      readOnly={forgot && resetSent}
+                      required
+                    />
+                  </label>
+                )}
+                {(!forgot || resetSent) && !step2 && (
+                  <>
+                    <PasswordField
+                      key={`${mode}:${navigationKey}`}
+                      label={resetSent ? "New password" : "Password"}
+                      name="password"
+                      autoComplete={mode === "login" && !resetSent ? "current-password" : "new-password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      minLength={mode === "signup" || resetSent ? 12 : undefined}
+                      maxLength={128}
+                      pattern={mode === "signup" || resetSent ? "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}" : undefined}
+                      aria-describedby={mode === "signup" || resetSent ? "ld-password-help" : undefined}
+                      required
+                    />
+                    {mode === "login" && !forgot && (
+                      <label className="ld-check">
+                        <input
+                          type="checkbox"
+                          checked={remember}
+                          onChange={(e) => setRemember(e.target.checked)}
+                        />
+                        <span>
+                          Keep me signed in
+                          <small>Turn off on shared or public computers.</small>
+                        </span>
+                      </label>
+                    )}
+                    {(mode === "signup" || resetSent) && (
+                      <>
+                        <p className="ld-password-help" id="ld-password-help">
+                          12–128 characters, with uppercase, lowercase, and a
+                          number.
+                        </p>
+                        <PasswordField
+                          label="Confirm password"
+                          name="confirmPassword"
+                          autoComplete="new-password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          minLength={12}
+                          maxLength={128}
+                          required
+                        />
+                      </>
+                    )}
+                  </>
+                )}
+                {step2 && (
+                  <>
                     <div className="ld-field-pair">
                       <label className="ld-field">
                         <span className="ld-label">Country</span>
@@ -629,146 +746,86 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                         maxLength={100}
                       />
                     </label>
-                  </>
-                )}
-                {forgot && resetSent && !resetVerified && codeField}
-                {forgot && resetSent && resetMfa && mfaField}
-                <label className="ld-field">
-                  <span className="ld-label">{mode === "login" && !forgot ? "Email" : "Email address"}</span>
-                  <input
-                    name="email"
-                    type={mode === "login" && !forgot ? "text" : "email"}
-                    autoComplete={
-                      mode === "login" && !forgot ? "username" : "email"
-                    }
-                    value={mode === "login" && !forgot ? username : email}
-                    onChange={(e) =>
-                      mode === "login" && !forgot
-                        ? setUsername(e.target.value)
-                        : setEmail(e.target.value)
-                    }
-                    placeholder={
-                      mode === "login" && !forgot
-                        ? "you@example.com"
-                        : "you@example.com"
-                    }
-                    maxLength={254}
-                    readOnly={forgot && resetSent}
-                    required
-                  />
-                </label>
-                {(!forgot || resetSent) && (
-                  <>
-                    <PasswordField
-                      key={`${mode}:${navigationKey}`}
-                      label={resetSent ? "New password" : "Password"}
-                      name="password"
-                      autoComplete={mode === "login" && !resetSent ? "current-password" : "new-password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      minLength={mode === "signup" || resetSent ? 12 : undefined}
-                      maxLength={128}
-                      pattern={mode === "signup" || resetSent ? "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{12,128}" : undefined}
-                      aria-describedby={mode === "signup" || resetSent ? "ld-password-help" : undefined}
-                      required
-                    />
-                    {mode === "login" && !forgot && (
+                    <fieldset className="ld-agreements">
+                      <legend>Before you join</legend>
                       <label className="ld-check">
                         <input
                           type="checkbox"
-                          checked={remember}
-                          onChange={(e) => setRemember(e.target.checked)}
-                        />
-                        <span>
-                          Keep me signed in
-                          <small>Turn off on shared or public computers.</small>
-                        </span>
-                      </label>
-                    )}
-                    {(mode === "signup" || resetSent) && (
-                      <>
-                        <p className="ld-password-help" id="ld-password-help">
-                          12–128 characters, with uppercase, lowercase, and a
-                          number.
-                        </p>
-                        <PasswordField
-                          label="Confirm password"
-                          name="confirmPassword"
-                          autoComplete="new-password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          minLength={12}
-                          maxLength={128}
+                          name="acceptTerms"
+                          checked={acceptTerms}
+                          onChange={(e) => setAcceptTerms(e.target.checked)}
                           required
                         />
-                        {mode === "signup" && !forgot && (
-                          <fieldset className="ld-agreements">
-                            <legend>Before you join</legend>
-                            <label className="ld-check">
-                              <input
-                                type="checkbox"
-                                name="acceptTerms"
-                                checked={acceptTerms}
-                                onChange={(e) => setAcceptTerms(e.target.checked)}
-                                required
-                              />
-                              <span>
-                                I agree to the{" "}
-                                <button type="button" className="ld-inline-link" onClick={() => setLegalOpen(true)}>
-                                  Terms of Use and Privacy Notice
-                                </button>
-                                .<small>Both are on one page. Read them here without leaving this form.</small>
-                              </span>
-                            </label>
-                            <label className="ld-check">
-                              <input
-                                type="checkbox"
-                                name="ageConfirmed"
-                                checked={ageConfirmed}
-                                onChange={(e) => setAgeConfirmed(e.target.checked)}
-                                required
-                              />
-                              <span>I'm 18 or older.</span>
-                            </label>
-                            <label className="ld-check">
-                              <input
-                                type="checkbox"
-                                name="marketingOptIn"
-                                checked={marketingOptIn}
-                                onChange={(e) => setMarketingOptIn(e.target.checked)}
-                              />
-                              <span>
-                                Email me Stayblz news and updates <small>Optional. You can change this later.</small>
-                              </span>
-                            </label>
-                          </fieldset>
-                        )}
-                      </>
-                    )}
+                        <span>
+                          I agree to the{" "}
+                          <button type="button" className="ld-inline-link" onClick={() => setLegalOpen(true)}>
+                            Terms of Use and Privacy Notice
+                          </button>
+                          .<small>Both are on one page. Read them here without leaving this form.</small>
+                        </span>
+                      </label>
+                      <label className="ld-check">
+                        <input
+                          type="checkbox"
+                          name="ageConfirmed"
+                          checked={ageConfirmed}
+                          onChange={(e) => setAgeConfirmed(e.target.checked)}
+                          required
+                        />
+                        <span>I'm 18 or older.</span>
+                      </label>
+                      <label className="ld-check">
+                        <input
+                          type="checkbox"
+                          name="marketingOptIn"
+                          checked={marketingOptIn}
+                          onChange={(e) => setMarketingOptIn(e.target.checked)}
+                        />
+                        <span>
+                          Email me Stayblz news and updates <small>Optional. You can change this later.</small>
+                        </span>
+                      </label>
+                    </fieldset>
                   </>
                 )}
-                <button
-                  className="ld-button ld-button-gold ld-submit"
-                  type="submit"
-                  disabled={busy || submitRateLimited}
-                >
-                  {submitRateLimited
-                    ? `Try again in ${retrySeconds}s`
-                    : busy
-                      ? "Please wait…"
-                      : forgot
-                        ? resetSent
-                          ? "Set new password"
-                          : "Send reset email"
-                        : mode === "login"
-                          ? "Sign in"
-                          : "Create account"}
-                  <span aria-hidden="true">↗</span>
-                </button>
+                <div className={step2 ? "ld-step-actions" : undefined}>
+                  <button
+                    className="ld-button ld-button-gold ld-submit"
+                    type="submit"
+                    disabled={busy || submitRateLimited}
+                  >
+                    {submitRateLimited
+                      ? `Try again in ${retrySeconds}s`
+                      : busy
+                        ? "Please wait…"
+                        : forgot
+                          ? resetSent
+                            ? "Set new password"
+                            : "Send reset email"
+                          : mode === "login"
+                            ? "Sign in"
+                            : signupStep === 1
+                              ? "Continue"
+                              : "Create account"}
+                    <span aria-hidden="true">{signingUp && signupStep === 1 ? "→" : "↗"}</span>
+                  </button>
+                  {step2 && (
+                    <button
+                      type="button"
+                      className="ld-button ld-button-quiet ld-step-back"
+                      onClick={() => goToStep(1)}
+                      disabled={busy}
+                    >
+                      <span aria-hidden="true">←</span> Back
+                    </button>
+                  )}
+                </div>
               </form>
             )}
             {!verification && (
-              <div className="ld-account-links">
+              <div
+                className={`ld-account-links${mode === "login" && !forgot ? " ld-links-login" : ""}`}
+              >
                 {mode === "login" && !forgot && (
                   <>
                     <button

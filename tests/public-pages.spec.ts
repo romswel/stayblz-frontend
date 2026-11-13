@@ -116,111 +116,6 @@ test("FAQ is public, searchable, keyboard usable and responsive with a shared fo
   ).toBeAttached();
 });
 
-test("overview retries failures automatically, refreshes empty data, and preserves loaded rows", async ({
-  page,
-}) => {
-  await page.clock.install();
-  let calls = 0;
-  await page.route("**/api/public/racing-overview", (route) => {
-    calls++;
-    if (calls === 1 || calls === 4)
-      return route.fulfill({
-        status: 503,
-        json: { error: "Records unavailable." },
-      });
-    const data = empty();
-    if (calls >= 3)
-      (data.sections.racecards as unknown[]) = [
-        {
-          id: "published-1",
-          name: "Fresh published record",
-          track: "Real source",
-        },
-      ];
-    return route.fulfill({ json: data });
-  });
-  await page.goto("/");
-  await expect.poll(() => calls).toBe(1);
-  await expect(page.locator(".ld-data-status p")).toContainText(
-    "Records unavailable.",
-  );
-  await page.clock.fastForward(5100);
-  await expect.poll(() => calls).toBe(2);
-  await expect(page.locator(".ld-data-status p")).toContainText("Updated");
-  await page.clock.fastForward(60100);
-  await expect(
-    page.getByText("Fresh published record", { exact: true }),
-  ).toBeVisible();
-  await page.clock.fastForward(60100);
-  await expect.poll(() => calls).toBe(4);
-  await expect(page.locator(".ld-data-status p")).toContainText(
-    "Records unavailable.",
-  );
-  await expect(
-    page.getByText("Fresh published record", { exact: true }),
-  ).toBeVisible();
-  await page.clock.fastForward(5100);
-  await expect.poll(() => calls).toBe(5);
-});
-
-test("overview pauses while hidden and resumes on reconnect without overlapping requests", async ({
-  page,
-}) => {
-  await page.clock.install();
-  let calls = 0;
-  await page.route("**/api/public/racing-overview", (route) => {
-    calls++;
-    return route.fulfill({ json: empty() });
-  });
-  await page.goto("/");
-  await expect.poll(() => calls).toBe(1);
-  await page.evaluate(() => {
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      value: "hidden",
-    });
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
-  await page.clock.fastForward(121000);
-  expect(calls).toBe(1);
-  await page.evaluate(() => {
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      value: "visible",
-    });
-    window.dispatchEvent(new Event("online"));
-    window.dispatchEvent(new Event("focus"));
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
-  await expect.poll(() => calls).toBe(2);
-  await page.clock.fastForward(2100);
-  expect(calls).toBe(2);
-});
-
-test("automatic retries and manual refresh respect the server rate limit", async ({
-  page,
-}) => {
-  await page.clock.install();
-  let calls = 0;
-  await page.route("**/api/public/racing-overview", (route) => {
-    calls++;
-    return route.fulfill({
-      status: 429,
-      headers: { "Retry-After": "120" },
-      json: { error: "Try again later." },
-    });
-  });
-  await page.goto("/");
-  await expect.poll(() => calls).toBe(1);
-  await page
-    .getByRole("button", { name: "Refresh racing data", exact: true })
-    .click();
-  await page.clock.fastForward(61000);
-  expect(calls).toBe(1);
-  await page.clock.fastForward(60100);
-  await expect.poll(() => calls).toBe(2);
-});
-
 test("FAQ remains accessible to signed-in members with long account names", async ({
   page,
 }) => {
@@ -280,14 +175,9 @@ test("public motion is quick, preserves form drafts and stops for reduced motion
   });
   await page.goto("/signup");
   await page.getByLabel("First name", { exact: true }).fill("Draft");
-  await page
-    .getByRole("button", { name: "Log in", exact: true })
-    .last()
-    .click();
-  await page
-    .getByRole("button", { name: "Sign up", exact: true })
-    .last()
-    .click();
+  const account = page.getByRole("region", { name: "Your Stayblz account" });
+  await account.getByRole("button", { name: "Log in", exact: true }).click();
+  await account.getByRole("button", { name: "Sign up", exact: true }).click();
   await expect(page.getByLabel("First name", { exact: true })).toHaveValue(
     "Draft",
   );

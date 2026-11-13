@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
-import Brand from "../components/Brand";
 import usePublicMotion from "../components/usePublicMotion";
 import PublicHeader from "../components/PublicHeader";
 import PublicFooter from "../components/PublicFooter";
 import LandingAuth from "../components/landing/LandingAuth";
-import RacingPreview from "../components/landing/RacingPreview";
 import { isPPDestination } from "../components/pps/catalog";
 import "./landing.css";
+import "./landing-theme.css";
 const destinations = new Set([
   "/dashboard",
   "/account",
@@ -55,6 +54,36 @@ export default function Login() {
       : "",
   );
   const authRef = useRef<HTMLElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  // The account card only shows on /login and /signup; the plain index shows the hero alone.
+  const open = location.pathname !== "/";
+  function closeAuth() {
+    navigate("/");
+    heroRef.current?.focus({ preventScroll: true });
+  }
+  // The hero fills the screen below the header (and the development notice), so the footer
+  // only comes into view on scroll. Measured, because the notice and a wrapped header vary.
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+    const measure = () =>
+      hero.style.setProperty(
+        "--ld-above-hero",
+        `${Math.max(0, hero.getBoundingClientRect().top + window.scrollY)}px`,
+      );
+    measure();
+    window.addEventListener("resize", measure);
+    const header = document.querySelector(".ld-header");
+    const observer =
+      typeof ResizeObserver === "undefined" || !header
+        ? null
+        : new ResizeObserver(measure);
+    if (header) observer?.observe(header);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
+  }, []);
   const pageRef = usePublicMotion();
   useEffect(() => {
     setMode(location.pathname === "/signup" ? "signup" : "login");
@@ -112,39 +141,26 @@ export default function Login() {
     authRef.current?.focus({ preventScroll: true });
   }
 
-  const date = new Intl.DateTimeFormat("en", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "Asia/Manila",
-  }).format(new Date());
-
   return (
-    <div className="landing" id="top" ref={pageRef}>
+    <div className="landing ld-home" id="top" ref={pageRef}>
       <a className="ld-skip" href="#racing-overview">
         Skip to racing overview
       </a>
-      <PublicHeader onAuth={(next) => showAuth(next)} />
+      <PublicHeader onAuth={(next) => showAuth(next)} themeButton />
       <main className="ld-main" id="racing-overview">
-        <div className="ld-edition">
-          <span>
-            <i aria-hidden="true" /> RACING OVERVIEW
-          </span>
-          <span>
-            {date}
-            <span className="ld-edition-note">
-              <b> / </b> STAYBLZ
-            </span>
-          </span>
-        </div>
-        <section className="ld-intro" aria-label="Welcome to Stayblz">
-          <div className="ld-hero">
+        <section
+          className={`ld-intro${open ? " ld-intro-open" : ""}`}
+          aria-label="Welcome to Stayblz"
+        >
+          <div className="ld-hero" ref={heroRef} tabIndex={-1}>
             <img
               src="/images/racing-editorial.jpg"
               alt="A thoroughbred and jockey on the track in warm afternoon light"
               fetchPriority="high"
             />
+            <div className="ld-hero-blur" aria-hidden="true" />
             <div className="ld-hero-shade" />
+            <div className="ld-hero-shade-open" aria-hidden="true" />
             <div className="ld-hero-top">
               <span className="ld-photo-label">STAYBLZ RACING</span>
               <span className="ld-hero-index">RACES / RESULTS / FORM</span>
@@ -157,61 +173,42 @@ export default function Login() {
                 <em>Read the race.</em>
               </h1>
               <p>Racecards, results, workouts, and standings.</p>
-              <a className="ld-hero-link" href="#race-desk">
-                View racing <span aria-hidden="true">↓</span>
-              </a>
             </div>
             <span className="ld-photo-credit">Illustrative racing image</span>
+            <div
+              className="ld-auth-shell"
+              onKeyDown={(event) => {
+                // Escape closes the card, but not while a dialog opened from it (e.g. Terms) is on top.
+                if (
+                  event.key === "Escape" &&
+                  event.currentTarget.contains(event.target as Node)
+                )
+                  closeAuth();
+              }}
+            >
+              <LandingAuth
+                ref={authRef}
+                mode={mode}
+                onModeChange={(next) => {
+                  setMode(next);
+                  navigate(next === "signup" ? "/signup" : "/login", {
+                    replace: true,
+                    state: { destination, intent },
+                  });
+                }}
+                destination={destination}
+                intent={intent}
+              />
+              <button
+                type="button"
+                className="ld-auth-close"
+                aria-label="Close account panel"
+                onClick={closeAuth}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
           </div>
-          <LandingAuth
-            ref={authRef}
-            mode={mode}
-            onModeChange={(next) => {
-              setMode(next);
-              navigate(next === "signup" ? "/signup" : "/login", {
-                replace: true,
-                state: { destination, intent },
-              });
-            }}
-            destination={destination}
-            intent={intent}
-          />
-        </section>
-        <div className="ld-overview-strip">
-          <span>
-            <strong>RACING DATA</strong>
-            <small>Published by Stayblz</small>
-          </span>
-          <a href="#race-desk">
-            Racecards <span>01</span>
-          </a>
-          <a href="#leaderboard">
-            Leaderboard <span>02</span>
-          </a>
-          <a href="#field-notes">
-            News <span>04</span>
-          </a>
-          <a href="#stakes-diary">
-            Stakes <span>03</span>
-          </a>
-        </div>
-        <RacingPreview
-          onOpen={(path, label) => showAuth("login", path, label)}
-          onSignup={() => showAuth("signup")}
-        />
-        <section className="ld-closing ld-reveal">
-          <Brand />
-          <div>
-            <span className="ld-kicker">YOUR ACCOUNT</span>
-            <h2>Save horses, notes, and messages.</h2>
-          </div>
-          <button
-            className="ld-button ld-button-gold"
-            onClick={() => showAuth(user ? "login" : "signup")}
-          >
-            {user ? "Continue to dashboard" : "Create an account"}{" "}
-            <span aria-hidden="true">↗</span>
-          </button>
         </section>
       </main>
       <PublicFooter />

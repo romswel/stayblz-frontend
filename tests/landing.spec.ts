@@ -86,7 +86,7 @@ test("wide layout fills the viewport and every account mode stays within device 
     await page.setViewportSize({ width, height: 1000 });
     await page.goto("/");
     await expect(
-      page.getByRole("button", { name: "Recorded race 1", exact: true }),
+      page.locator(".ld-hero h1"),
     ).toBeVisible();
     const initial = await page.locator("#account").boundingBox();
     expect(
@@ -99,9 +99,19 @@ test("wide layout fills the viewport and every account mode stays within device 
       .first()
       .click();
     await expect(page.getByLabel("Email address")).toBeVisible();
+    // The card keeps one size in every mode.
     expect((await page.locator("#account").boundingBox())?.height).toBe(
       initial?.height,
     );
+    // Sign-up page 1 is only name, email and password, then Continue.
+    await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Country", exact: true })).toHaveCount(0);
+    if (width >= 1024) {
+      // Desktop: page 1 fits in the card without scrolling.
+      expect(
+        await page.locator(".ld-auth-body").evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
+      ).toBe(true);
+    }
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -125,7 +135,7 @@ test("wide layout fills the viewport and every account mode stays within device 
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/");
   await expect(
-    page.getByRole("button", { name: "Recorded race 1", exact: true }),
+    page.locator(".ld-hero h1"),
   ).toBeVisible();
   await page.screenshot({
     path: "test-results/landing-mobile.png",
@@ -133,182 +143,68 @@ test("wide layout fills the viewport and every account mode stays within device 
   });
 });
 
-test("table size stays fixed across long, short, filtered and empty views; overflow scrolls inside", async ({
+test("the account card is hidden on the index and opens over the hero from Log in / Sign up", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
-  const panel = page.locator("#race-desk .ld-data-panel");
-  await expect(
-    page.getByRole("button", { name: "Recorded race 1", exact: true }),
-  ).toBeVisible();
-  const before = await panel.boundingBox();
-  const region = page.getByRole("region", { name: "Racecards", exact: true });
-  expect(await region.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(
-    true,
-  );
-  await page.getByLabel("Filter by track").selectOption("Track B");
-  await expect(
-    page.getByRole("button", { name: "Recorded race 1", exact: true }),
-  ).toHaveCount(0);
-  expect((await panel.boundingBox())?.height).toBe(before?.height);
+  const account = page.getByRole("region", { name: "Your Stayblz account" });
+  await expect(page.locator(".ld-closing")).toHaveCount(0);
+  await expect(account).toBeHidden();
+  const copyBefore = await page.locator(".ld-hero-copy").boundingBox();
   await page
-    .locator("#race-desk")
-    .getByRole("button", { name: "Results", exact: true })
+    .getByRole("navigation", { name: "Public navigation" })
+    .getByRole("button", { name: "Log in", exact: true })
     .click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(account).toBeVisible();
+  await expect(account).toBeFocused();
   await expect(
-    page.getByRole("button", { name: "Recorded winner", exact: true }),
+    page.getByRole("heading", { name: "Log in to Stayblz", exact: true }),
   ).toBeVisible();
-  expect((await panel.boundingBox())?.height).toBe(before?.height);
+  // No date bar; the hero runs edge to edge with no rounded corners.
+  await expect(page.locator(".ld-edition")).toHaveCount(0);
+  const heroBox = (await page.locator(".ld-hero").boundingBox())!;
+  expect(heroBox.x).toBe(0);
+  expect(heroBox.width).toBe(await page.evaluate(() => document.documentElement.clientWidth));
+  // "New here? Sign up" is on the "Forgot password?" line, at the right.
+  const forgot = (await account.getByRole("button", { name: "Forgot password?" }).boundingBox())!;
+  const newHere = (await account.locator(".ld-auth-switch").boundingBox())!;
+  expect(Math.abs(forgot.y + forgot.height / 2 - (newHere.y + newHere.height / 2))).toBeLessThanOrEqual(2);
+  expect(newHere.x).toBeGreaterThan(forgot.x + forgot.width);
+  const cardBox = (await account.boundingBox())!;
+  expect(cardBox.x + cardBox.width - (newHere.x + newHere.width)).toBeLessThanOrEqual(24);
+  // Card on the left over the photo, headline moved to the right of it.
+  const hero = (await page.locator(".ld-hero").boundingBox())!;
+  const card = (await account.boundingBox())!;
+  const copyAfter = (await page.locator(".ld-hero-copy").boundingBox())!;
+  expect(card.x).toBeLessThan(hero.x + hero.width / 3);
+  expect(card.y).toBeGreaterThanOrEqual(hero.y);
+  expect(copyAfter.x - (card.x + card.width)).toBeGreaterThanOrEqual(40);
+  expect(
+    await page.locator(".ld-hero-copy").evaluate((el) => getComputedStyle(el).textAlign),
+  ).toBe("right");
+  expect(copyAfter.x).toBeGreaterThan(copyBefore!.x);
+  expect(
+    await page.locator(".ld-hero-blur").evaluate((el) => getComputedStyle(el).opacity),
+  ).toBe("1");
+  await page.getByRole("button", { name: "Close account panel" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(account).toBeHidden();
   await page
-    .locator("#race-desk")
-    .getByRole("button", { name: "Workouts", exact: true })
+    .getByRole("navigation", { name: "Public navigation" })
+    .getByRole("button", { name: "Sign up", exact: true })
     .click();
-  await expect(page.getByText("00:48.20")).toBeVisible();
-  expect((await panel.boundingBox())?.height).toBe(before?.height);
-  await page.route("**/api/public/racing-overview", (route) =>
-    route.fulfill({
-      json: { ...overview(), sections: { ...sections(), workouts: [] } },
-    }),
-  );
-  await page.getByRole("button", { name: "Refresh racing data" }).click();
-  await expect(page.getByText("No workouts published yet.")).toBeVisible();
-  expect((await panel.boundingBox())?.height).toBe(before?.height);
-});
-
-test("published data drives standings, news, track options and calendar", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Jockeys", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Recorded rider", exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("20%", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Trainers", exact: true }).click();
-  await expect(page.getByText("30%", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Read more", exact: true }).click();
-  await expect(
-    page.getByText("Published body returned by the API."),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Close", exact: true }).click();
-  await expect(
-    page.getByText("Published body returned by the API."),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: /Recorded stakes/ }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/signup$/);
+  await expect(page.getByLabel("First name", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(account).toBeHidden();
   await page
-    .locator("#stakes-diary")
-    .getByRole("button", { name: "Results", exact: true })
+    .getByRole("navigation", { name: "Public navigation" })
+    .getByRole("button", { name: "Log in", exact: true })
     .click();
-  await expect(
-    page
-      .locator("#stakes-diary")
-      .getByRole("button", { name: /Recorded winner/ }),
-  ).toBeVisible();
-});
-
-test("failed refresh preserves loaded records; retry uses new database response with no old samples", async ({
-  page,
-}) => {
-  await page.goto("/");
-  const recordRegion = page.getByRole("region", {
-    name: "Racecards",
-    exact: true,
-  });
-  await expect(
-    page.getByRole("button", { name: "Recorded race 1", exact: true }),
-  ).toBeVisible();
-  await recordRegion.evaluate((el) => {
-    el.scrollTop = 180;
-  });
-  await expect(
-    page.getByRole("button", { name: "Recorded race 1", exact: true }),
-  ).toBeVisible();
-  await page.route("**/api/public/racing-overview", (route) =>
-    route.fulfill({
-      status: 503,
-      json: { error: "Racing data is unavailable." },
-    }),
-  );
-  await page.getByRole("button", { name: "Refresh racing data" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Showing the last loaded records.",
-  );
-  expect(await recordRegion.evaluate((el) => el.scrollTop)).toBe(180);
-  await expect(
-    page.getByRole("button", { name: "Recorded race 1", exact: true }),
-  ).toBeVisible();
-  const next = overview();
-  next.sections.racecards = [
-    {
-      ...next.sections.racecards[0],
-      name: "Newly published race",
-      track: "New track",
-    },
-  ];
-  await page.route("**/api/public/racing-overview", (route) =>
-    route.fulfill({ json: next }),
-  );
-  await page.getByRole("button", { name: "Refresh racing data" }).click();
-  await expect(
-    page.getByRole("button", { name: "Newly published race", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Recorded race 1", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page
-      .getByLabel("Filter by track")
-      .getByRole("option", { name: "New track", exact: true }),
-  ).toHaveCount(1);
-});
-
-test("empty and unavailable responses reserve panel space and never display fictional records", async ({
-  page,
-}) => {
-  await page.route("**/api/public/racing-overview", (route) =>
-    route.fulfill({
-      status: 503,
-      json: { error: "Racing data is unavailable." },
-    }),
-  );
-  await page.goto("/");
-  await expect(page.getByRole("alert")).toContainText(
-    "Racing data is unavailable.",
-  );
-  await expect(page.getByText("Records unavailable.")).toHaveCount(5);
-  await expect(
-    page.getByText(/Copper Almanac|Oakridge|Autumn Mile/),
-  ).toHaveCount(0);
-  const empty = overview();
-  Object.values(empty.sections).forEach((rows) => rows.splice(0));
-  await page.route("**/api/public/racing-overview", (route) =>
-    route.fulfill({ json: empty }),
-  );
-  await page.getByRole("button", { name: "Refresh racing data" }).click();
-  await expect(page.getByText("No racecards published yet.")).toBeVisible();
-  await expect(page.getByText("No updates published yet.")).toBeVisible();
-});
-
-test("full view focuses account, handles failed login and continues to requested view", async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.route("**/api/racing/entries", (route) =>
-    route.fulfill({ json: { entries: [] } }),
-  );
-  await page.goto("/");
-  await page
-    .getByRole("button", { name: "View Recorded race 1 racecard", exact: true })
-    .click();
-  await expect(
-    page.getByRole("region", { name: "Your Stayblz account" }),
-  ).toBeFocused();
-  await expect(page.locator(".ld-auth-intent")).toHaveText(
-    "Log in or sign up to view full racecards.",
-  );
   await page
     .getByLabel("Email", { exact: true })
     .fill("rider");
@@ -340,7 +236,7 @@ test("full view focuses account, handles failed login and continues to requested
     }),
   );
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).toHaveURL(/\/entries$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
 });
 
 test("returning user keeps index access", async ({ page }) => {
@@ -374,8 +270,8 @@ test("motion reveals sections on scroll and reduced-motion disables animation", 
   page,
 }) => {
   await page.goto("/");
-  await page.locator("#leaderboard").scrollIntoViewIfNeeded();
-  await expect(page.locator("#leaderboard")).toHaveClass(/ld-visible/);
+  await page.locator(".ld-public-footer-top").scrollIntoViewIfNeeded();
+  await expect(page.locator(".ld-public-footer-top")).toHaveClass(/ld-visible/);
   expect(
     await page
       .locator(".ld-hero > img")
@@ -387,4 +283,52 @@ test("motion reveals sections on scroll and reduced-motion disables animation", 
       .locator(".ld-hero > img")
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe("none");
+});
+
+test("footer Explore links sit in three columns and two rows without a Racing overview link", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const nav = page.getByRole("navigation", { name: "Footer navigation" });
+  await expect(nav.getByRole("link", { name: "Racing overview" })).toHaveCount(0);
+  const links = nav.getByRole("link");
+  await expect(links).toHaveCount(6);
+  const boxes = await Promise.all(
+    (await links.all()).map(async (l) => (await l.boundingBox())!),
+  );
+  // Three columns, two rows, filled column by column:
+  // FAQ / Updates · Terms / Privacy · Log in / Create an account.
+  expect(new Set(boxes.map((b) => Math.round(b.y))).size).toBe(2);
+  expect(new Set(boxes.map((b) => Math.round(b.x))).size).toBe(3);
+  for (let i = 0; i < boxes.length; i += 2)
+    expect(Math.abs(boxes[i].x - boxes[i + 1].x)).toBeLessThanOrEqual(1);
+  // No sideways scrolling on a narrow phone.
+  await page.setViewportSize({ width: 320, height: 800 });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  ).toBe(true);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // Explore sits at the right edge, mirroring the logo on the left.
+  const footer = (await page.locator(".ld-public-footer-top").boundingBox())!;
+  const navBox = (await nav.boundingBox())!;
+  expect(footer.x + footer.width - (navBox.x + navBox.width)).toBeLessThanOrEqual(1);
+  expect(navBox.height).toBeLessThan(100);
+});
+
+test("on load the hero fills the screen, so footer text only shows after scrolling", async ({
+  page,
+}) => {
+  for (const [width, height] of [
+    [1440, 900],
+    [1366, 768],
+    [1920, 1080],
+    [375, 812],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    await expect(page.locator(".ld-hero h1")).toBeVisible();
+    const footerText = (await page.locator(".ld-public-footer-top").boundingBox())!;
+    expect(footerText.y).toBeGreaterThanOrEqual(height);
+  }
 });

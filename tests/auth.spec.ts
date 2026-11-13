@@ -38,24 +38,32 @@ test.beforeEach(async ({ page }) => {
     return route.fulfill({ status: 401, json: { error: "Not signed in." } });
   });
 });
-async function fillSignup(page: import("@playwright/test").Page) {
+/** Sign-up page 1: name, email and password. */
+async function fillSignupStep1(
+  page: import("@playwright/test").Page,
+  confirm = "TestOnlyPassword123",
+) {
   await page.getByLabel("First name", { exact: true }).fill("Member");
   await page.getByLabel("Last name", { exact: true }).fill("User");
-  await page
-    .getByRole("combobox", { name: "Country", exact: true })
-    .selectOption("PH");
-  await page
-    .getByRole("combobox", { name: "Your main role in racing", exact: true })
-    .selectOption("fan");
   await page
     .getByLabel("Email address", { exact: true })
     .fill("member@example.test");
   await page
     .getByLabel("Password", { exact: true })
     .fill("TestOnlyPassword123");
+  await page.getByLabel("Confirm password", { exact: true }).fill(confirm);
+}
+/** Both pages of sign-up, ready for "Create account". */
+async function fillSignup(page: import("@playwright/test").Page) {
+  await fillSignupStep1(page);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByText("Step 2 of 2", { exact: false })).toBeVisible();
   await page
-    .getByLabel("Confirm password", { exact: true })
-    .fill("TestOnlyPassword123");
+    .getByRole("combobox", { name: "Country", exact: true })
+    .selectOption("PH");
+  await page
+    .getByRole("combobox", { name: "Your main role in racing", exact: true })
+    .selectOption("fan");
   await page.getByRole("checkbox", { name: /I agree to the Terms of Use/ }).check();
   await page.getByRole("checkbox", { name: "I'm 18 or older." }).check();
 }
@@ -109,14 +117,14 @@ test("password mismatch stays in the form without a signup request", async ({
     if (r.url().includes("/api/auth/signup")) posts++;
   });
   await page.goto("/signup");
-  await fillSignup(page);
-  await page
-    .getByLabel("Confirm password", { exact: true })
-    .fill("DifferentPassword123");
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
+  await fillSignupStep1(page, "DifferentPassword123");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("alert")).toHaveText("Passwords do not match.");
+  // Still on page 1.
+  await expect(page.getByText("Step 1 of 2", { exact: false })).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Country", exact: true }),
+  ).toHaveCount(0);
   expect(posts).toBe(0);
   await expect(page.getByLabel("First name")).toHaveValue("Member");
 });
@@ -416,6 +424,8 @@ test("unauthorized email keeps the signup draft and never shows a sent-email scr
   await expect(
     page.getByRole("heading", { name: "Check your email", exact: true }),
   ).toHaveCount(0);
+  // A refused email brings people back to page 1, where that field is.
+  await expect(page.getByText("Step 1 of 2", { exact: false })).toBeVisible();
   await expect(page.getByLabel("Email address", { exact: true })).toHaveValue(
     "member@example.test",
   );
@@ -706,12 +716,6 @@ test.beforeEach(async ({ page }) => {
 
 test("signup has clear racing choices and separate Show controls for both passwords", async ({ page }) => {
   await page.goto("/signup");
-  const connection = page.getByRole("combobox", { name: "Your main role in racing", exact: true });
-  await expect(connection.locator("optgroup")).toHaveCount(7);
-  await expect(connection.locator("option")).toHaveCount(22);
-  await connection.selectOption({ label: "Racing fan" });
-  await expect(connection).toHaveValue("fan");
-  await expect(page.getByText("Follows horses, jockeys and big races.")).toBeVisible();
   const password = page.getByLabel("Password", { exact: true });
   const confirmation = page.getByLabel("Confirm password", { exact: true });
   await password.fill("VisibleTestPassword123");
@@ -725,6 +729,17 @@ test("signup has clear racing choices and separate Show controls for both passwo
   await expect(password).toHaveAttribute("type", "password");
   await expect(password).toHaveValue("VisibleTestPassword123");
   await expect(confirmation).toHaveValue("VisibleTestPassword123");
+  // Racing choices are on page 2.
+  await page.getByLabel("First name", { exact: true }).fill("Member");
+  await page.getByLabel("Last name", { exact: true }).fill("User");
+  await page.getByLabel("Email address", { exact: true }).fill("member@example.test");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  const connection = page.getByRole("combobox", { name: "Your main role in racing", exact: true });
+  await expect(connection.locator("optgroup")).toHaveCount(7);
+  await expect(connection.locator("option")).toHaveCount(22);
+  await connection.selectOption({ label: "Racing fan" });
+  await expect(connection).toHaveValue("fan");
+  await expect(page.getByText("Follows horses, jockeys and big races.")).toBeVisible();
 });
 
 test("password setup and recovery reveal each field without submitting the form", async ({ page }) => {

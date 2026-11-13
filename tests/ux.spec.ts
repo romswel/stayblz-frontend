@@ -64,19 +64,32 @@ async function settle(page: Page) {
   );
 }
 
+/** Sign-up page 1: name, email and password. */
+async function fillStep1(page: Page) {
+  await page.getByLabel("First name", { exact: true }).fill("Fia");
+  await page.getByLabel("Last name", { exact: true }).fill("Farrier");
+  await page.getByLabel("Email address", { exact: true }).fill("fia@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("TestOnlyPassword123");
+  await page.getByLabel("Confirm password", { exact: true }).fill("TestOnlyPassword123");
+}
+
 test("sign-up keeps what was typed after a reload, never the password, and can be cleared", async ({ page }) => {
   await api(page, null);
   await page.goto("/signup");
-  await page.getByLabel("First name", { exact: true }).fill("Fia");
+  await fillStep1(page);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByLabel(/Town or city/).fill("Naas");
-  await page.getByLabel("Email address", { exact: true }).fill("fia@example.test");
-  await page.getByLabel("Password", { exact: true }).fill("TestOnlyPassword123");
   await page.waitForTimeout(400); // drafts save shortly after typing stops
   await page.reload();
+  // A reload starts again on page 1 with the typed details kept.
   await expect(page.getByLabel("First name", { exact: true })).toHaveValue("Fia");
-  await expect(page.getByLabel(/Town or city/)).toHaveValue("Naas");
   await expect(page.getByLabel("Email address", { exact: true })).toHaveValue("fia@example.test");
   await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
+  await page.getByLabel("Password", { exact: true }).fill("TestOnlyPassword123");
+  await page.getByLabel("Confirm password", { exact: true }).fill("TestOnlyPassword123");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByLabel(/Town or city/)).toHaveValue("Naas");
+  await page.getByRole("button", { name: "Back", exact: true }).click();
   const stored = await page.evaluate(() => JSON.stringify(localStorage));
   expect(stored).not.toContain("TestOnlyPassword123");
   await expect(page.getByText("We kept the details you typed earlier")).toBeVisible();
@@ -91,6 +104,8 @@ test("sign-up keeps what was typed after a reload, never the password, and can b
 test("sign-up fields line up, even the ones marked Optional", async ({ page }) => {
   await api(page, null);
   await page.goto("/signup");
+  await fillStep1(page);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Country", exact: true })).toBeVisible();
   await settle(page);
   // Measured until the entrance animation has finished, so the check isn't timing-dependent.
@@ -106,7 +121,8 @@ test("sign-up fields line up, even the ones marked Optional", async ({ page }) =
 test("Terms of Use and Privacy Notice open together, in place, and can be agreed to", async ({ page }) => {
   await api(page, null);
   await page.goto("/signup");
-  await page.getByLabel("First name", { exact: true }).fill("Fia");
+  await fillStep1(page);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Terms of Use and Privacy Notice" }).click();
   const dialog = page.getByRole("dialog", { name: "Terms of Use and Privacy Notice" });
   await expect(dialog.getByRole("heading", { name: "Terms of Use", exact: true })).toBeVisible();
@@ -115,6 +131,13 @@ test("Terms of Use and Privacy Notice open together, in place, and can be agreed
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("checkbox", { name: /I agree to the Terms of Use/ })).toBeChecked();
   await expect(page).toHaveURL(/\/signup$/);
+  // Still on page 2; Back sits under Create account and returns to page 1 with the details kept.
+  await expect(page.getByText("Step 2 of 2", { exact: false })).toBeVisible();
+  const create = (await page.getByRole("button", { name: "Create account", exact: true }).boundingBox())!;
+  const back = (await page.getByRole("button", { name: "Back", exact: true }).boundingBox())!;
+  expect(back.y).toBeGreaterThan(create.y + create.height - 1);
+  expect(Math.abs(back.width - create.width)).toBeLessThanOrEqual(1);
+  await page.getByRole("button", { name: "Back", exact: true }).click();
   await expect(page.getByLabel("First name", { exact: true })).toHaveValue("Fia");
 
   await page.goto("/legal");
