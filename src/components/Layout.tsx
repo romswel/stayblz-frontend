@@ -74,40 +74,10 @@ const EntriesIcon = () => (
     <path d="M5 4h13l-3 4 3 4H5" />
   </svg>
 );
-const ResultsIcon = () => (
-  <svg {...ICON_PROPS}>
-    <path d="M8 21h8" />
-    <path d="M12 17v4" />
-    <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
-    <path d="M7 6H4a3 3 0 0 0 3 4" />
-    <path d="M17 6h3a3 3 0 0 1-3 4" />
-  </svg>
-);
-const WorkoutsIcon = () => (
-  <svg {...ICON_PROPS}>
-    <circle cx="12" cy="13" r="8" />
-    <path d="M12 9v4l2.5 2" />
-    <path d="M10 2h4" />
-  </svg>
-);
-const FiguresIcon = () => (
-  <svg {...ICON_PROPS}>
-    <path d="M4 19V9" />
-    <path d="M10 19V5" />
-    <path d="M16 19v-8" />
-    <path d="M22 19H2" />
-  </svg>
-);
 const StatsIcon = () => (
   <svg {...ICON_PROPS}>
     <path d="M3 3v18h18" />
     <path d="M7 14l4-4 3 3 6-6" />
-  </svg>
-);
-const StakesIcon = () => (
-  <svg {...ICON_PROPS}>
-    <rect x="3" y="4" width="18" height="17" rx="2" />
-    <path d="M8 2v4M16 2v4M3 9h18" />
   </svg>
 );
 const StableIcon = () => (
@@ -158,19 +128,12 @@ const countLabel = (n: number) => (n > 9 ? "9+" : String(n));
 /** Chat pages run as a full-window app: no page padding, page bar, notices or footer. */
 const APP_PAGE = (path: string) => /^\/(messages|team-messages)(\/|$)/.test(path);
 
+/** The Past Performances menu is hidden from the sidebar for now; set to true to bring it back. */
+const SHOW_PP_NAV = false;
+// The Racing group (Overview, Entries, Results & Charts, Workouts, Speed Figures, Statistics,
+// Stakes Schedule) was removed from the sidebar. The pages and their routes still exist; the
+// logo still goes to the overview.
 const GROUPS = [
-  {
-    label: "Racing",
-    items: [
-      { to: "/dashboard", label: "Overview", icon: <DashboardIcon /> },
-      { to: "/entries", label: "Entries", icon: <EntriesIcon /> },
-      { to: "/results", label: "Results & Charts", icon: <ResultsIcon /> },
-      { to: "/workouts", label: "Workouts", icon: <WorkoutsIcon /> },
-      { to: "/speed-figures", label: "Speed Figures", icon: <FiguresIcon /> },
-      { to: "/statistics", label: "Statistics", icon: <StatsIcon /> },
-      { to: "/stakes", label: "Stakes Schedule", icon: <StakesIcon /> },
-    ],
-  },
   {
     label: "My racing",
     items: [
@@ -289,6 +252,13 @@ export default function Layout() {
   }
   const navigation = (
     <nav aria-label="Main">
+      {SHOW_PP_NAV && (
+        <PPNavigation
+          collapsed={collapsed}
+          onNavigate={() => setOpen(false)}
+          onExpand={() => setCollapsed(false)}
+        />
+      )}
       {GROUPS.map((g) => (
         <Fragment key={g.label}>
           <div className="ws-nav-group">{g.label}</div>
@@ -298,11 +268,9 @@ export default function Layout() {
                 to={item.to}
                 end={item.to !== "/messages"}
                 aria-label={
-                  item.to === "/dashboard"
-                    ? "Overview"
-                    : navBadge[item.to]
-                      ? `${item.label} (${navBadge[item.to]} unread)`
-                      : item.label
+                  navBadge[item.to]
+                    ? `${item.label} (${navBadge[item.to]} unread)`
+                    : item.label
                 }
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
@@ -311,22 +279,13 @@ export default function Layout() {
                 onClick={() => setOpen(false)}
               >
                 {item.icon}
-                <span>
-                  {item.to === "/dashboard" ? "Overview" : item.label}
-                </span>
+                <span>{item.label}</span>
                 {navBadge[item.to] > 0 && (
                   <span className="up-count" aria-hidden="true">
                     {countLabel(navBadge[item.to])}
                   </span>
                 )}
               </NavLink>
-              {item.to === "/dashboard" && (
-                <PPNavigation
-                  collapsed={collapsed}
-                  onNavigate={() => setOpen(false)}
-                  onExpand={() => setCollapsed(false)}
-                />
-              )}
             </Fragment>
           ))}
         </Fragment>

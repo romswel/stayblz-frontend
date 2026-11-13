@@ -163,6 +163,29 @@ test("members get the overview, visible tools, filtered records and useful detai
     expect(new URL(url).pathname).not.toBe("/api/dashboard");
 });
 
+test("sidebar leaves out the racing pages and the PP menu", async ({ page }) => {
+  await page.goto("/dashboard");
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(
+    nav.getByRole("link", { name: "Following & notebook", exact: true }),
+  ).toBeVisible();
+  for (const name of [
+    "Overview",
+    "Entries",
+    "Results & Charts",
+    "Workouts",
+    "Speed Figures",
+    "Statistics",
+    "Stakes Schedule",
+    "Past performances (PPs)",
+  ])
+    await expect(nav.getByRole("link", { name, exact: true })).toHaveCount(0);
+  await expect(nav.getByText("Racing", { exact: true })).toHaveCount(0);
+  await expect(
+    nav.getByRole("button", { name: "Toggle PP menu" }),
+  ).toHaveCount(0);
+});
+
 test("sidebar collapse persists, theme works and header actions are honest", async ({
   page,
 }) => {

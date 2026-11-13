@@ -8,6 +8,8 @@ async function openPPLink(page: import("@playwright/test").Page, name: string) {
     await menu.locator("summary").click();
   return nav.getByRole("link", { name, exact: true });
 }
+/** The sidebar PP menu is hidden (SHOW_PP_NAV in Layout.tsx); flip with it. */
+const PP_SIDEBAR = false;
 const user = { id: "pp-customer", displayName: "PP Customer", role: "member" };
 const sections = {
   racecards: [],
@@ -73,6 +75,7 @@ test("PP overview has seven report cards and real detail/compare navigation", as
 test("PP sidebar expands from collapsed desktop and exposes grouped pages", async ({
   page,
 }) => {
+  test.skip(!PP_SIDEBAR, "PP sidebar menu is hidden for now (SHOW_PP_NAV in src/components/Layout.tsx)");
   await page.goto("/pps");
   await page
     .getByRole("button", { name: "Collapse sidebar", exact: true })
@@ -245,6 +248,7 @@ test("signed-out PP links keep their destination through login", async ({
 test("PP label navigates separately from its arrow and top links work on every page", async ({
   page,
 }) => {
+  test.skip(!PP_SIDEBAR, "PP sidebar menu is hidden for now (SHOW_PP_NAV in src/components/Layout.tsx)");
   await page.goto("/entries");
   const sidebar = page.getByRole("navigation", { name: "Main" });
   const toggle = sidebar.getByRole("button", { name: "Toggle PP menu" });
@@ -283,9 +287,10 @@ test("top PP navigation mirrors every sidebar destination and marks the current 
     links.evaluateAll((elements) =>
       elements.map((el) => el.getAttribute("href")).sort(),
     );
-  expect(await destinations(top.locator("a"))).toEqual(
-    await destinations(sidebar.getByRole("link")),
-  );
+  if (PP_SIDEBAR)
+    expect(await destinations(top.locator("a"))).toEqual(
+      await destinations(sidebar.getByRole("link")),
+    );
   for (const link of [
     "Horse History",
     "Race Day Summary",

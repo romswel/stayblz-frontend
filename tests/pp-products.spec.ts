@@ -50,9 +50,6 @@ test("five Thoroughbred reports have separate child pages and direct-entry paren
     await nav.getByRole("link", { name: "Features", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/pps/${id}/features$`));
     await expect(
-      page.locator(`.pp-nav-children a[href="/pps/${id}"]`),
-    ).toHaveClass(/active/);
-    await expect(
       page.locator(".pp-feature-details article").first(),
     ).toBeVisible();
     await nav
