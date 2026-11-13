@@ -218,6 +218,32 @@ test("token-hash recovery opens the password form and strips query credentials",
   await expect(page).toHaveURL(/\/auth\/confirm$/);
 });
 
+test("a reset link with 2-step login on asks for the code once, then opens the password form", async ({
+  page,
+}) => {
+  let confirms = 0;
+  let challenges = 0;
+  await page.route("**/api/auth/confirm", (route) => {
+    confirms++;
+    return route.fulfill({ json: { user: { ...user, mfa: { enabled: true, verified: false }, mfaPending: true } } });
+  });
+  await page.route("**/api/auth/mfa/verify", (route) => {
+    challenges++;
+    return route.fulfill({ json: { user: { ...user, mfa: { enabled: true, verified: true }, mfaPending: false } } });
+  });
+  await page.goto("/auth/confirm?token_hash=fixture-recovery-token-hash&type=recovery");
+  await page.getByLabel("6-digit code").fill("123456");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Set your password", exact: true }),
+  ).toBeVisible();
+  // The cached link answer must not send the person back to the 2-step screen.
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("heading", { name: "2-step login" })).toHaveCount(0);
+  expect(confirms).toBe(1);
+  expect(challenges).toBe(1);
+});
+
 test("confirmation layout stays readable across phone, tablet and wide desktop", async ({
   page,
 }) => {
@@ -426,7 +452,7 @@ test("resend uses Retry-After, clears old success text and leaves password login
     .getByRole("button", { name: "Create account", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Resend confirmation email", exact: true })
+    .getByRole("button", { name: "Send a new code", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText("email sending limit");
   await expect(page.locator(".ld-auth-success")).toHaveCount(0);
@@ -493,6 +519,12 @@ test("resend after switching to login uses the current email instead of the sign
     .getByRole("button", { name: "Resend verification email", exact: true })
     .click();
   await expect.poll(() => recipient).toBe("other@example.test");
+  // The new email holds a code, so the code screen opens for that address.
+  await expect(
+    page.getByRole("heading", { name: "Check your email", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".ld-verification")).toContainText("other@example.test");
+  await expect(page.getByLabel("6-digit code from the email")).toBeVisible();
 });
 test("reset email delivery errors are shown without a false success message", async ({
   page,

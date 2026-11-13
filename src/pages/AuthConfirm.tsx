@@ -9,6 +9,11 @@ import PasswordField from "../components/PasswordField";
 import "./landing.css";
 import "./AuthConfirm.css";
 
+// With 2-step login on, the app shows the 2-step screen and then opens this page again. The link's
+// one-time answer is cached (see confirmation.ts), so it is applied once and never replaces the
+// newer session that passed 2-step login.
+let confirmationApplied = false;
+
 export default function AuthConfirm() {
   const pageRef = usePublicMotion();
   const { acceptUser } = useAuth();
@@ -24,7 +29,10 @@ export default function AuthConfirm() {
     confirmAccount()
       .then(({ user }) => {
         if (active) {
-          acceptUser(user);
+          if (!confirmationApplied) {
+            confirmationApplied = true;
+            acceptUser(user);
+          }
           setStep(
             isPasswordRecovery || user.passwordSetupRequired
               ? "password"

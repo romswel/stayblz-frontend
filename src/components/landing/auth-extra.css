@@ -57,6 +57,18 @@
   line-height: 1.6;
   margin: 10px 0 !important;
 }
+/* Text-style buttons look like links but still get a 40px tall tap area. */
+.landing .ld-auth-link,
+.ld-auth-switch button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+}
+/* On the reset screen the hint sits above its links, on a line of its own. */
+.ld-account-links .ld-small-print {
+  width: 100%;
+  margin: 0 !important;
+}
 .ld-auth-foot a {
   color: inherit;
 }
