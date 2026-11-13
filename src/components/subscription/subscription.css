@@ -1,0 +1,50 @@
+/* Subscription page: plain cards in the site's paper/line tokens, both themes. */
+.sub-page {
+  max-width: 760px;
+}
+.sub-card {
+  margin-bottom: 16px;
+  padding: 20px 22px;
+  border: 1px solid var(--ws-line);
+  background: var(--ws-paper);
+}
+.sub-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ws-gold);
+}
+.sub-card h2 {
+  margin: 6px 0 8px;
+  font: 400 24px / 1.2 Georgia, serif;
+}
+.sub-card p,
+.sub-card li {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ws-muted);
+}
+.sub-card ul {
+  margin: 0 0 10px;
+  padding-left: 18px;
+}
+.sub-card a:not(.ws-button) {
+  color: var(--ws-green);
+  font-weight: 600;
+}
+.sub-note {
+  margin-bottom: 12px;
+}
+@media (max-width: 560px) {
+  .sub-card {
+    padding: 16px;
+  }
+  .sub-card h2 {
+    font-size: 21px;
+  }
+  .sub-card .ws-button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
