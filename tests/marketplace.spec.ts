@@ -37,6 +37,7 @@ async function mockApp(page: Page, { role = "member", listings = [] as Row[] } =
       return route.fulfill({
         json: { user: { id: "member", username: "member", displayName: "Racing Member", role } },
       });
+    if (path === "/api/tv/status") return route.fulfill({ json: { state: "off_air", title: null, startsAt: null } });
     if (path === "/api/marketplace/listings" && request.method() === "GET") {
       state.queries.push(url.search);
       const mine = url.searchParams.get("mine") === "1";
