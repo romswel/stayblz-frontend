@@ -25,6 +25,7 @@ import UpdatesPopup from "./updates/UpdatesPopup";
 import { useUpdates } from "./updates/UpdatesContext";
 import { useChatBadge } from "./messenger/useChatBadge";
 import { CHAT_NAME, TEAM_CHAT_NAME } from "./messenger/brand";
+import { TV_NAME } from "./tv/brand";
 import { VERSION_LABEL, VERSION_TITLE } from "../version";
 import "./updates/updates.css";
 import BackButton from "./ui/BackButton";
@@ -85,6 +86,18 @@ const StableIcon = () => (
     <path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.8l-5.8 3 1.1-6.4L2.6 9.8l6.5-.9z" />
   </svg>
 );
+const MarketIcon = () => (
+  <svg {...ICON_PROPS}>
+    <path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" />
+    <circle cx="7.5" cy="7.5" r="1.5" />
+  </svg>
+);
+const TvIcon = () => (
+  <svg {...ICON_PROPS}>
+    <rect x="2.5" y="6" width="19" height="13" rx="2" />
+    <path d="M8 2.5l4 3.5 4-3.5" />
+  </svg>
+);
 const SunIcon = () => (
   <svg {...ICON_PROPS}>
     <circle cx="12" cy="12" r="4" />
@@ -134,6 +147,13 @@ const SHOW_PP_NAV = false;
 // Stakes Schedule) was removed from the sidebar. The pages and their routes still exist; the
 // logo still goes to the overview.
 const GROUPS = [
+  {
+    label: "Explore",
+    items: [
+      { to: "/marketplace", label: "Marketplace", icon: <MarketIcon /> },
+      { to: "/tv", label: TV_NAME, icon: <TvIcon /> },
+    ],
+  },
   {
     label: "My racing",
     items: [
