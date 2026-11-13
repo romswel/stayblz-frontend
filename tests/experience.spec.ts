@@ -352,6 +352,142 @@ test.describe("sign-up, codes and sign-in", () => {
     await expect(page.getByLabel("Email", { exact: true })).toHaveValue("member@example.test");
   });
 
+  test("logging in before confirming asks for the sign-up code for that address", async ({ page }) => {
+    await api(page, null);
+    await page.route("**/api/auth/login", (route) =>
+      route.fulfill({
+        status: 403,
+        json: {
+          code: "email_not_confirmed",
+          error: "Confirm your email before logging in. Enter the 6-digit code from your sign-up email, or send a new one.",
+        },
+      }),
+    );
+    let confirm: unknown;
+    await page.route("**/api/auth/confirm", (route) => {
+      confirm = route.request().postDataJSON();
+      return route.fulfill({ json: { user: member } });
+    });
+    await page.goto("/login");
+    await page.getByLabel("Email", { exact: true }).fill("Late@Example.test");
+    await page.getByLabel("Password", { exact: true }).fill("TestOnlyPassword123");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+    await expect(page.locator(".ld-verification")).toContainText("Late@Example.test");
+    await expect(page.locator(".ld-auth-success")).toContainText("Confirm your email before logging in");
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await page.getByLabel("6-digit code from the email").fill("246810");
+    await page.getByRole("button", { name: "Confirm email" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    expect(confirm).toEqual({ email: "Late@Example.test", code: "246810", type: "signup" });
+  });
+
+  test("a reset code is used once: a refused password is retried without asking for the code again", async ({ page }) => {
+    await api(page, null);
+    await page.route("**/api/auth/forgot-password", (route) =>
+      route.fulfill({ status: 202, json: { message: "If the address can receive this request, an email will arrive shortly." } }),
+    );
+    let confirms = 0;
+    await page.route("**/api/auth/confirm", (route) => {
+      confirms++;
+      return route.fulfill({ json: { user: member } });
+    });
+    const passwords: unknown[] = [];
+    await page.route("**/api/auth/password", (route) => {
+      passwords.push(route.request().postDataJSON());
+      return passwords.length === 1
+        ? route.fulfill({
+            status: 400,
+            json: { code: "same_password", error: "Choose a password that is different from your current one." },
+          })
+        : route.fulfill({ json: { ok: true } });
+    });
+    await page.goto("/login");
+    await page.getByRole("button", { name: "Forgot password?" }).click();
+    await page.getByLabel("Email address", { exact: true }).fill("member@example.test");
+    await page.getByRole("button", { name: "Send reset email" }).click();
+    await page.getByLabel("6-digit code from the email").fill("135790");
+    await page.getByLabel("New password", { exact: true }).fill("OldPasswordAgain123");
+    await page.getByLabel("Confirm password", { exact: true }).fill("OldPasswordAgain123");
+    await page.getByRole("button", { name: "Set new password" }).click();
+    await expect(page.getByRole("alert")).toContainText("different from your current one");
+    // The code was accepted, so it isn't asked for (or sent) again.
+    await expect(page.getByLabel("6-digit code from the email")).toHaveCount(0);
+    await expect(page.getByText("Code accepted. Choose a new password.")).toBeVisible();
+    await page.getByLabel("New password", { exact: true }).fill("BrandNewPassword123");
+    await page.getByLabel("Confirm password", { exact: true }).fill("BrandNewPassword123");
+    await page.getByRole("button", { name: "Set new password" }).click();
+    await expect(page.locator(".ld-auth-success")).toContainText("Password changed");
+    expect(confirms).toBe(1);
+    expect(passwords).toHaveLength(2);
+  });
+
+  test("with 2-step login on, a code reset also asks for the authenticator code before saving", async ({ page }) => {
+    await api(page, null);
+    await page.route("**/api/auth/forgot-password", (route) =>
+      route.fulfill({ status: 202, json: { message: "If the address can receive this request, an email will arrive shortly." } }),
+    );
+    const calls: string[] = [];
+    await page.route("**/api/auth/confirm", (route) => {
+      calls.push("confirm");
+      return route.fulfill({ json: { user: { ...member, mfaPending: true } } });
+    });
+    await page.route("**/api/auth/mfa/verify", (route) => {
+      calls.push("mfa:" + route.request().postDataJSON().code);
+      return route.fulfill({ json: { user: member } });
+    });
+    await page.route("**/api/auth/password", (route) => {
+      calls.push("password");
+      return route.fulfill({ json: { ok: true } });
+    });
+    await page.goto("/login");
+    await page.getByRole("button", { name: "Forgot password?" }).click();
+    await page.getByLabel("Email address", { exact: true }).fill("member@example.test");
+    await page.getByRole("button", { name: "Send reset email" }).click();
+    await page.getByLabel("6-digit code from the email").fill("112233");
+    await page.getByLabel("New password", { exact: true }).fill("BrandNewPassword123");
+    await page.getByLabel("Confirm password", { exact: true }).fill("BrandNewPassword123");
+    await page.getByRole("button", { name: "Set new password" }).click();
+    await expect(page.getByLabel("6-digit code from your authenticator app")).toBeVisible();
+    await expect(page.locator(".ld-auth-success")).toContainText("2-step login is on");
+    expect(calls).toEqual(["confirm"]);
+    await page.getByLabel("6-digit code from your authenticator app").fill("445566");
+    await page.getByRole("button", { name: "Set new password" }).click();
+    await expect(page.locator(".ld-auth-success")).toContainText("Password changed");
+    expect(calls).toEqual(["confirm", "mfa:445566", "password"]);
+  });
+
+  test("the reset screen sends a new code, refuses a wrong one, and can switch address", async ({ page }) => {
+    await api(page, null);
+    const requested: string[] = [];
+    await page.route("**/api/auth/forgot-password", (route) => {
+      requested.push(route.request().postDataJSON().email);
+      return route.fulfill({ status: 202, json: { message: "If the address can receive this request, an email will arrive shortly." } });
+    });
+    await page.route("**/api/auth/confirm", (route) =>
+      route.fulfill({
+        status: 400,
+        json: { code: "code_invalid", error: "That code is wrong or has expired. Check the latest email or request a new one." },
+      }),
+    );
+    await page.goto("/login");
+    await page.getByRole("button", { name: "Forgot password?" }).click();
+    await page.getByLabel("Email address", { exact: true }).fill("member@example.test");
+    await page.getByRole("button", { name: "Send reset email" }).click();
+    await page.getByRole("button", { name: "Send a new code" }).click();
+    await expect.poll(() => requested).toEqual(["member@example.test", "member@example.test"]);
+    await expect(page.locator(".ld-auth-success")).toContainText("If the address");
+    await page.getByLabel("6-digit code from the email").fill("000000");
+    await page.getByLabel("New password", { exact: true }).fill("BrandNewPassword123");
+    await page.getByLabel("Confirm password", { exact: true }).fill("BrandNewPassword123");
+    await page.getByRole("button", { name: "Set new password" }).click();
+    await expect(page.getByRole("alert")).toContainText("wrong or has expired");
+    await expect(page.getByLabel("6-digit code from the email")).toHaveValue("");
+    await page.getByRole("button", { name: "Use a different email" }).click();
+    await expect(page.getByLabel("Email address", { exact: true })).toBeEditable();
+    await expect(page.getByRole("button", { name: "Send reset email" })).toBeVisible();
+  });
+
   test("'Keep me signed in' can be turned off for shared computers", async ({ page }) => {
     await api(page, null);
     let body: Record<string, unknown> = {};

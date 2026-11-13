@@ -67,6 +67,13 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
   const [remember, setRemember] = useState(true);
   const [code, setCode] = useState("");
   const [resetSent, setResetSent] = useState(false);
+  // The reset code was accepted, so a failed password save can be retried without a new code.
+  const [resetVerified, setResetVerified] = useState(false);
+  // 2-step login is on for the account being reset: its authenticator code is needed too.
+  const [resetMfa, setResetMfa] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  // The address being confirmed with a code: from sign-up, or from logging in before confirming.
+  const [verifyEmail, setVerifyEmail] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -87,6 +94,9 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     setForgot(false);
     setVerification(false);
     setResetSent(false);
+    setResetVerified(false);
+    setResetMfa(false);
+    setMfaCode("");
     setCode("");
     setError("");
     setNotice("");
@@ -131,6 +141,15 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       setRetryScope(scope);
     }
   }
+  /** The reset code was accepted, but the account has 2-step login: ask for that code next. */
+  function askForMfa() {
+    setResetMfa(true);
+    setMfaCode("");
+    setError("");
+    setNotice(
+      "2-step login is on for this account. Enter the 6-digit code from your authenticator app to finish.",
+    );
+  }
   function changeMode(next: "login" | "signup") {
     onModeChange(next);
     setError("");
@@ -138,6 +157,9 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     setForgot(false);
     setVerification(false);
     setResetSent(false);
+    setResetVerified(false);
+    setResetMfa(false);
+    setMfaCode("");
     setCode("");
     setPassword("");
     setConfirmPassword("");
@@ -151,8 +173,12 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       setError("Passwords do not match.");
       return;
     }
-    if (resetSent && !/^\d{6}$/.test(code)) {
+    if (resetSent && !resetVerified && !/^\d{6}$/.test(code)) {
       setError("Enter the 6-digit code from the email.");
+      return;
+    }
+    if (resetSent && resetMfa && !/^\d{6}$/.test(mfaCode)) {
+      setError("Enter the 6-digit code from your authenticator app.");
       return;
     }
     if (mode === "signup" && !forgot && (!acceptTerms || !ageConfirmed)) {
@@ -164,15 +190,50 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     try {
       if (forgot && resetSent) {
         // The code proves it's you; then the new password is saved and you log in again.
-        await api.post<{ user: User }>("/api/auth/confirm", {
-          email: email.trim(),
-          code,
-          type: "recovery",
-        });
-        await api.post("/api/auth/password", { password, confirmPassword });
+        // A code works once, so after it's accepted a failed save is retried without it.
+        if (!resetVerified) {
+          let confirmed: { user: User };
+          try {
+            confirmed = await api.post<{ user: User }>("/api/auth/confirm", {
+              email: email.trim(),
+              code,
+              type: "recovery",
+            });
+          } catch (reason) {
+            if (reason instanceof ApiError && reason.code === "code_invalid") setCode("");
+            throw reason;
+          }
+          if (operation.current !== currentOperation) return;
+          setResetVerified(true);
+          if (confirmed.user.mfaPending) {
+            askForMfa();
+            return;
+          }
+        }
+        if (resetMfa) {
+          try {
+            await api.post<{ user: User }>("/api/auth/mfa/verify", { code: mfaCode });
+          } catch (reason) {
+            setMfaCode("");
+            throw reason;
+          }
+          if (operation.current !== currentOperation) return;
+          setResetMfa(false);
+          setMfaCode("");
+        }
+        try {
+          await api.post("/api/auth/password", { password, confirmPassword });
+        } catch (reason) {
+          if (reason instanceof ApiError && reason.code === "mfa_required") {
+            if (operation.current === currentOperation) askForMfa();
+            return;
+          }
+          throw reason;
+        }
         if (operation.current !== currentOperation) return;
         setForgot(false);
         setResetSent(false);
+        setResetVerified(false);
         setCode("");
         setPassword("");
         setConfirmPassword("");
@@ -213,6 +274,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
           );
         setPassword("");
         setConfirmPassword("");
+        setVerifyEmail(email.trim());
         setVerification(true);
         setNotice(response.message);
       } else {
@@ -223,6 +285,21 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       }
     } catch (reason) {
       if (operation.current !== currentOperation) return;
+      if (
+        mode === "login" &&
+        !forgot &&
+        reason instanceof ApiError &&
+        reason.code === "email_not_confirmed"
+      ) {
+        // Signed up but never confirmed: ask for the code from the sign-up email right here.
+        setPassword("");
+        setCode("");
+        setVerifyEmail(username.trim());
+        setVerification(true);
+        setError("");
+        setNotice(reason.message);
+        return;
+      }
       reportError(
         reason,
         "The request failed. Please try again.",
@@ -232,20 +309,34 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       if (operation.current === currentOperation) setBusy(false);
     }
   }
+  /**
+   * Sends a new code: the sign-up code on the "Check your email" screen or from the login tab
+   * (which then opens the code screen), or the reset code on the "Reset your password" screen.
+   */
   async function resend() {
     if (busy || emailRateLimited) return;
     setBusy(true);
     setError("");
     setNotice("");
     const currentOperation = operation.current;
+    const address = forgot
+      ? email.trim()
+      : verification
+        ? verifyEmail
+        : mode === "login"
+          ? username.trim()
+          : email.trim();
     try {
-      const response = await api.post<{ message: string }>("/api/auth/resend", {
-        email:
-          verification || mode === "signup" || forgot
-            ? email.trim()
-            : username.trim(),
-      });
+      const response = await api.post<{ message: string }>(
+        forgot ? "/api/auth/forgot-password" : "/api/auth/resend",
+        { email: address },
+      );
       if (operation.current !== currentOperation) return;
+      setCode("");
+      if (!forgot && !verification) {
+        setVerifyEmail(address);
+        setVerification(true);
+      }
       setNotice(response.message);
     } catch (reason) {
       if (operation.current !== currentOperation) return;
@@ -267,12 +358,15 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
     const currentOperation = operation.current;
     try {
       const response = await api.post<{ user: User }>("/api/auth/confirm", {
-        email: email.trim(),
+        email: verifyEmail,
         code,
         type: "signup",
       });
       if (operation.current !== currentOperation) return;
-      clearSignup();
+      // The saved sign-up or login details are done with once this address is confirmed.
+      const confirmed = verifyEmail.toLowerCase();
+      if (email.trim().toLowerCase() === confirmed) clearSignup();
+      if (username.trim().toLowerCase() === confirmed) clearUsername();
       acceptUser(response.user);
       navigate(destination, { replace: true });
     } catch (reason) {
@@ -292,6 +386,19 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
         autoComplete="one-time-code"
         value={code}
         onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        required
+      />
+    </label>
+  );
+  const mfaField = (
+    <label className="ld-field ld-code-field">
+      <span className="ld-label">6-digit code from your authenticator app</span>
+      <input
+        name="mfaCode"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        value={mfaCode}
+        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
         required
       />
     </label>
@@ -352,10 +459,14 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
             <p className="ld-auth-description">
               {forgot
                 ? resetSent
-                  ? "Enter the code from the email and choose a new password."
-                  : "We’ll email you a 6-digit code and a reset link."
+                  ? resetMfa
+                    ? "Code accepted. Enter your 2-step login code to finish."
+                    : resetVerified
+                    ? "Code accepted. Choose a new password."
+                    : "Enter the 6-digit code from the email and choose a new password."
+                  : "We’ll email you a 6-digit code."
                 : verification
-                  ? "Enter the 6-digit code we emailed you, or use the button in the email."
+                  ? "Enter the 6-digit code we emailed you."
                   : mode === "login"
                     ? "Access your account and racing records."
                     : "Create your profile and verify your email."}
@@ -378,7 +489,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
             )}
             {verification ? (
               <div className="ld-verification">
-                <p>{email}</p>
+                <p>{verifyEmail}</p>
                 <form onSubmit={confirmCode} aria-label="Confirm your email with a code" noValidate>
                   {codeField}
                   <button
@@ -391,26 +502,29 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                   </button>
                 </form>
                 <p className="ld-small-print">
-                  Didn't get it? Check spam, or request a new email. Codes expire after a short time.
+                  Didn't get it? Check spam or junk, or send a new code. Only the newest code works.
                 </p>
-                <button
-                  type="button"
-                  className="ld-auth-link"
-                  onClick={resend}
-                  disabled={busy || emailRateLimited}
-                >
-                  {busy
-                    ? "Requesting…"
-                    : emailRateLimited
-                      ? `Try again in ${retrySeconds}s`
-                      : "Resend confirmation email"}
-                </button>
-                <button
-                  className="ld-auth-link"
-                  onClick={() => changeMode("login")}
-                >
-                  Back to login
-                </button>
+                <div className="ld-account-links">
+                  <button
+                    type="button"
+                    className="ld-auth-link"
+                    onClick={resend}
+                    disabled={busy || emailRateLimited}
+                  >
+                    {busy
+                      ? "Requesting…"
+                      : emailRateLimited
+                        ? `Try again in ${retrySeconds}s`
+                        : "Send a new code"}
+                  </button>
+                  <button
+                    type="button"
+                    className="ld-auth-link"
+                    onClick={() => changeMode("login")}
+                  >
+                    Back to login
+                  </button>
+                </div>
               </div>
             ) : (
               <form
@@ -517,7 +631,8 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                     </label>
                   </>
                 )}
-                {forgot && resetSent && codeField}
+                {forgot && resetSent && !resetVerified && codeField}
+                {forgot && resetSent && resetMfa && mfaField}
                 <label className="ld-field">
                   <span className="ld-label">{mode === "login" && !forgot ? "Email" : "Email address"}</span>
                   <input
@@ -678,17 +793,32 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
                     )}
                   </>
                 )}
-                {forgot && resetSent && (
-                  <button
-                    className="ld-auth-link"
-                    onClick={() => {
-                      setResetSent(false);
-                      setCode("");
-                      setNotice("");
-                    }}
-                  >
-                    Didn't get the email? Send it again
-                  </button>
+                {forgot && resetSent && !resetVerified && (
+                  <>
+                    <p className="ld-small-print">
+                      Didn't get it? Check spam or junk, or send a new code. Only the newest code works.
+                    </p>
+                    <button
+                      type="button"
+                      className="ld-auth-link"
+                      onClick={resend}
+                      disabled={busy || emailRateLimited}
+                    >
+                      {emailRateLimited ? `Try again in ${retrySeconds}s` : "Send a new code"}
+                    </button>
+                    <button
+                      type="button"
+                      className="ld-auth-link"
+                      onClick={() => {
+                        setResetSent(false);
+                        setCode("");
+                        setError("");
+                        setNotice("");
+                      }}
+                    >
+                      Use a different email
+                    </button>
+                  </>
                 )}
                 <p className="ld-auth-switch">
                   {forgot
