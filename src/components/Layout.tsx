@@ -115,6 +115,12 @@ const UpdatesIcon = () => (
     <path d="M16 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" />
   </svg>
 );
+const SubscriptionIcon = () => (
+  <svg {...ICON_PROPS}>
+    <rect x="2.5" y="5" width="19" height="14" rx="2" />
+    <path d="M2.5 10h19M6.5 15h4" />
+  </svg>
+);
 const MenuIcon = () => (
   <svg {...ICON_PROPS} width={20} height={20}>
     <path d="M4 7h16M4 12h16M4 17h16" />
@@ -377,6 +383,16 @@ export default function Layout() {
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
+      </NavLink>
+      <NavLink
+        className="ws-nav-item"
+        to="/subscription"
+        aria-label="Subscription"
+        title="Subscription"
+        onClick={() => setOpen(false)}
+      >
+        <SubscriptionIcon />
+        <span>Subscription</span>
       </NavLink>
       {canUse(user, "admin") && (
         <>
