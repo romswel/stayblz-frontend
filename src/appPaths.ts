@@ -23,6 +23,8 @@ const prefixes = [
   "/stables",
   "/administration",
   "/betting",
+  "/marketplace",
+  "/tv",
 ];
 
 export const isAppPath = (pathname: string) =>

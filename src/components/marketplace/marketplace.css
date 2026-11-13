@@ -1,0 +1,388 @@
+/* Horse marketplace: filters column, listing cards, listing form. Theme tokens only. */
+
+.mk-page {
+  min-width: 0;
+}
+.mk-add.btn-primary {
+  width: auto;
+  flex: none;
+}
+
+/* ————— Toolbar ————— */
+.mk-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 18px;
+}
+.mk-switch {
+  display: inline-flex;
+  border: 1px solid var(--ws-line);
+  border-radius: 999px;
+  padding: 3px;
+  background: var(--ws-paper);
+}
+.mk-switch button {
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ws-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.mk-switch button[aria-pressed="true"] {
+  background: var(--ws-green);
+  color: var(--ws-paper);
+}
+.mk-filter-toggle {
+  display: none;
+}
+.mk-sort {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ws-muted);
+}
+
+/* ————— Shared field look (filters + form) ————— */
+.mk-filters :is(select, input),
+.mk-sort select,
+.mk-form :is(select, input) {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--ws-line);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--ws-bg);
+  color: var(--ws-ink);
+  font-size: 14px;
+}
+.mk-sort select {
+  width: auto;
+}
+.mk-filters :is(select, input):hover,
+.mk-form :is(select, input):hover:not(:disabled) {
+  border-color: var(--ws-gold);
+}
+.mk-filters :is(select, input):focus-visible,
+.mk-sort select:focus-visible,
+.mk-form :is(select, input):focus-visible {
+  outline: 2px solid var(--ws-gold);
+  outline-offset: 1px;
+}
+.mk-filters input::placeholder,
+.mk-form input::placeholder {
+  color: var(--ws-muted);
+  opacity: 0.8;
+}
+
+/* ————— Layout: filters left, results right ————— */
+.mk-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.mk-filters {
+  position: sticky;
+  top: 84px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+.mk-filters-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.mk-filters-head h2 {
+  font: 400 21px/1.2 Georgia, serif;
+}
+.mk-link {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  color: var(--ws-gold);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.mk-field {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ws-ink);
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.mk-range {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+}
+.mk-range legend {
+  float: left;
+  grid-column: 1 / -1;
+  margin-bottom: 6px;
+  padding: 0;
+}
+.mk-range > span {
+  font-weight: 400;
+  color: var(--ws-muted);
+}
+
+/* ————— Results ————— */
+.mk-results {
+  min-width: 0;
+}
+.mk-count {
+  font-size: 12px;
+  color: var(--ws-muted);
+  margin-bottom: 10px;
+}
+.mk-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+  transition: opacity var(--dur) ease;
+}
+.mk-grid.is-loading {
+  opacity: 0.55;
+}
+.mk-grid > li {
+  min-width: 0;
+  display: flex;
+}
+.mk-card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur) ease, transform var(--dur) var(--ease-out);
+}
+.mk-card:hover {
+  border-color: var(--ws-gold);
+  box-shadow: 0 10px 24px -18px rgba(0, 0, 0, 0.45);
+}
+.mk-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+.mk-card-top .horse-portrait {
+  flex: none;
+  border-radius: 50%;
+  background: var(--ws-soft);
+}
+.mk-card-top > div {
+  min-width: 0;
+}
+.mk-card h3 {
+  font: 400 20px/1.2 Georgia, serif;
+  overflow-wrap: anywhere;
+}
+.mk-price {
+  display: block;
+  margin-top: 4px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ws-green);
+  font-variant-numeric: tabular-nums;
+}
+.mk-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--gold-tint, rgba(148, 112, 48, 0.12));
+  color: var(--ws-gold);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mk-tags span {
+  padding: 3px 9px;
+  border: 1px solid var(--ws-line);
+  border-radius: 999px;
+  background: var(--ws-bg);
+  font-size: 11.5px;
+  color: var(--ws-ink);
+}
+.mk-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 8px;
+  margin: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--ws-line);
+}
+.mk-facts dt {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ws-muted);
+}
+.mk-facts dd {
+  margin: 3px 0 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.mk-facts .mk-wide {
+  grid-column: 1 / -1;
+}
+.mk-card-foot {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--ws-muted);
+}
+.mk-card-actions {
+  display: flex;
+  gap: 6px;
+}
+.mk-card-actions .ws-button {
+  min-height: 34px;
+  padding: 6px 12px;
+}
+.mk-empty {
+  padding: 36px 24px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.mk-empty h3 {
+  font: 400 22px/1.25 Georgia, serif;
+}
+.mk-empty p {
+  font-size: 13px;
+  color: var(--ws-muted);
+  max-width: 420px;
+}
+
+/* ————— Listing form (dialog) ————— */
+.mk-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+.mk-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 0;
+}
+.mk-form .mk-span {
+  grid-column: 1 / -1;
+}
+.mk-form :is(select, input) {
+  min-height: 44px;
+  font-size: 16px; /* 16px stops iOS zooming into the field */
+  background: var(--input-bg, var(--ws-bg));
+  color: var(--ink);
+  border-color: var(--line);
+}
+.mk-money {
+  position: relative;
+  display: block;
+}
+.mk-money > span {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+.mk-money input {
+  padding-left: 24px;
+}
+.mk-form .form-error,
+.mk-form .ws-notice {
+  margin: 16px 0 0;
+}
+.mk-form .ws-notice {
+  margin: 0 0 16px;
+}
+.mk-form-note {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* ————— Narrow screens ————— */
+@media (max-width: 900px) {
+  .mk-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mk-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+  .mk-filters {
+    display: none;
+    position: static;
+  }
+  .mk-filters.is-open {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mk-filters.is-open .mk-filters-head,
+  .mk-filters.is-open .mk-range {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 560px) {
+  .mk-page .ov-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mk-add.btn-primary {
+    width: 100%;
+  }
+  .mk-sort {
+    margin-left: 0;
+  }
+  .mk-filters.is-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mk-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mk-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

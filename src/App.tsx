@@ -23,6 +23,8 @@ import StartupLoader from "./components/StartupLoader";
 import FAQ from "./pages/FAQ";
 import Stables from "./pages/Stables";
 import Administration from "./pages/Administration";
+import Marketplace from "./pages/Marketplace";
+import StayblzTV from "./pages/StayblzTV";
 import { WorkspaceProvider, StableGate } from "./workspace";
 import MfaChallenge from "./components/account/MfaChallenge";
 import { canUse } from "./components/account/roles";
@@ -212,6 +214,8 @@ export default function App() {
           }
         />
         <Route path="/my-racing" element={<MyRacing />} />
+        <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/tv" element={<StayblzTV />} />
         <Route path="/workspace" element={<StableWorkspace />} />
         <Route
           path="/inventory"
