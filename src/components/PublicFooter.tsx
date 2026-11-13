@@ -22,7 +22,6 @@ export default function PublicFooter() {
         </p>
         <nav aria-label="Footer navigation">
           <span className="ld-kicker">EXPLORE</span>
-          <Link to="/">Racing overview</Link>
           <Link to="/faq">Frequently asked questions</Link>
           <Link to="/updates">Updates & news</Link>
           <Link to="/terms">Terms of Use</Link>

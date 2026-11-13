@@ -7,7 +7,14 @@
   --ld-line: #35483b;
   --ld-gutter: clamp(18px, 2.3vw, 52px);
   --ld-panel-height: 430px;
-  --ld-intro-height: 500px;
+  /* Shortest the hero gets; otherwise it fills the screen below the header. */
+  --ld-intro-height: 580px;
+  --ld-card-w: clamp(320px, 28vw, 420px);
+  /* Space kept between the card and the right-aligned headline. */
+  --ld-copy-gap: clamp(48px, 5vw, 96px);
+  /* Same side space as the header, so the card lines up with the logo. */
+  --ld-hero-pad: max(var(--ld-gutter), 20px);
+  --ld-open-ease: cubic-bezier(0.22, 0.8, 0.24, 1);
   min-height: 100%;
   background: var(--ld-bg);
   color: var(--ld-paper);
@@ -279,49 +286,27 @@
 .landing button:hover:enabled > span[aria-hidden] {
   transform: translate(2px, -2px);
 }
+/* The hero runs edge to edge: no page padding around it, and the footer follows directly. */
 .ld-main {
   width: 100%;
-  padding: 0 var(--ld-gutter);
+  padding: 0;
 }
-.ld-edition {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-  padding: 22px 0 17px;
-  color: var(--ld-muted);
-  font-size: 11px;
-}
-.ld-edition > span:first-child {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 9px;
-  letter-spacing: 1.5px;
-}
-.ld-edition i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--ld-gold);
-}
-.ld-edition b {
-  padding: 0 10px;
-  font-weight: 400;
-  color: #7b8f79;
+.ld-main + .ld-public-footer {
+  margin-top: 0;
 }
 .ld-intro {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(320px, 25vw, 420px);
-  gap: 22px;
-  align-items: start;
+  display: block;
 }
 .ld-hero {
   position: relative;
-  height: var(--ld-intro-height);
+  height: max(
+    var(--ld-intro-height),
+    calc(100vh - var(--ld-above-hero, 90px))
+  );
+  outline: none;
   isolation: isolate;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 0;
   background: #21382a;
 }
 .ld-hero > img {
@@ -343,8 +328,8 @@
 .ld-hero-top {
   position: absolute;
   top: 25px;
-  left: 32px;
-  right: 32px;
+  left: var(--ld-hero-pad);
+  right: var(--ld-hero-pad);
   display: flex;
   justify-content: space-between;
   gap: 15px;
@@ -353,18 +338,31 @@
   color: #fff6df;
 }
 .ld-photo-label {
+  position: relative;
+  left: 0;
   border-left: 2px solid var(--ld-gold);
   padding-left: 10px;
+  white-space: nowrap;
+  transition:
+    left 0.6s 0.2s var(--ld-open-ease),
+    transform 0.6s 0.2s var(--ld-open-ease);
 }
 .ld-hero-index {
   opacity: 0.75;
+  transition: opacity 0.3s 0.4s;
 }
 .ld-hero-copy {
+  --ld-copy-w: min(720px, calc(100% - 2 * var(--ld-hero-pad)));
   position: absolute;
-  left: clamp(28px, 3vw, 64px);
+  left: var(--ld-hero-pad);
+  width: var(--ld-copy-w);
   bottom: 48px;
-  right: 24px;
-  animation: ld-copy-in 0.8s 0.1s ease-out both;
+  /* "backwards" so the entrance doesn't hold a transform after it ends. */
+  animation: ld-copy-in 0.8s 0.1s ease-out backwards;
+  transition:
+    left 0.6s 0.2s var(--ld-open-ease),
+    width 0.6s 0.2s var(--ld-open-ease),
+    opacity 0.3s 0.2s;
 }
 .landing .ld-kicker {
   display: block;
@@ -380,6 +378,7 @@
     serif;
   letter-spacing: -2px;
   margin: 16px 0 20px;
+  transition: font-size 0.6s 0.2s var(--ld-open-ease);
 }
 .ld-hero h1 em {
   color: #e0c794;
@@ -411,8 +410,105 @@
   font-size: 8px;
   color: #e5e8d4bb;
 }
+/* Blur that is strongest on the left (behind the card) and clear on the far right. */
+.ld-hero-blur {
+  position: absolute;
+  inset: 0;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 22%, transparent 88%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 22%, transparent 88%);
+  opacity: 0;
+  transition: opacity 0.6s 0.15s ease;
+}
+/* Extra shade on the right so the moved headline stays readable over the bright side of the photo. */
+.ld-hero-shade-open {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(270deg, #08150fd0, #09160f70 40%, #09160f00 70%);
+  opacity: 0;
+  transition: opacity 0.6s 0.15s ease;
+}
+.ld-auth-shell {
+  position: absolute;
+  z-index: 2;
+  top: var(--ld-hero-pad);
+  bottom: var(--ld-hero-pad);
+  left: var(--ld-hero-pad);
+  width: var(--ld-card-w);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-28px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0s 0.25s;
+}
+.ld-auth-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ld-muted);
+  font-size: 20px;
+  line-height: 1;
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+.ld-auth-close:hover {
+  color: var(--ld-paper);
+  background: #ffffff14;
+}
+.ld-auth-close:focus-visible {
+  outline: 2px solid var(--ld-gold);
+  outline-offset: 2px;
+}
+
+/* Open: words slide to the right, the photo blurs from the left, then the card comes in. */
+.ld-intro-open .ld-hero-blur,
+.ld-intro-open .ld-hero-shade-open {
+  opacity: 1;
+  transition-delay: 0s;
+}
+.ld-intro-open .ld-hero-index {
+  opacity: 0;
+  transition-delay: 0s;
+}
+.ld-intro-open .ld-photo-label {
+  left: 100%;
+  transform: translateX(-100%);
+  transition-delay: 0s;
+}
+.ld-intro-open .ld-hero-copy {
+  --ld-copy-w: min(
+    600px,
+    calc(100% - var(--ld-card-w) - 2 * var(--ld-hero-pad) - var(--ld-copy-gap))
+  );
+  text-align: right;
+  left: calc(100% - var(--ld-copy-w) - var(--ld-hero-pad));
+  transition-delay: 0s;
+}
+.ld-intro-open .ld-hero h1 {
+  font-size: clamp(36px, 3.6vw, 68px);
+  transition-delay: 0s;
+}
+.ld-intro-open .ld-auth-shell {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  transition:
+    opacity 0.4s 0.35s ease,
+    transform 0.5s 0.35s var(--ld-open-ease),
+    visibility 0s 0s;
+}
 .ld-auth {
-  height: var(--ld-intro-height);
+  height: 100%;
+  box-shadow: 0 18px 50px #00000059;
   background: #192e24;
   border: 1px solid #46543e;
   border-radius: 4px;
@@ -1218,28 +1314,6 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
-.ld-closing {
-  display: flex;
-  align-items: center;
-  gap: 26px;
-  margin-top: 35px;
-  padding: 30px 0;
-  border-top: 1px solid var(--ld-line);
-}
-.ld-closing > .ld-brand-symbol {
-  width: 54px;
-  height: 54px;
-  opacity: 0.8;
-}
-.ld-closing > div {
-  flex: 1;
-}
-.ld-closing h2 {
-  font:
-    30px/1.2 Georgia,
-    serif;
-  margin-top: 8px;
-}
 .ld-footer {
   display: flex;
   align-items: center;
@@ -1336,13 +1410,12 @@
 @media (min-width: 1800px) {
   .landing {
     --ld-panel-height: 460px;
-    --ld-intro-height: 540px;
+    --ld-intro-height: 620px;
   }
 }
 @media (max-width: 1100px) {
-  .ld-intro {
-    grid-template-columns: minmax(0, 1fr) 310px;
-    gap: 18px;
+  .landing {
+    --ld-card-w: 310px;
   }
   .ld-hero h1 {
     font-size: 53px;
@@ -1385,19 +1458,14 @@
   }
 }
 @media (max-width: 800px) {
-  .ld-intro {
-    grid-template-columns: minmax(0, 1fr) 290px;
-    gap: 16px;
+  .landing {
+    --ld-card-w: 290px;
   }
   .ld-hero h1 {
     font-size: 43px;
   }
   .ld-hero-copy {
-    left: 25px;
     bottom: 50px;
-  }
-  .ld-hero-top {
-    left: 25px;
   }
   .ld-auth-body {
     padding: 24px 20px;
@@ -1504,22 +1572,26 @@
     max-width: 135px;
     white-space: normal !important;
   }
-  .ld-edition {
-    padding: 20px 0 14px;
-    font-size: 9px;
-  }
-  .ld-edition > span:first-child {
-    font-size: 8px;
-    letter-spacing: 1px;
-  }
-  .ld-edition-note {
-    display: none;
-  }
-  .ld-intro {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .ld-hero {
-    height: 390px;
+    height: max(390px, calc(100vh - var(--ld-above-hero, 90px)));
+    transition: height 0.45s var(--ld-open-ease);
+  }
+  .ld-intro-open .ld-hero {
+    height: max(660px, calc(100vh - var(--ld-above-hero, 90px)));
+  }
+  .ld-auth-shell {
+    --ld-hero-pad: 12px;
+    width: auto;
+    right: 12px;
+  }
+  .ld-hero-blur {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .ld-intro-open .ld-hero-copy,
+  .ld-intro-open .ld-photo-label {
+    opacity: 0;
+    visibility: hidden;
   }
   .ld-hero > img {
     object-position: 65% center;
@@ -1529,12 +1601,9 @@
   }
   .ld-hero-top {
     top: 22px;
-    left: 23px;
     font-size: 8px;
   }
   .ld-hero-copy {
-    left: 24px;
-    right: 20px;
     bottom: 43px;
   }
   .ld-hero h1 {
@@ -1686,23 +1755,6 @@
   .ld-diary-row > span:nth-child(2) small {
     font-size: 10px;
   }
-  .ld-closing {
-    flex-wrap: wrap;
-    gap: 20px;
-    padding: 27px 0;
-    margin-top: 29px;
-  }
-  .ld-closing h2 {
-    font-size: 26px;
-  }
-  .ld-closing > .ld-brand-symbol {
-    width: 38px;
-    height: 43px;
-  }
-  .ld-closing > .ld-button {
-    width: 100%;
-    justify-content: space-between;
-  }
   .ld-footer {
     flex-wrap: wrap;
     gap: 14px;
@@ -1793,4 +1845,16 @@
   line-height: 1.5;
   white-space: nowrap;
   opacity: 0.85;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-hero,
+  .ld-hero h1,
+  .ld-hero-copy,
+  .ld-photo-label,
+  .ld-hero-index,
+  .ld-hero-blur,
+  .ld-hero-shade-open,
+  .ld-auth-shell {
+    transition: none !important;
+  }
 }

@@ -1,0 +1,211 @@
+/*
+ * Landing page light/dark themes, matching the signed-in dashboard.
+ *
+ * Colours come from the app tokens in styles.css (--bg, --surface, --ink, --gold, …), which
+ * switch with html[data-theme]. Like the dashboard, the header (and the footer) stay dark green
+ * in both themes, and the hero keeps light text over its darkened photo. The account card,
+ * fields and dialogs follow the theme.
+ *
+ * Selectors start with ":root .ld-home" so they beat both landing.css and themes/dark.css.
+ */
+
+/* Page and account card: themed. */
+:root .ld-home.landing,
+:root .ld-home .ld-auth-shell {
+  --ld-bg: var(--bg);
+  --ld-forest: var(--surface);
+  --ld-paper: var(--ink);
+  --ld-muted: var(--ink-soft);
+  --ld-line: var(--line);
+  --ld-gold: var(--gold);
+}
+:root .ld-home.landing {
+  background: var(--bg);
+  color: var(--ink);
+}
+:root .ld-home.landing ::selection {
+  background: var(--selection);
+}
+
+/* Header, hero and footer: always dark, like the dashboard header. */
+:root .ld-home :is(.ld-header, .ld-hero, .ld-public-footer) {
+  --ld-forest: #153e2e;
+  --ld-bg: #0f1e19;
+  --ld-paper: #f4f0e6;
+  --ld-muted: #abb7a5;
+  --ld-line: #35483b;
+  --ld-gold: #c5a468;
+  color: var(--ld-paper);
+}
+:root[data-theme="dark"] .ld-home :is(.ld-header, .ld-public-footer) {
+  --ld-forest: #10271c;
+}
+
+/* Theme button in the header (same look as the dashboard's). */
+.ld-theme-button {
+  width: 38px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.ld-theme-button:hover {
+  background: #ffffff14;
+  border-color: #ffffff35;
+}
+.ld-theme-button:focus-visible {
+  outline: 2px solid #c5a468;
+  outline-offset: 2px;
+}
+
+/* ---- Account card ---- */
+:root .ld-home .ld-auth {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+  box-shadow: var(--shadow-pop);
+}
+:root .ld-home .ld-auth-body {
+  scrollbar-color: var(--line) transparent;
+}
+:root .ld-home .ld-auth-close {
+  color: var(--ink-soft);
+}
+:root .ld-home .ld-auth-close:hover {
+  color: var(--ink);
+  background: var(--gold-tint-soft);
+}
+:root .ld-home .ld-auth-description,
+:root .ld-home .ld-password-help,
+:root .ld-home .ld-auth-switch,
+:root .ld-home .ld-small-print,
+:root .ld-home .ld-check small,
+:root .ld-home .ld-welcome p {
+  color: var(--ink-soft);
+}
+:root .ld-home :is(.ld-field, .ld-check, .ld-verification > p) {
+  color: var(--ink);
+}
+:root .ld-home .ld-field :is(input, select) {
+  background: var(--input-bg);
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root .ld-home .ld-field input::placeholder {
+  color: var(--input-placeholder);
+}
+:root .ld-home .ld-field input:focus {
+  background: var(--input-bg);
+  border-color: var(--gold);
+  outline-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold-tint);
+}
+:root .ld-home .ld-password button {
+  color: var(--ink-soft);
+}
+:root .ld-home
+  :is(
+    .ld-auth-link,
+    .ld-auth-switch button,
+    .ld-check a,
+    .ld-inline-link,
+    .ld-welcome h2 em
+  ) {
+  color: var(--gold-ink);
+}
+:root .ld-home .ld-inline-link:hover {
+  color: var(--gold);
+}
+:root .ld-home .ld-auth-foot {
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+
+/* Messages */
+:root .ld-home :is(.ld-auth-intent, .ld-registration-note) {
+  border-color: var(--gold-dim);
+  background: var(--gold-tint-soft);
+  color: var(--gold-ink);
+}
+:root .ld-home .ld-auth-error {
+  border-color: var(--danger-line);
+  background: var(--danger-tint);
+  color: var(--danger-ink);
+}
+:root .ld-home .ld-auth-success {
+  border-color: var(--green-line);
+  background: var(--green-tint);
+  color: var(--green-ink);
+}
+
+/* Buttons inside the card use the dashboard's gold button. */
+:root .ld-home .ld-auth .ld-button-gold {
+  background: var(--gold);
+  color: var(--on-accent);
+}
+:root .ld-home .ld-auth .ld-button-gold:hover:enabled,
+:root .ld-home .ld-auth a.ld-button-gold:hover {
+  background: var(--gold-bright);
+}
+:root .ld-home .ld-auth .ld-button-quiet {
+  border-color: var(--gold);
+  color: var(--gold-ink);
+}
+:root .ld-home .ld-auth .ld-button-quiet:hover:enabled {
+  background: var(--gold-tint);
+}
+
+/* Sign-up extras */
+:root .ld-home .ld-check input,
+:root .ld-home .roles-landing .roles-check input {
+  accent-color: var(--gold);
+}
+:root .ld-home .ld-check input:focus-visible {
+  outline-color: var(--gold);
+}
+:root .ld-home .ld-agreements {
+  border-color: var(--line);
+}
+:root .ld-home .ld-agreements legend {
+  color: var(--gold-ink);
+}
+:root .ld-home .ld-optional {
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+:root .ld-home .ld-kept {
+  border-color: var(--line);
+  background: var(--gold-tint-soft);
+  color: var(--ink);
+}
+:root .ld-home .roles-landing .roles-more {
+  border-color: var(--line);
+  background: var(--input-bg);
+  color: var(--ink);
+}
+:root .ld-home .roles-landing .roles-hint {
+  color: var(--ink-soft);
+}
+
+/* The Terms dialog opened from sign-up follows the theme too (it was forced dark). */
+:root .modal.modal-landing {
+  --surface: inherit;
+  --surface-2: inherit;
+  --line: inherit;
+  --ink: inherit;
+  --ink-soft: inherit;
+  --gold: inherit;
+  --gold-bright: inherit;
+  --gold-dim: inherit;
+  --gold-ink: inherit;
+  --gold-tint: inherit;
+  --on-accent: inherit;
+}

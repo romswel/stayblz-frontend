@@ -289,6 +289,12 @@ test.describe("sign-up, codes and sign-in", () => {
     await page.goto("/signup");
     await page.getByLabel("First name", { exact: true }).fill("Fia");
     await page.getByLabel("Last name", { exact: true }).fill("Farrier");
+    await page.getByLabel("Email address", { exact: true }).fill("fia@example.test");
+    await page.getByLabel("Password", { exact: true }).fill("TestOnlyPassword123");
+    await page.getByLabel("Confirm password", { exact: true }).fill("TestOnlyPassword123");
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    // Page 2: the first field gets focus.
+    await expect(page.getByRole("combobox", { name: "Country", exact: true })).toBeFocused();
     await page.getByRole("combobox", { name: "Country", exact: true }).selectOption("IE");
     await page.getByLabel(/Town or city/).fill("Naas");
     await page.getByRole("combobox", { name: "Your main role in racing" }).selectOption("farrier");
@@ -296,9 +302,6 @@ test.describe("sign-up, codes and sign-in", () => {
     await page.getByRole("checkbox", { name: "Equine vet" }).check();
     await expect(page.getByRole("checkbox", { name: "Farrier" })).toBeDisabled();
     await page.getByLabel(/Stable, farm or organisation/).fill("Kildare Forge");
-    await page.getByLabel("Email address", { exact: true }).fill("fia@example.test");
-    await page.getByLabel("Password", { exact: true }).fill("TestOnlyPassword123");
-    await page.getByLabel("Confirm password", { exact: true }).fill("TestOnlyPassword123");
     await page.getByRole("button", { name: "Create account", exact: true }).click();
     // The browser's own required-field check stops the form before anything is sent.
     const terms = page.getByRole("checkbox", { name: /I agree to the Terms of Use/ });
@@ -309,6 +312,11 @@ test.describe("sign-up, codes and sign-in", () => {
     await page.getByRole("button", { name: "Create account", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
     expect(body).toMatchObject({
+      firstName: "Fia",
+      lastName: "Farrier",
+      email: "fia@example.test",
+      password: "TestOnlyPassword123",
+      country: "IE",
       racingRole: "farrier",
       communityRoles: ["vet"],
       city: "Naas",
