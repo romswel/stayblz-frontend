@@ -1,0 +1,265 @@
+/* ==========================================================================
+   Stayblz — My racing in the glass theme.
+   Uses the --gx-* tokens set by the shell (layout-glass.css).
+   ========================================================================== */
+
+.mrg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gx-gap, 14px);
+  min-width: 0;
+  color: var(--gx-text);
+}
+.mrg *, .mrg *::before, .mrg *::after { box-sizing: border-box; }
+.mrg h1, .mrg h2, .mrg p, .mrg ul { margin: 0; }
+.mrg ul { padding: 0; list-style: none; }
+
+.mrg-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gx-accent);
+}
+.mrg-kicker.is-gold { color: var(--gx-accent-3); }
+.mrg-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--gx-accent); animation: mrg-pulse 2.2s ease-out infinite; }
+@keyframes mrg-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gx-accent) 55%, transparent); }
+  100% { box-shadow: 0 0 0 10px transparent; }
+}
+
+/* ---------- Buttons ---------- */
+.mrg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--gx-border-strong);
+  background: var(--gx-field-strong);
+  color: var(--gx-text);
+  font-size: 0.86rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.15s ease, background-color 0.15s ease, filter 0.15s ease;
+}
+.mrg-btn:hover { background: var(--gx-hover); }
+.mrg-btn:active { transform: scale(0.97); }
+.mrg-btn-primary {
+  border-color: transparent;
+  color: var(--gx-accent-ink);
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
+  box-shadow: 0 8px 22px -10px var(--gx-accent);
+}
+.mrg-btn-primary:hover { background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2)); filter: brightness(1.08); }
+
+/* ---------- Header ---------- */
+.mrg-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: clamp(20px, 3vw, 30px);
+  border-radius: calc(var(--gx-radius) + 4px);
+}
+.mrg-hero::after {
+  content: "";
+  position: absolute;
+  right: -90px;
+  top: -130px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--gx-accent-2) 18%, transparent), transparent 65%);
+  pointer-events: none;
+}
+.mrg-hero-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mrg-hero h1 { font-size: clamp(2.2rem, 5.5vw, 3.6rem); font-weight: 800; letter-spacing: -0.04em; line-height: 0.95; }
+.mrg-hero h1 span { color: var(--gx-accent); }
+.mrg-hero-main p { color: var(--gx-text-2); font-size: clamp(0.92rem, 1.5vw, 1.02rem); }
+.mrg-hero .mrg-btn { position: relative; z-index: 1; flex: none; }
+
+/* ---------- Tabs ---------- */
+.mrg-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.mrg-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 16px;
+  color: var(--gx-text-2);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s var(--gx-ease), box-shadow 0.2s ease;
+}
+.mrg-tab:hover { border-color: var(--gx-border-strong); transform: translateY(-1px); }
+.mrg-tab-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  flex: none;
+  color: var(--gx-muted);
+  background: var(--gx-field);
+  border: 1px solid var(--gx-border);
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.mrg-tab-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mrg-tab-text strong { font-size: 0.92rem; font-weight: 700; color: var(--gx-text); }
+.mrg-tab-text small { font-size: 0.74rem; color: var(--gx-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mrg-tab[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--gx-accent) 50%, transparent);
+  background: linear-gradient(135deg, var(--gx-accent-soft), transparent 70%), var(--gx-surface);
+  box-shadow: var(--gx-shadow), 0 0 0 1px color-mix(in srgb, var(--gx-accent) 25%, transparent);
+}
+.mrg-tab[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--gx-accent), var(--gx-accent-2));
+  box-shadow: 0 0 10px var(--gx-accent);
+}
+.mrg-tab[aria-pressed="true"] .mrg-tab-icon {
+  color: var(--gx-accent-ink);
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
+  box-shadow: 0 6px 16px -6px var(--gx-accent);
+}
+.mrg-tab-link .mrg-tab-icon { color: var(--gx-accent-2); }
+.mrg-tab-arrow { margin-left: auto; color: var(--gx-muted); transition: transform 0.2s var(--gx-ease), color 0.2s ease; }
+.mrg-tab-link:hover .mrg-tab-arrow { color: var(--gx-accent); transform: translate(2px, -2px); }
+
+/* ---------- Active panel ---------- */
+.mrg-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: clamp(16px, 2.4vw, 24px);
+  border-radius: var(--gx-radius);
+  min-width: 0;
+}
+.mrg-panel-head { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--gx-border); }
+.mrg-panel-head h2 { font-size: clamp(1.1rem, 2vw, 1.3rem); font-weight: 750; }
+.mrg-panel-head p { font-size: 0.82rem; color: var(--gx-muted); margin-top: 2px; }
+.mrg-panel-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  flex: none;
+  color: var(--gx-accent);
+  background: var(--gx-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--gx-accent) 25%, transparent);
+}
+.mrg-panel-body { min-width: 0; animation: mrg-in 0.35s var(--gx-ease) backwards; }
+@keyframes mrg-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* The panels (VirtualStable, NotesPanel, PreferencesPanel) render their own markup;
+   these soft rules let them sit inside the glass without their old paper backgrounds. */
+.mrg-panel-body :where(.ov-paper, .panel) {
+  background: var(--gx-field);
+  border: 1px solid var(--gx-border);
+  border-radius: 14px;
+  box-shadow: none;
+  color: var(--gx-text);
+}
+.mrg-panel-body :where(h2, h3, h4, strong) { color: var(--gx-text); }
+.mrg-panel-body :where(p, small, dt) { color: var(--gx-text-2); }
+.mrg-panel-body :where(a) { color: var(--gx-accent); }
+.mrg-panel-body :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-radius: 10px;
+  border: 1px solid var(--gx-border-strong);
+  background: var(--gx-field);
+  color: var(--gx-text);
+}
+.mrg-panel-body :where(input, select, textarea):focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--gx-accent) 60%, transparent);
+  box-shadow: 0 0 0 3px var(--gx-accent-soft);
+}
+.mrg-panel-body :where(input[type="checkbox"], input[type="radio"]) { accent-color: var(--gx-accent); }
+.mrg-panel-body :where(select option) { background: var(--gx-bg-solid); color: var(--gx-text); }
+
+/* ---------- Stable tools ---------- */
+.mrg-stable {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: clamp(18px, 2.6vw, 26px);
+  border-radius: var(--gx-radius);
+  border-top: 2px solid color-mix(in srgb, var(--gx-accent-3) 60%, transparent);
+  background:
+    radial-gradient(70% 120% at 100% 50%, color-mix(in srgb, var(--gx-accent-3) 14%, transparent), transparent 60%),
+    var(--gx-surface);
+}
+.mrg-stable-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mrg-stable h2 { font-size: 1.25rem; font-weight: 800; }
+.mrg-stable p { font-size: 0.88rem; color: var(--gx-text-2); max-width: 56ch; }
+.mrg-features { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px !important; }
+.mrg-features li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gx-text-2);
+  background: var(--gx-field-strong);
+  border: 1px solid var(--gx-border);
+}
+.mrg-features svg { color: var(--gx-accent-3); }
+.mrg-stable .mrg-btn { flex: none; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .mrg-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .mrg-hero { flex-direction: column; }
+  .mrg-hero .mrg-btn { width: 100%; }
+  /* Tabs become a swipeable row of compact pills */
+  .mrg-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin: 0 -12px;
+    padding: 2px 12px 4px;
+  }
+  .mrg-tabs::-webkit-scrollbar { display: none; }
+  .mrg-tab { flex: none; padding: 10px 14px 10px 10px; scroll-snap-align: start; border-radius: 14px; }
+  .mrg-tab-icon { width: 34px; height: 34px; border-radius: 10px; }
+  .mrg-tab-text small { display: none; }
+  .mrg-tab-arrow { display: none; }
+  .mrg-tab:hover { transform: none; }
+  .mrg-stable { flex-direction: column; align-items: stretch; }
+  .mrg-stable .mrg-btn { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mrg *, .mrg *::before, .mrg *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
