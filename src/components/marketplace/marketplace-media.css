@@ -462,3 +462,85 @@
   .mkm-stage { border-radius: 12px; }
   .mkm-nav { width: 34px; height: 34px; margin-top: -17px; }
 }
+
+/* ---------- Videos ---------- */
+.mkm-photo video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #050b08;
+}
+.mkm-photo.is-uploading video { filter: saturate(0.4) brightness(0.7); }
+.mkm-video-badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--mkm-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(8, 18, 13, 0.66);
+  backdrop-filter: blur(6px);
+}
+.mkm-photo:hover .mkm-video-badge,
+.mkm-photo:focus-within .mkm-video-badge { opacity: 0; }
+@media (hover: none) {
+  .mkm-video-badge { bottom: auto; top: 34px; }
+  .mkm-photo:hover .mkm-video-badge { opacity: 1; }
+}
+.mkm-progress {
+  display: block;
+  width: min(140px, 70%);
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+.mkm-progress span { display: block; height: 100%; background: var(--mkm-accent); transition: width 0.2s ease; }
+.mkm-photo-state { flex-direction: column; }
+
+.mkm-stage video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.mkm-thumb { position: relative; }
+.mkm-thumb-blank { display: block; width: 100%; height: 100%; background: #0b1a12; }
+.mkm-thumb-play {
+  position: absolute;
+  inset: auto 4px 4px auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-family: var(--mkm-mono);
+  font-size: 0.6rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.mkm-card-noposter { background: radial-gradient(circle at 50% 40%, #1c3a2a, #050b08); }
+.mkm-card-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  padding-left: 3px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(8, 18, 13, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.mkm-card-media:hover .mkm-card-play { transform: scale(1.08); background: color-mix(in srgb, var(--mkm-accent) 70%, #000); }

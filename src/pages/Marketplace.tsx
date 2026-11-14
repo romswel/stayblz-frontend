@@ -6,7 +6,7 @@ import HorsePortrait from "../components/HorsePortrait";
 import { canUse } from "../components/account/roles";
 import ListingForm from "../components/marketplace/ListingForm";
 import ListingDetails from "../components/marketplace/ListingDetails";
-import { mediaUrl } from "../components/marketplace/media";
+import { pictureUrl } from "../components/marketplace/media";
 import {
   AGE_FILTER,
   BREEDS,
@@ -125,6 +125,8 @@ const EditIcon = () => (<svg {...I} width={14} height={14}><path d="M4 20h4L19 9
 const TrashIcon = () => (<svg {...I} width={14} height={14}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>);
 const SearchIcon = () => (<svg {...I}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>);
 const PhotoIcon = () => (<svg {...I} width={13} height={13}><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="m21 16-5-5-8 8" /></svg>);
+const VideoIcon = () => (<svg {...I} width={13} height={13}><rect x="3" y="6" width="13" height="12" rx="2" /><path d="m16 10.5 5-3v9l-5-3" /></svg>);
+const PlayBadge = () => (<svg {...I} width={22} height={22} fill="currentColor" stroke="none"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>);
 const DocIcon = () => (<svg {...I} width={13} height={13}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>);
 
 type View = "grid" | "list";
@@ -624,16 +626,29 @@ function ListingCard({
   const listed = new Date(l.createdAt);
   const validDate = Number.isFinite(listed.getTime());
   const seller = l.mine ? "You" : l.sellerName;
+  const picture = l.cover ? pictureUrl(l.cover) : null;
+  const media = l.photoCount + l.videoCount;
   return (
     <article className={`mp-card gx-glass${busy ? " is-busy" : ""}`} aria-label={`${l.name}, ${formatPrice(l.price)}`}>
       <button
         type="button"
-        className={`mp-media mkm-card-media${l.coverPhotoId ? " has-photo" : ""}`}
+        className={`mp-media mkm-card-media${l.cover ? " has-photo" : ""}`}
         onClick={onOpen}
-        aria-label={`View ${l.name}${l.photoCount ? `: ${l.photoCount} ${l.photoCount === 1 ? "photo" : "photos"}` : ""}`}
+        aria-label={`View ${l.name}${media ? `: ${l.photoCount} ${l.photoCount === 1 ? "photo" : "photos"}, ${l.videoCount} ${l.videoCount === 1 ? "video" : "videos"}` : ""}`}
       >
-        {l.coverPhotoId ? (
-          <img className="mkm-card-img" src={mediaUrl(l.coverPhotoId)} alt="" loading="lazy" decoding="async" />
+        {l.cover ? (
+          <>
+            {picture ? (
+              <img className="mkm-card-img" src={picture} alt="" loading="lazy" decoding="async" />
+            ) : (
+              <span className="mkm-card-img mkm-card-noposter" aria-hidden="true" />
+            )}
+            {l.cover.kind === "video" && (
+              <span className="mkm-card-play" aria-hidden="true">
+                <PlayBadge />
+              </span>
+            )}
+          </>
         ) : (
           <>
             <span className="mp-media-grid" aria-hidden="true" />
@@ -642,11 +657,16 @@ function ListingCard({
         )}
         <span className="mp-type">{labelOf(TYPES, l.type)}</span>
         {l.mine && <span className="mp-mine">Your listing</span>}
-        {(l.photoCount > 0 || l.documentCount > 0) && (
+        {(media > 0 || l.documentCount > 0) && (
           <span className="mkm-card-counts" aria-hidden="true">
             {l.photoCount > 0 && (
               <span>
                 <PhotoIcon /> {l.photoCount}
+              </span>
+            )}
+            {l.videoCount > 0 && (
+              <span>
+                <VideoIcon /> {l.videoCount}
               </span>
             )}
             {l.documentCount > 0 && (

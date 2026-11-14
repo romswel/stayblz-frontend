@@ -152,21 +152,34 @@ export interface Listing {
   mine: boolean;
   createdAt: string;
   updatedAt: string;
-  /** The first photo (shown on cards), or null for older listings without photos. */
-  coverPhotoId: string | null;
+  /** The first photo or video (shown on cards), or null for older listings without any. */
+  cover: ListingMedia | null;
   photoCount: number;
+  videoCount: number;
   documentCount: number;
   /** Only on a single listing (GET /listings/:id) and after saving. */
-  photos?: ListingPhoto[];
+  media?: ListingMedia[];
   documents?: ListingDocument[];
 }
 
-export type ListingPhoto = { id: string; width: number | null; height: number | null };
+/** A photo or a video. Videos may have a poster image (a frame shown before playing). */
+export type ListingMedia = {
+  id: string;
+  kind: "photo" | "video";
+  width: number | null;
+  height: number | null;
+  /** Videos only: length in seconds. */
+  duration?: number | null;
+  /** Videos only: whether a poster image exists. */
+  poster?: boolean;
+};
 export type ListingDocument = { id: string; name: string; size: number };
 
-/** Photos (1 to 8) are required; PDF documents (vet records, papers…) are optional. */
-export const MIN_PHOTOS = 1;
+/** At least one photo or video is required; PDF documents (vet records, papers…) are optional. */
+export const MIN_MEDIA = 1;
 export const MAX_PHOTOS = 8;
+export const MAX_VIDEOS = 3;
+export const MAX_VIDEO_SECONDS = 180;
 export const MAX_DOCUMENTS = 5;
 
 /** What the listing form sends (and the server checks again). */
@@ -181,10 +194,13 @@ export type ListingInput = {
   age: number;
   heightIn: number;
   location: string;
-  /** Uploaded files in display order; photo 0 is the cover. */
-  photoIds: string[];
+  /** Uploaded photos and videos in display order; item 0 is the cover. */
+  mediaIds: string[];
   documentIds: string[];
 };
+
+export const formatDuration = (seconds: number) =>
+  `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
 
 export const formatBytes = (n: number) =>
   n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;

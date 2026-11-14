@@ -11,19 +11,19 @@ import {
   DISCIPLINES,
   GENDERS,
   HEIGHTS,
-  MIN_PHOTOS,
+  MIN_MEDIA,
   PRICE_MAX,
   TYPES,
   type Listing,
   type ListingInput,
   type Option,
 } from "./options";
-import { DocumentManager, PhotoManager, savedDocument, savedPhoto, type MediaItem } from "./ListingMedia";
+import { DocumentManager, MediaManager, savedDocument, savedMedia, type MediaItem } from "./ListingMedia";
 import { getListing, removeUpload } from "./media";
 import "./marketplace-media.css";
 
-/** The listing's details; photos and documents are added separately. */
-type Basics = Omit<ListingInput, "photoIds" | "documentIds">;
+/** The listing's details; photos, videos and documents are added separately. */
+type Basics = Omit<ListingInput, "mediaIds" | "documentIds">;
 
 type Fields = Record<
   "name" | "price" | "breed" | "discipline" | "type" | "gender" | "color" | "age" | "heightIn" | "location",
@@ -143,7 +143,7 @@ export default function ListingForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  /* ----- Photos and documents ----- */
+  /* ----- Photos, videos and documents ----- */
   const [photos, setPhotos] = useState<MediaItem[]>([]);
   const [documents, setDocuments] = useState<MediaItem[]>([]);
   const [photosInvalid, setPhotosInvalid] = useState(false);
@@ -158,7 +158,7 @@ export default function ListingForm({
     getListing(editing.id, c.signal)
       .then((listing) => {
         if (c.signal.aborted) return;
-        setPhotos((listing.photos ?? []).map((p) => savedPhoto(p.id)));
+        setPhotos((listing.media ?? []).map(savedMedia));
         setDocuments((listing.documents ?? []).map(savedDocument));
         setMedia({ loading: false, error: "" });
       })
@@ -197,7 +197,7 @@ export default function ListingForm({
       return;
     }
     if (media.loading || media.error) {
-      setError("The listing's photos haven't loaded yet. Try again in a moment.");
+      setError("The listing's photos and videos haven't loaded yet. Try again in a moment.");
       return;
     }
     if (uploading) {
@@ -208,15 +208,15 @@ export default function ListingForm({
       setError("Remove the files that didn't upload (marked in red), then save.");
       return;
     }
-    const photoIds = photos.filter((p) => p.status === "ready" && p.id).map((p) => p.id!);
+    const mediaIds = photos.filter((p) => p.status === "ready" && p.id).map((p) => p.id!);
     const documentIds = documents.filter((d) => d.status === "ready" && d.id).map((d) => d.id!);
-    if (photoIds.length < MIN_PHOTOS) {
+    if (mediaIds.length < MIN_MEDIA) {
       setPhotosInvalid(true);
-      setError("Add at least one photo of the horse.");
+      setError("Add at least one photo or video of the horse.");
       document.querySelector(".mkm-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    const body: ListingInput = { ...input, photoIds, documentIds };
+    const body: ListingInput = { ...input, mediaIds, documentIds };
     setBusy(true);
     setError("");
     try {
@@ -245,7 +245,7 @@ export default function ListingForm({
         )}
         {media.loading ? (
           <div className="mkm-section mkm-loading" role="status">
-            <span className="mkm-spinner" aria-hidden="true" /> Loading photos and documents…
+            <span className="mkm-spinner" aria-hidden="true" /> Loading photos, videos and documents…
           </div>
         ) : media.error ? (
           <div className="mkm-section mkm-load-error" role="alert">
@@ -255,7 +255,7 @@ export default function ListingForm({
             </button>
           </div>
         ) : (
-          <PhotoManager items={photos} setItems={setPhotos} disabled={busy} invalid={photosInvalid} />
+          <MediaManager items={photos} setItems={setPhotos} disabled={busy} invalid={photosInvalid} />
         )}
         <div className="mk-form-grid">
           <label htmlFor="mk-name" className="mk-span">
@@ -347,7 +347,7 @@ export default function ListingForm({
           </p>
         )}
         <p className="mk-form-note">
-          Your listing, photos and documents are shown to signed-in Stayblz members with your display name. You can edit
+          Your listing, photos, videos and documents are shown to signed-in Stayblz members with your display name. You can edit
           or remove them at any time.
         </p>
         <div className="dlg-actions">

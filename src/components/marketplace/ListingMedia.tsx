@@ -1,15 +1,21 @@
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { MAX_DOCUMENTS, MAX_PHOTOS, formatBytes } from "./options";
-import { mediaUrl, uploadDocument, uploadPhoto } from "./media";
+import { MAX_DOCUMENTS, MAX_PHOTOS, MAX_VIDEOS, formatBytes, formatDuration, type ListingMedia } from "./options";
+import { mediaUrl, pictureUrl, uploadDocument, uploadPhoto, uploadVideo, videoType, type UploadedFile } from "./media";
 
-/** One photo or document in the form: already saved, uploading, or failed. */
+/** One photo, video or document in the form: already saved, uploading, or failed. */
 export type MediaItem = {
   key: string;
+  kind: "photo" | "video" | "document";
   /** Set once the server has the file. */
   id?: string;
   status: "ready" | "uploading" | "error";
-  /** Local preview while uploading (object URL), else the API address. */
+  /** 0 to 1 while uploading. */
+  progress?: number;
+  /** Picture to show: a local preview while uploading (object URL), else the API address. */
   preview?: string;
+  /** Videos: a local object URL to play before it's saved. */
+  localVideo?: string;
+  duration?: number | null;
   name: string;
   size: number;
   error?: string;
@@ -18,12 +24,23 @@ export type MediaItem = {
 };
 
 let counter = 0;
+const left = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const nextKey = () => `m${Date.now().toString(36)}${(counter++).toString(36)}`;
 
-export const savedPhoto = (id: string): MediaItem => ({ key: id, id, status: "ready", preview: mediaUrl(id), name: "", size: 0 });
+export const savedMedia = (m: ListingMedia): MediaItem => ({
+  key: m.id,
+  id: m.id,
+  kind: m.kind,
+  status: "ready",
+  preview: pictureUrl(m) ?? undefined,
+  duration: m.duration ?? null,
+  name: "",
+  size: 0,
+});
 export const savedDocument = (d: { id: string; name: string; size: number }): MediaItem => ({
   key: d.id,
   id: d.id,
+  kind: "document",
   status: "ready",
   name: d.name,
   size: d.size,
@@ -47,49 +64,56 @@ const RightIcon = () => (<svg {...I} width={14} height={14}><path d="M9 6l6 6-6 
 const StarIcon = () => (<svg {...I} width={14} height={14}><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></svg>);
 const CloseIcon = () => (<svg {...I} width={14} height={14}><path d="M18 6 6 18M6 6l12 12" /></svg>);
 const PlusIcon = () => (<svg {...I} width={14} height={14}><path d="M12 5v14M5 12h14" /></svg>);
+export const PlayIcon = ({ size = 16 }: { size?: number }) => (
+  <svg {...I} width={size} height={size} fill="currentColor" stroke="none"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>
+);
 
-function useUploader(
-  items: MediaItem[],
-  setItems: (update: (items: MediaItem[]) => MediaItem[]) => void,
-  upload: (file: File) => Promise<{ id: string; name: string; size: number }>,
-  makePreview: boolean,
-) {
+function useUploader(items: MediaItem[], setItems: (update: (items: MediaItem[]) => MediaItem[]) => void) {
   // Object URLs are freed when an item leaves the list or the form closes.
-  const previews = useRef(new Map<string, string>());
+  const urls = useRef(new Map<string, string[]>());
   useEffect(() => {
     const live = new Set(items.map((i) => i.key));
-    for (const [key, href] of previews.current)
+    for (const [key, list] of urls.current)
       if (!live.has(key)) {
-        URL.revokeObjectURL(href);
-        previews.current.delete(key);
+        list.forEach((u) => URL.revokeObjectURL(u));
+        urls.current.delete(key);
       }
   }, [items]);
-  useEffect(() => () => previews.current.forEach((href) => URL.revokeObjectURL(href)), []);
+  useEffect(() => () => urls.current.forEach((list) => list.forEach((u) => URL.revokeObjectURL(u))), []);
 
-  return function add(files: File[]) {
-    for (const file of files) {
-      const key = nextKey();
-      let preview: string | undefined;
-      if (makePreview) {
-        preview = URL.createObjectURL(file);
-        previews.current.set(key, preview);
-      }
-      setItems((list) => [...list, { key, status: "uploading", preview, name: file.name, size: file.size }]);
-      upload(file).then(
-        (done) => setItems((list) => list.map((i) => (i.key === key ? { ...i, id: done.id, status: "ready", name: done.name || i.name, size: done.size, fresh: true } : i))),
-        (reason) =>
-          setItems((list) =>
-            list.map((i) =>
-              i.key === key ? { ...i, status: "error", error: reason instanceof Error ? reason.message : "Upload failed." } : i,
-            ),
-          ),
-      );
-    }
+  const patch = (key: string, change: Partial<MediaItem>) => setItems((list) => list.map((i) => (i.key === key ? { ...i, ...change } : i)));
+
+  return function add(file: File, kind: MediaItem["kind"]) {
+    const key = nextKey();
+    const made: string[] = [];
+    let preview: string | undefined;
+    let localVideo: string | undefined;
+    if (kind === "photo") made.push((preview = URL.createObjectURL(file)));
+    if (kind === "video") made.push((localVideo = URL.createObjectURL(file)));
+    urls.current.set(key, made);
+    setItems((list) => [...list, { key, kind, status: "uploading", progress: 0, preview, localVideo, name: file.name, size: file.size }]);
+    const onProgress = (p: number) => patch(key, { progress: p });
+    const upload: Promise<UploadedFile> =
+      kind === "photo" ? uploadPhoto(file, onProgress) : kind === "video" ? uploadVideo(file, onProgress) : uploadDocument(file, onProgress);
+    upload.then(
+      (done) =>
+        patch(key, {
+          id: done.id,
+          status: "ready",
+          progress: 1,
+          name: done.name || file.name,
+          size: done.size,
+          duration: done.duration ?? null,
+          fresh: true,
+          ...(kind === "video" && done.poster ? { preview: `${mediaUrl(done.id)}/poster` } : {}),
+        }),
+      (reason) => patch(key, { status: "error", error: reason instanceof Error ? reason.message : "Upload failed." }),
+    );
   };
 }
 
-/** Photos: 1 required, up to 8. The first one is the cover. */
-export function PhotoManager({
+/** Photos (up to 8) and videos (up to 3), in one ordered list. Item 1 is the cover. */
+export function MediaManager({
   items,
   setItems,
   disabled,
@@ -103,16 +127,25 @@ export function PhotoManager({
   const input = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [note, setNote] = useState("");
-  const add = useUploader(items, setItems, uploadPhoto, true);
-  const room = MAX_PHOTOS - items.length;
-  const ready = items.filter((i) => i.status === "ready").length;
+  const add = useUploader(items, setItems);
+  const photos = items.filter((i) => i.kind === "photo").length;
+  const videos = items.filter((i) => i.kind === "video").length;
+  const full = photos >= MAX_PHOTOS && videos >= MAX_VIDEOS;
 
   function pick(files: File[]) {
-    setNote("");
-    const images = files.filter((f) => f.type.startsWith("image/"));
-    if (images.length < files.length) setNote("Only photos can go here. Add PDFs under Documents.");
-    if (images.length > room) setNote(`A listing can have up to ${MAX_PHOTOS} photos. The first ${Math.max(room, 0)} were added.`);
-    add(images.slice(0, Math.max(room, 0)));
+    const notes: string[] = [];
+    let p = photos;
+    let v = videos;
+    for (const file of files) {
+      if (file.type.startsWith("image/")) {
+        if (p >= MAX_PHOTOS) notes.push(`Up to ${MAX_PHOTOS} photos.`);
+        else (p++, add(file, "photo"));
+      } else if (videoType(file)) {
+        if (v >= MAX_VIDEOS) notes.push(`Up to ${MAX_VIDEOS} videos.`);
+        else (v++, add(file, "video"));
+      } else notes.push(`${file.name} isn't a photo or video${/\.pdf$/i.test(file.name) ? " (add PDFs under Documents)" : ""}.`);
+    }
+    setNote([...new Set(notes)].join(" "));
   }
   function move(index: number, to: number) {
     setItems((list) => {
@@ -131,49 +164,68 @@ export function PhotoManager({
   };
 
   return (
-    <fieldset className={`mkm-section${invalid ? " is-invalid" : ""}`} aria-describedby="mkm-photos-help">
+    <fieldset className={`mkm-section${invalid ? " is-invalid" : ""}`} aria-describedby="mkm-media-help">
       <legend>
-        Photos <span className="mkm-req">Required</span>
+        Photos &amp; videos <span className="mkm-req">Required</span>
       </legend>
-      <p id="mkm-photos-help" className="mkm-help">
-        Add 1 to {MAX_PHOTOS} photos. The first one is the cover buyers see first. JPG, PNG or WebP; large photos are
-        resized for you.
+      <p id="mkm-media-help" className="mkm-help">
+        Add at least one photo or video: up to {MAX_PHOTOS} photos (JPG, PNG, WebP) and {MAX_VIDEOS} videos (MP4, MOV or
+        WebM, up to 3 minutes and 100 MB each). The first one is the cover buyers see first.
       </p>
       <div className="mkm-photos">
-        {items.map((item, index) => (
-          <figure key={item.key} className={`mkm-photo is-${item.status}${index === 0 ? " is-cover" : ""}`}>
-            {item.preview ? <img src={item.preview} alt={`Photo ${index + 1}`} loading="lazy" /> : <span className="mkm-photo-blank" />}
-            <span className="mkm-photo-num">{index + 1}</span>
-            {index === 0 && item.status !== "error" && <span className="mkm-cover-tag">Cover</span>}
-            {item.status === "uploading" && (
-              <span className="mkm-photo-state" role="status">
-                <span className="mkm-spinner" aria-hidden="true" /> Uploading…
-              </span>
-            )}
-            {item.status === "error" && (
-              <span className="mkm-photo-state is-error" role="alert">
-                {item.error}
-              </span>
-            )}
-            <figcaption className="mkm-photo-tools">
-              {item.status === "ready" && index > 0 && (
-                <button type="button" className="mkm-tool" onClick={() => move(index, 0)} disabled={disabled} title="Make cover" aria-label={`Make photo ${index + 1} the cover`}>
-                  <StarIcon />
-                </button>
+        {items.map((item, index) => {
+          const label = `${item.kind === "video" ? "Video" : "Photo"} ${index + 1}`;
+          return (
+            <figure key={item.key} className={`mkm-photo is-${item.status} is-${item.kind}${index === 0 ? " is-cover" : ""}`}>
+              {item.preview ? (
+                <img src={item.preview} alt={label} loading="lazy" />
+              ) : item.localVideo ? (
+                <video src={item.localVideo} muted playsInline preload="metadata" aria-label={label} />
+              ) : item.kind === "video" && item.id ? (
+                <video src={mediaUrl(item.id)} muted playsInline preload="metadata" aria-label={label} />
+              ) : (
+                <span className="mkm-photo-blank" />
               )}
-              <button type="button" className="mkm-tool" onClick={() => move(index, index - 1)} disabled={disabled || index === 0} title="Move left" aria-label={`Move photo ${index + 1} earlier`}>
-                <LeftIcon />
-              </button>
-              <button type="button" className="mkm-tool" onClick={() => move(index, index + 1)} disabled={disabled || index === items.length - 1} title="Move right" aria-label={`Move photo ${index + 1} later`}>
-                <RightIcon />
-              </button>
-              <button type="button" className="mkm-tool is-danger" onClick={() => remove(item.key)} disabled={disabled} title="Remove" aria-label={`Remove photo ${index + 1}`}>
-                <CloseIcon />
-              </button>
-            </figcaption>
-          </figure>
-        ))}
-        {room > 0 && (
+              <span className="mkm-photo-num">{index + 1}</span>
+              {index === 0 && item.status !== "error" && <span className="mkm-cover-tag">Cover</span>}
+              {item.kind === "video" && item.status !== "error" && (
+                <span className="mkm-video-badge">
+                  <PlayIcon size={11} /> {item.duration ? formatDuration(item.duration) : "Video"}
+                </span>
+              )}
+              {item.status === "uploading" && (
+                <span className="mkm-photo-state" role="status">
+                  <span className="mkm-progress" aria-hidden="true">
+                    <span style={{ width: `${Math.round((item.progress ?? 0) * 100)}%` }} />
+                  </span>
+                  Uploading {Math.round((item.progress ?? 0) * 100)}%
+                </span>
+              )}
+              {item.status === "error" && (
+                <span className="mkm-photo-state is-error" role="alert">
+                  {item.error}
+                </span>
+              )}
+              <figcaption className="mkm-photo-tools">
+                {item.status === "ready" && index > 0 && (
+                  <button type="button" className="mkm-tool" onClick={() => move(index, 0)} disabled={disabled} title="Make cover" aria-label={`Make ${label.toLowerCase()} the cover`}>
+                    <StarIcon />
+                  </button>
+                )}
+                <button type="button" className="mkm-tool" onClick={() => move(index, index - 1)} disabled={disabled || index === 0} title="Move left" aria-label={`Move ${label.toLowerCase()} earlier`}>
+                  <LeftIcon />
+                </button>
+                <button type="button" className="mkm-tool" onClick={() => move(index, index + 1)} disabled={disabled || index === items.length - 1} title="Move right" aria-label={`Move ${label.toLowerCase()} later`}>
+                  <RightIcon />
+                </button>
+                <button type="button" className="mkm-tool is-danger" onClick={() => remove(item.key)} disabled={disabled} title="Remove" aria-label={`Remove ${label.toLowerCase()}`}>
+                  <CloseIcon />
+                </button>
+              </figcaption>
+            </figure>
+          );
+        })}
+        {!full && (
           <button
             type="button"
             className={`mkm-drop${drag ? " is-drag" : ""}${items.length === 0 ? " is-empty" : ""}`}
@@ -187,15 +239,15 @@ export function PhotoManager({
             disabled={disabled}
           >
             <CameraIcon />
-            <strong>{items.length ? "Add more" : "Add photos"}</strong>
-            <small>{items.length ? `${room} left` : "Tap to choose, or drop them here"}</small>
+            <strong>{items.length ? "Add more" : "Add photos or videos"}</strong>
+            <small>{items.length ? `${left(MAX_PHOTOS - photos, "photo")} · ${left(MAX_VIDEOS - videos, "video")} left` : "Tap to choose, or drop them here"}</small>
           </button>
         )}
       </div>
       <input
         ref={input}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/*,video/mp4,video/quicktime,video/webm,.mov,.mp4,.webm"
         multiple
         hidden
         onChange={(e) => {
@@ -205,9 +257,9 @@ export function PhotoManager({
       />
       <p className="mkm-meter" aria-live="polite">
         <span className="mkm-meter-bar" aria-hidden="true">
-          <span style={{ width: `${(Math.min(items.length, MAX_PHOTOS) / MAX_PHOTOS) * 100}%` }} />
+          <span style={{ width: `${(Math.min(photos, MAX_PHOTOS) / MAX_PHOTOS) * 100}%` }} />
         </span>
-        {ready}/{MAX_PHOTOS} photos
+        {photos}/{MAX_PHOTOS} photos · {videos}/{MAX_VIDEOS} videos
         {note && <span className="mkm-note"> · {note}</span>}
       </p>
     </fieldset>
@@ -226,7 +278,7 @@ export function DocumentManager({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
-  const add = useUploader(items, setItems, uploadDocument, false);
+  const add = useUploader(items, setItems);
   const room = MAX_DOCUMENTS - items.length;
 
   function pick(files: File[]) {
@@ -234,7 +286,7 @@ export function DocumentManager({
     const pdfs = files.filter((f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
     if (pdfs.length < files.length) setNote("Only PDF files can be added.");
     if (pdfs.length > room) setNote(`Up to ${MAX_DOCUMENTS} documents per listing.`);
-    add(pdfs.slice(0, Math.max(room, 0)));
+    pdfs.slice(0, Math.max(room, 0)).forEach((f) => add(f, "document"));
   }
 
   return (
@@ -257,7 +309,7 @@ export function DocumentManager({
                 <b>{item.name}</b>
                 <small>
                   {item.status === "uploading"
-                    ? "Uploading…"
+                    ? `Uploading ${Math.round((item.progress ?? 0) * 100)}%`
                     : item.status === "error"
                       ? item.error
                       : `PDF · ${formatBytes(item.size)}`}

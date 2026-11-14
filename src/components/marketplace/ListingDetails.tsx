@@ -9,12 +9,14 @@ import {
   TYPES,
   formatAge,
   formatBytes,
+  formatDuration,
   formatHands,
   formatPrice,
   labelOf,
   type Listing,
 } from "./options";
-import { getListing, mediaUrl } from "./media";
+import { getListing, mediaUrl, pictureUrl, posterUrl } from "./media";
+import { PlayIcon } from "./ListingMedia";
 import "./marketplace-media.css";
 
 const I = {
@@ -62,7 +64,7 @@ export default function ListingDetails({
   }, [summary.id, reload]);
 
   const l = state.listing;
-  const photos = l.photos ?? (l.coverPhotoId ? [{ id: l.coverPhotoId, width: null, height: null }] : []);
+  const photos = l.media ?? (l.cover ? [l.cover] : []);
   const documents = l.documents ?? [];
   const current = photos[Math.min(index, Math.max(photos.length - 1, 0))];
   const go = (step: number) => photos.length > 1 && setIndex((i) => (i + step + photos.length) % photos.length);
@@ -70,7 +72,7 @@ export default function ListingDetails({
   // Arrow keys move through the photos (outside text fields).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.closest("input, textarea, select")) return;
+      if ((e.target as HTMLElement)?.closest("input, textarea, select, video")) return;
       if (e.key === "ArrowLeft") go(-1);
       if (e.key === "ArrowRight") go(1);
     };
@@ -85,7 +87,7 @@ export default function ListingDetails({
     <Modal label={`${l.name}, ${formatPrice(l.price)}`} className="modal-wide mkm-details-modal" onClose={onClose}>
       <DialogHead kicker={labelOf(TYPES, l.type)} title={l.name} onClose={onClose} />
       <div className="dlg mkm-details">
-        <section className="mkm-gallery" aria-label="Photos">
+        <section className="mkm-gallery" aria-label="Photos and videos">
           {current ? (
             <div
               className="mkm-stage"
@@ -97,7 +99,19 @@ export default function ListingDetails({
                 setTouchX(null);
               }}
             >
-              <img key={current.id} src={mediaUrl(current.id)} alt={`${l.name}, photo ${index + 1} of ${photos.length}`} />
+              {current.kind === "video" ? (
+                <video
+                  key={current.id}
+                  src={mediaUrl(current.id)}
+                  poster={current.poster ? posterUrl(current.id) : undefined}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  aria-label={`${l.name}, video ${index + 1} of ${photos.length}`}
+                />
+              ) : (
+                <img key={current.id} src={mediaUrl(current.id)} alt={`${l.name}, photo ${index + 1} of ${photos.length}`} />
+              )}
               {photos.length > 1 && (
                 <>
                   <button type="button" className="mkm-nav is-prev" onClick={() => go(-1)} aria-label="Previous photo">
@@ -113,23 +127,32 @@ export default function ListingDetails({
               )}
             </div>
           ) : (
-            <div className="mkm-stage is-empty">{state.loading ? "Loading photos…" : "No photos yet."}</div>
+            <div className="mkm-stage is-empty">{state.loading ? "Loading…" : "No photos or videos yet."}</div>
           )}
           {photos.length > 1 && (
-            <div className="mkm-thumbs" role="tablist" aria-label="Choose a photo">
-              {photos.map((p, i) => (
-                <button
-                  type="button"
-                  key={p.id}
-                  role="tab"
-                  aria-selected={i === index}
-                  aria-label={`Photo ${i + 1}`}
-                  className={`mkm-thumb${i === index ? " is-active" : ""}`}
-                  onClick={() => setIndex(i)}
-                >
-                  <img src={mediaUrl(p.id)} alt="" loading="lazy" />
-                </button>
-              ))}
+            <div className="mkm-thumbs" role="tablist" aria-label="Choose a photo or video">
+              {photos.map((p, i) => {
+                const picture = pictureUrl(p);
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    role="tab"
+                    aria-selected={i === index}
+                    aria-label={`${p.kind === "video" ? "Video" : "Photo"} ${i + 1}`}
+                    className={`mkm-thumb${i === index ? " is-active" : ""}${p.kind === "video" ? " is-video" : ""}`}
+                    onClick={() => setIndex(i)}
+                  >
+                    {picture ? <img src={picture} alt="" loading="lazy" /> : <span className="mkm-thumb-blank" />}
+                    {p.kind === "video" && (
+                      <span className="mkm-thumb-play" aria-hidden="true">
+                        <PlayIcon size={12} />
+                        {p.duration ? formatDuration(p.duration) : ""}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </section>
