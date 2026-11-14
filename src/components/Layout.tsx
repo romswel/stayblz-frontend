@@ -120,6 +120,13 @@ const HorseIcon = () => (
     <path d="M4 20c0-6 2-10 7-12l3-4 1 3c3 1 5 4 5 7l-3 1-2-2-1 7" />
   </svg>
 );
+/** Video camera: Stayblz Paddock (video meetings). */
+const PaddockIcon = () => (
+  <svg {...ICON_PROPS}>
+    <rect x="2.5" y="6" width="13" height="12" rx="2.5" />
+    <path d="M15.5 10.5 21 7.5v9l-5.5-3" />
+  </svg>
+);
 const SunIcon = () => (
   <svg {...ICON_PROPS} width={14} height={14} strokeWidth={2.2}>
     <circle cx="12" cy="12" r="4" />
@@ -231,6 +238,7 @@ const GROUPS = [
       { to: "/account/horses", label: "My horses", icon: <HorseIcon /> },
       { to: "/my-racing", label: "Following & notebook", icon: <StableIcon /> },
       { to: "/messages", label: CHAT_NAME, icon: <MessagesIcon /> },
+      { to: "/paddock", label: "Stayblz Paddock", icon: <PaddockIcon /> },
       { to: "/account", label: "My account", icon: <UserIcon /> },
     ],
   },
@@ -421,7 +429,7 @@ export default function Layout() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to !== "/messages" && item.to !== "/community"}
+              end={item.to !== "/messages" && item.to !== "/community" && item.to !== "/paddock"}
               aria-label={
                 navBadge[item.to]
                   ? `${item.label} (${navBadge[item.to]} unread)`
