@@ -4,11 +4,13 @@ import type { Listing } from "./options";
 /**
  * Marketplace photos and documents. Files are uploaded while the form is open and attached
  * when the listing is saved. They're served by the API after a sign-in check (never a direct
- * storage link), so <img src> and downloads need the API's full address.
+ * storage link).
+ *
+ * Same-origin paths only ("/api/..."), like the app's api helper: the site proxies /api to the
+ * backend, and the Content-Security-Policy (connect-src/img-src 'self') blocks any other host.
  */
-const API_BASE: string = ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_URL ?? "").replace(/\/$/, "");
 const BASE = "/api/marketplace";
-const url = (path: string) => `${API_BASE}${path}`;
+const url = (path: string) => path;
 
 export const mediaUrl = (fileId: string) => url(`${BASE}/media/${fileId}`);
 

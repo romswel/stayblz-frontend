@@ -1,17 +1,17 @@
-import { API_BASE, api, apiRaw } from "../../api";
+import { api } from "../../api";
 
 /* ==========================================================================
    Stayblz Community — types and calls for /api/community.
    JSON calls go through the app's `api` helper. Photo uploads send the raw image
-   bytes (like chat attachments) through `apiRaw`, which keeps the same session handling.
+   bytes (like chat attachments), so they use fetch directly.
    ========================================================================== */
 
 /**
- * Where the API lives, for <img src>. Always the app's own API_BASE: same-origin `/api` (the Vercel
- * proxy) in production, so the HttpOnly session cookie is sent. Reading VITE_API_URL here made
- * production photos and uploads go straight to the Render host, where the visitor isn't signed in.
+ * Photos (<img src>) and uploads (fetch) use same-origin paths ("/api/..."), like the app's
+ * api helper: the site proxies /api to the backend, and the Content-Security-Policy
+ * (connect-src/img-src 'self') blocks any other host.
  */
-export const apiUrl = (path: string) => `${API_BASE}${path}`;
+export const apiUrl = (path: string) => path;
 export const horseImageUrl = (id: string) => apiUrl(`/api/community/media/horse/${id}`);
 export const postImageUrl = (id: string) => apiUrl(`/api/community/media/post/${id}`);
 
@@ -247,14 +247,15 @@ export async function preparePhoto(file: File): Promise<{ blob: Blob; type: stri
 
 async function uploadRaw<T>(path: string, file: File, extra: Record<string, string> = {}): Promise<T> {
   const photo = await preparePhoto(file);
-  // apiRaw: same session handling as every other call (renews an expired session once) and
-  // friendly error messages; it throws on any failure.
-  const response = await apiRaw(`${path}${q({ width: photo.width, height: photo.height, ...extra })}`, {
+  const response = await fetch(apiUrl(`${path}${q({ width: photo.width, height: photo.height, ...extra })}`), {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": photo.type },
     body: photo.blob,
   });
-  return (await response.json()) as T;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error((data as { error?: string }).error ?? "The photo couldn't be uploaded. Try again.");
+  return data as T;
 }
 
 export const uploadHorseImage = (horseId: string, file: File) =>
