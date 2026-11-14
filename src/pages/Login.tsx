@@ -25,7 +25,16 @@ const destinations = new Set([
   "/my-racing",
   "/workspace",
   "/team-messages",
+  "/paddock",
 ]);
+/** Pages we may send people back to after they sign in. */
+const allowedDestination = (value: unknown): value is string =>
+  typeof value === "string" &&
+  (destinations.has(value) ||
+    /^\/updates(\/[a-z0-9-]{1,80})?$/.test(value) ||
+    /^\/racing\/(days|races|horses|people)\/[0-9a-f-]{36}$/.test(value) ||
+    /^\/paddock\/[a-z]{4}-[a-z]{4}$/.test(value) ||
+    isPPDestination(value));
 
 export default function Login() {
   const { user } = useAuth();
@@ -39,15 +48,8 @@ export default function Login() {
   const [mode, setMode] = useState<"login" | "signup">(
     location.pathname === "/signup" ? "signup" : "login",
   );
-  const [destination, setDestination] = useState(
-    typeof routeState?.destination === "string" &&
-      (destinations.has(routeState.destination) ||
-        /^\/updates(\/[a-z0-9-]{1,80})?$/.test(routeState.destination) ||
-        /^\/racing\/(days|races|horses|people)\/[0-9a-f-]{36}$/.test(routeState.destination) ||
-        isPPDestination(routeState.destination))
-      ? routeState.destination
-      : "/dashboard",
-  );
+  const wanted = routeState?.destination;
+  const [destination, setDestination] = useState(allowedDestination(wanted) ? wanted : "/dashboard");
   const [intent, setIntent] = useState(
     typeof routeState?.intent === "string"
       ? routeState.intent.slice(0, 150)
@@ -92,12 +94,8 @@ export default function Login() {
       intent?: unknown;
       focusAccount?: boolean;
     } | null;
-    if (
-      typeof state?.destination === "string" &&
-      (destinations.has(state.destination) ||
-        isPPDestination(state.destination))
-    )
-      setDestination(state.destination);
+    const next = state?.destination;
+    if (allowedDestination(next)) setDestination(next);
     if (typeof state?.intent === "string")
       setIntent(state.intent.slice(0, 150));
     const frame = requestAnimationFrame(() => {

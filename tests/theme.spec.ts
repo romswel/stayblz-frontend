@@ -42,13 +42,14 @@ test("landing has a header theme button; light and dark match the dashboard colo
     await page.getByLabel("Email", { exact: true }).evaluate((el) => getComputedStyle(el).color),
   ).toBe("rgb(30, 53, 44)");
   // Header button switches to dark and is remembered.
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  // exact: the header logo is a theme switch too ("Stayblz logo: switch to dark mode").
+  await page.getByRole("button", { name: "Switch to dark mode", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(await bg(".ld-auth")).toBe("rgb(26, 40, 33)");
   expect(await bg(".landing")).toBe("rgb(18, 28, 24)");
   expect(await bg(".ld-header")).toBe("rgb(16, 39, 28)");
   await page.reload();
-  await expect(page.getByRole("button", { name: "Switch to light mode" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Switch to light mode", exact: true })).toBeVisible();
   // The hero headline stays light over the photo in both themes.
   expect(
     await page.locator(".ld-hero h1").evaluate((el) => getComputedStyle(el).color),

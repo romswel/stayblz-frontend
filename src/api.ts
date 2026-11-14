@@ -41,7 +41,7 @@ export class ApiError extends Error {
 
 // Production uses the same-origin /api proxy for HttpOnly session cookies.
 // VITE_API_URL only overrides the API host during local development.
-const API_BASE = import.meta.env.PROD
+export const API_BASE = import.meta.env.PROD
   ? ""
   : (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/+$/, "");
 

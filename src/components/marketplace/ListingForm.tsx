@@ -98,7 +98,8 @@ function Select({
   return (
     <label htmlFor={id}>
       {label}
-      <select id={id} required value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+      {/* The name is just the label: without this, screen readers also hear the option text inside the label. */}
+      <select id={id} aria-label={label} required value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
         <option value="" disabled>
           Choose…
         </option>

@@ -62,8 +62,14 @@ export default function Menu({
     const onDown = (e: PointerEvent) => {
       if (el && !el.contains(e.target as Node) && !anchor?.contains(e.target as Node)) close.current();
     };
+    // Close when the page scrolls the button away, but not for a scroll that didn't move it (e.g. a
+    // late scroll event from the tap that opened the menu, or an unrelated list scrolling).
+    const opened = anchor?.getBoundingClientRect();
     const onScroll = (e: Event) => {
-      if (el && !el.contains(e.target as Node)) close.current();
+      if (el && el.contains(e.target as Node)) return;
+      const now = anchor?.getBoundingClientRect();
+      if (opened && now && Math.abs(now.top - opened.top) < 2 && Math.abs(now.left - opened.left) < 2) return;
+      close.current();
     };
     const onResize = () => close.current();
     document.addEventListener("keydown", onKey, true);

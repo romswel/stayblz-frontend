@@ -9,6 +9,7 @@ const prefixes = [
   "/admin",
   "/messages",
   "/team-messages",
+  "/paddock",
   "/my-racing",
   "/workspace",
   "/inventory",

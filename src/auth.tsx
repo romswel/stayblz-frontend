@@ -11,6 +11,7 @@ import {
 import { api, ApiError, setToken } from "./api";
 import type { User } from "./types";
 import { clearAccountDrafts } from "./components/ui/useDraft";
+import { endActiveCall } from "./components/paddock/engine/store";
 
 interface AuthState {
   user: User | null;
@@ -115,6 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout: async (everywhere = false) => {
         ++epoch.current;
         await api.post("/api/auth/logout", everywhere ? { everywhere: true } : {});
+        // A video call belongs to this account: leave it, so sound doesn't carry on after signing out.
+        await endActiveCall();
         // Unsent drafts belong to this account; don't leave them for the next person on this device.
         clearAccountDrafts(user?.id);
         setToken(null);

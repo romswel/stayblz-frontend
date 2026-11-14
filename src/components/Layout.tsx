@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -26,6 +26,10 @@ import { useUpdates } from "./updates/UpdatesContext";
 import { useChatBadge } from "./messenger/useChatBadge";
 import { CHAT_NAME, TEAM_CHAT_NAME } from "./messenger/brand";
 import { TV_NAME } from "./tv/brand";
+import { PADDOCK_NAME } from "./paddock/brand";
+import { useActiveCall } from "./paddock/engine/store";
+// Shown on other pages while a call is going; loads only when there is one.
+const MiniCall = lazy(() => import("./paddock/MiniCall"));
 import { VERSION_LABEL, VERSION_TITLE } from "../version";
 import "./updates/updates.css";
 import BackButton from "./ui/BackButton";
@@ -54,6 +58,12 @@ const DashboardIcon = () => (
 const MessagesIcon = () => (
   <svg {...ICON_PROPS}>
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+const PaddockIcon = () => (
+  <svg {...ICON_PROPS}>
+    <rect x="2" y="6" width="14" height="12" rx="2.5" />
+    <path d="m16 10 6-3.5v11L16 14" />
   </svg>
 );
 const InventoryIcon = () => (
@@ -144,8 +154,8 @@ const OWN_BACK = (path: string) => path === "/dashboard" || path === "/pps" || p
 /** Switching between chats is one page, not a new one (no remount, no reload of the chat list). */
 const pageKey = (path: string) => path.replace(/^\/(messages|team-messages)\/[^/]+$/, "/$1");
 const countLabel = (n: number) => (n > 9 ? "9+" : String(n));
-/** Chat pages run as a full-window app: no page padding, page bar, notices or footer. */
-const APP_PAGE = (path: string) => /^\/(messages|team-messages)(\/|$)/.test(path);
+/** Chat pages and meetings run as a full-window app: no page padding, page bar, notices or footer. */
+const APP_PAGE = (path: string) => /^\/(messages|team-messages)(\/|$)/.test(path) || /^\/paddock\/[a-z]{4}-[a-z]{4}$/.test(path);
 
 /** The Past Performances menu is hidden from the sidebar for now; set to true to bring it back. */
 const SHOW_PP_NAV = false;
@@ -165,6 +175,7 @@ const GROUPS = [
     items: [
       { to: "/my-racing", label: "Following & notebook", icon: <StableIcon /> },
       { to: "/messages", label: CHAT_NAME, icon: <MessagesIcon /> },
+      { to: "/paddock", label: PADDOCK_NAME, icon: <PaddockIcon /> },
       { to: "/account", label: "My account", icon: <TrackerIcon /> },
     ],
   },
@@ -181,6 +192,7 @@ export default function Layout() {
   const { active: stable, stables, select } = useWorkspace();
   const { user, logout } = useAuth();
   const { unread: unreadUpdates } = useUpdates();
+  const activeCall = useActiveCall();
   const unreadCount = unreadUpdates.length;
   const chats = useChatBadge(!!user && !user.passwordSetupRequired);
   const navBadge: Record<string, number> = {
@@ -292,7 +304,7 @@ export default function Layout() {
             <Fragment key={item.to}>
               <NavLink
                 to={item.to}
-                end={item.to !== "/messages"}
+                end={item.to !== "/messages" && item.to !== "/paddock"}
                 aria-label={
                   navBadge[item.to]
                     ? `${item.label} (${navBadge[item.to]} unread)`
@@ -644,6 +656,11 @@ export default function Layout() {
         )}
       </main>
       <UpdatesPopup />
+      {activeCall && (
+        <Suspense fallback={null}>
+          <MiniCall />
+        </Suspense>
+      )}
       {cart && (
         <Modal label="Shopping cart" onClose={() => setCart(false)}>
           <DialogHead title="Your cart" kicker="Cart preview" onClose={() => setCart(false)} />

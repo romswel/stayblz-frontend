@@ -255,7 +255,12 @@ test("returning user keeps index access", async ({ page }) => {
       },
     }),
   );
-  for (const path of ["/", "/login", "/signup"]) {
+  // The home page keeps the account card closed; the header offers the way in.
+  await page.goto("/");
+  await expect(page.getByRole("banner").getByText("Test Rider")).toBeVisible();
+  await expect(page.getByRole("banner").getByRole("link", { name: "Continue to dashboard" })).toBeVisible();
+  // Log in and sign up open the card, which welcomes them back.
+  for (const path of ["/login", "/signup"]) {
     await page.goto(path);
     await expect(
       page.getByRole("heading", { name: /Welcome back/ }),

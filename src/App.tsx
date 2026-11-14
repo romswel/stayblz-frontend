@@ -10,6 +10,10 @@ import Dashboard from "./pages/Dashboard";
 // Stayblz Chat is its own download, so the rest of the site stays light.
 const Messages = lazy(() => import("./pages/Messages"));
 const chatLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Opening chat…</p>;
+// Stayblz Paddock (video meetings) is its own download too.
+const Paddock = lazy(() => import("./pages/Paddock"));
+const GuestPaddock = lazy(() => import("./pages/Paddock").then((m) => ({ default: m.GuestPaddock })));
+const paddockLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Opening Stayblz Paddock…</p>;
 import Inventory from "./pages/Inventory";
 import HorseTracker from "./pages/HorseTracker";
 import MyRacing from "./pages/MyRacing";
@@ -110,6 +114,15 @@ export default function App() {
         <Route path="/auth/confirm" element={<AuthConfirm />} />
         <Route path="/auth/not-me" element={<NotMe />} />
         <Route path="/pps/*" element={<PPLoginRedirect />} />
+        {/* Meeting links work for guests: they ask to join with a name. */}
+        <Route
+          path="/paddock/:code"
+          element={
+            <Suspense fallback={paddockLoading}>
+              <GuestPaddock />
+            </Suspense>
+          }
+        />
         <Route path="*" element={<SignedOutFallback />} />
       </Routes>
     );
@@ -212,6 +225,14 @@ export default function App() {
                 <Messages mode="team" />
               </Suspense>
             </StableGate>
+          }
+        />
+        <Route
+          path="/paddock/:code?"
+          element={
+            <Suspense fallback={paddockLoading}>
+              <Paddock />
+            </Suspense>
           }
         />
         <Route path="/my-racing" element={<MyRacing />} />

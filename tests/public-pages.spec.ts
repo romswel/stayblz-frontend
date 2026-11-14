@@ -175,9 +175,10 @@ test("public motion is quick, preserves form drafts and stops for reduced motion
   });
   await page.goto("/signup");
   await page.getByLabel("First name", { exact: true }).fill("Draft");
-  const account = page.getByRole("region", { name: "Your Stayblz account" });
-  await account.getByRole("button", { name: "Log in", exact: true }).click();
-  await account.getByRole("button", { name: "Sign up", exact: true }).click();
+  // The Log in / Sign up switch at the top of the card (the card also has its own "Log in" link).
+  const tabs = page.getByRole("region", { name: "Your Stayblz account" }).getByLabel("Account options");
+  await tabs.getByRole("button", { name: "Log in", exact: true }).click();
+  await tabs.getByRole("button", { name: "Sign up", exact: true }).click();
   await expect(page.getByLabel("First name", { exact: true })).toHaveValue(
     "Draft",
   );

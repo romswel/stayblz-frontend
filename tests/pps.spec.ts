@@ -194,9 +194,16 @@ test("PP pages fit phone/tablet/desktop themes and mobile submenu navigates", as
   await page.goto("/pps");
   await page.getByRole("button", { name: "Open menu" }).click();
   const dialog = page.getByRole("dialog", { name: "Navigation" });
-  await dialog.getByRole("link", { name: "Racecard", exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(/\/pps\/racecard$/);
+  if (PP_SIDEBAR) {
+    await dialog.getByRole("link", { name: "Racecard", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/\/pps\/racecard$/);
+  } else {
+    // The PP submenu is hidden for now (SHOW_PP_NAV in Layout.tsx); the phone menu still opens and closes.
+    await expect(dialog.getByRole("link", { name: "Racecard", exact: true })).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Close menu" }).click();
+    await expect(dialog).toHaveCount(0);
+  }
   await page.goto("/pps");
   await page.screenshot({
     path: "test-results/pps-mobile.png",
