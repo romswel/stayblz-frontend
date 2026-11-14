@@ -1,7 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api } from "../api";
+import AvatarFace from "../components/account/AvatarFace";
+import { removeAvatar, uploadAvatar, useAvatar } from "../components/account/avatars";
+import { useConfirm } from "../components/ui/Confirm";
 import { countries } from "../components/landing/countries";
 import type { User } from "../types";
 import CommunityRoleFields from "../components/account/CommunityRoleFields";
@@ -48,6 +51,56 @@ export default function Profile() {
   const [error, setError] = useState("");
   // The superadmin identity is fixed on the server; the form is shown read-only.
   const locked = user?.platformRole === "superadmin";
+
+  /* ---------- Profile picture (saved straight away, separate from the form) ---------- */
+  const confirm = useConfirm();
+  const photo = useAvatar(user?.id);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState<"" | "upload" | "remove">("");
+  const [photoNote, setPhotoNote] = useState("");
+  const [photoError, setPhotoError] = useState("");
+  // Development profiles have no account row, and the shared superadmin profile stays locked.
+  const canHavePhoto = !!user && !locked && /^[0-9a-f-]{36}$/i.test(user.id);
+
+  async function choosePhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !user || photoBusy) return;
+    setPhotoBusy("upload");
+    setPhotoNote("");
+    setPhotoError("");
+    try {
+      await uploadAvatar(user.id, file);
+      setPhotoNote("Profile picture saved.");
+    } catch (reason) {
+      setPhotoError(reason instanceof Error ? reason.message : "The picture couldn't be saved. Try again.");
+    } finally {
+      setPhotoBusy("");
+    }
+  }
+
+  async function deletePhoto() {
+    if (!user || photoBusy) return;
+    const sure = await confirm({
+      title: "Remove your profile picture?",
+      message: "Members will see your initials instead. You can add a new picture at any time.",
+      confirmLabel: "Remove picture",
+      cancelLabel: "Keep picture",
+      tone: "danger",
+    });
+    if (!sure) return;
+    setPhotoBusy("remove");
+    setPhotoNote("");
+    setPhotoError("");
+    try {
+      await removeAvatar(user.id);
+      setPhotoNote("Profile picture removed.");
+    } catch (reason) {
+      setPhotoError(reason instanceof Error ? reason.message : "The picture couldn't be removed. Try again.");
+    } finally {
+      setPhotoBusy("");
+    }
+  }
 
   /* ---------- Derived: unsaved changes, completeness, preview ---------- */
   const saved = {
@@ -277,12 +330,37 @@ export default function Profile() {
           <section className="pf-preview gx-glass">
             <span className="pf-kicker">How members see you</span>
             <div className="pf-id">
-              <span className="pf-avatar" aria-hidden="true">{initials}</span>
+              <span className="pf-avatar" aria-hidden="true">
+                <AvatarFace id={user?.id}>{initials}</AvatarFace>
+              </span>
               <div>
                 <h2>{fullName}</h2>
                 {racingRole && <span className="pf-role">{pretty(racingRole)}</span>}
               </div>
             </div>
+            {canHavePhoto && (
+              <div className="pf-photo" role="group" aria-label="Profile picture">
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="pf-sr"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  onChange={choosePhoto}
+                />
+                <button type="button" className="pf-btn pf-btn-sm" onClick={() => fileInput.current?.click()} disabled={!!photoBusy}>
+                  {photoBusy === "upload" ? "Uploading…" : photo ? "Change picture" : "Add a profile picture"}
+                </button>
+                {photo && (
+                  <button type="button" className="pf-btn pf-btn-sm" onClick={deletePhoto} disabled={!!photoBusy}>
+                    {photoBusy === "remove" ? "Removing…" : "Remove"}
+                  </button>
+                )}
+                {photoNote && <p className="pf-photo-note" role="status">{photoNote}</p>}
+                {photoError && <p className="pf-photo-note is-error" role="alert">{photoError}</p>}
+              </div>
+            )}
             {communityRoles.length > 0 && (
               <ul className="pf-tags" aria-label="Other roles">
                 {communityRoles.map((r) => (

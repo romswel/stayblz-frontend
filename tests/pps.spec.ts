@@ -213,18 +213,20 @@ test("PP pages fit phone/tablet/desktop themes and mobile submenu navigates", as
   await page.evaluate(() => {
     document.documentElement.dataset.theme = "light";
   });
-  await expect(page.locator(".ws-main")).toHaveCSS("margin-left", "218px");
+  // Desktop: the PP page sits to the right of the sidebar, never under it.
+  const side = (await page.locator(".gx-sidebar").boundingBox())!;
+  expect(side.width).toBeGreaterThan(200);
   expect(
     await page
       .locator(".pps-page")
       .evaluate((el) => el.getBoundingClientRect().left),
-  ).toBeGreaterThanOrEqual(218);
+  ).toBeGreaterThanOrEqual(side.x + side.width);
   await page.screenshot({
     animations: "disabled",
     path: "test-results/pps-desktop.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.getByRole("switch", { name: "Dark mode" }).click();
   await page.screenshot({
     path: "test-results/pps-dark.png",
     fullPage: true,

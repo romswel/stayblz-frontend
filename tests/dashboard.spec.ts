@@ -141,7 +141,7 @@ test("members get the overview, visible tools, filtered records and useful detai
   ).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await page.getByLabel("Search racing records").fill("Morning Horse");
+  await page.getByRole("combobox", { name: "Search members, horses and racing records" }).fill("Morning Horse");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page
     .locator("#racing-desk")
@@ -196,7 +196,7 @@ test("sidebar collapse persists, theme works and header actions are honest", asy
     page.getByRole("button", { name: "Expand sidebar" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Expand sidebar" }).click();
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.getByRole("switch", { name: "Dark mode" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Shopping cart" }).click();
   await expect(page.getByRole("dialog")).toContainText(
@@ -260,7 +260,7 @@ test("dashboard works across widths, themes, mobile navigation and reduced motio
       await page.getByRole("button", { name: "Open menu" }).click();
       const menu = page.getByRole("dialog", { name: "Navigation" });
       await expect(menu).toBeVisible();
-      await menu.locator(".ws-workspace-disclosure > summary").click();
+      await menu.locator(".gx-workspace > summary").click();
       await menu.getByRole("link", { name: "Inventory", exact: true }).click();
       await expect(menu).toHaveCount(0);
       await expect(
@@ -282,7 +282,7 @@ test("dashboard works across widths, themes, mobile navigation and reduced motio
     fullPage: true,
   });
   await page.setViewportSize({ width: 1440, height: 1100 });
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.getByRole("switch", { name: "Dark mode" }).click();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: "test-results/dashboard-dark.png",

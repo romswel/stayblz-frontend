@@ -550,7 +550,7 @@ test.describe("account area", () => {
     await page.goto("/account");
     const sections = page.getByRole("navigation", { name: "Account sections" });
     await expect(page.getByRole("heading", { name: "Profile", level: 1 })).toBeVisible();
-    await expect(page.getByLabel("Short bio (optional)")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: /^Bio/ })).toBeVisible();
     await sections.getByRole("link", { name: "Preferences" }).click();
     await expect(page.getByRole("checkbox", { name: /Dark mode/ })).toBeVisible();
     await sections.getByRole("link", { name: "Security" }).click();
@@ -585,7 +585,7 @@ test.describe("navigation", () => {
     // Under a busy test run the key can arrive before the shortcut listener is attached; retry it.
     await expect(async () => {
       await page.keyboard.press("/");
-      await expect(page.getByRole("searchbox", { name: "Search racing records" })).toBeFocused({ timeout: 1000 });
+      await expect(page.getByRole("combobox", { name: "Search members, horses and racing records" })).toBeFocused({ timeout: 1000 });
     }).toPass({ timeout: 8000 });
     await page.getByRole("searchbox", { name: "Search updates" }).click();
     await page.keyboard.type("a/b");

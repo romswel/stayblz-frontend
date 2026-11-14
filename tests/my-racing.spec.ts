@@ -150,7 +150,7 @@ test.beforeEach(async ({ page }) => {
 async function openNotebook(page: Page) {
   await page.goto("/my-racing?tab=notes");
   await expect(
-    page.getByRole("heading", { name: "My notes" }),
+    page.locator("#mrg-panel-title").getByText("My notes"),
   ).toBeVisible();
 }
 
@@ -200,7 +200,7 @@ test("racing and account tools work while the optional stable service is unavail
   await expect(
     page.getByText("Published Trainer", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "My account", exact: true }).click();
+  await page.getByRole("complementary", { name: "Workspace navigation" }).getByRole("link", { name: "My account", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Profile", exact: true }),
   ).toBeVisible();
@@ -375,13 +375,14 @@ test("personal pages remain usable across devices and themes with account access
     path: "test-results/my-racing-desktop.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.getByRole("switch", { name: "Dark mode" }).click();
   await page.screenshot({
     path: "test-results/my-racing-dark.png",
     fullPage: true,
   });
   await page.setViewportSize({ width: 375, height: 900 });
-  expect(await page.locator('.ws-main').evaluate(el=>getComputedStyle(el).marginLeft)).toBe('0px');
+  // Phones: the content starts at the left edge (no sidebar column).
+  expect(await page.locator(".gx-main").evaluate((el) => el.getBoundingClientRect().left)).toBe(0);
   await page.screenshot({
     path: "test-results/my-racing-mobile.png",
     fullPage: true,

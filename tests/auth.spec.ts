@@ -317,11 +317,11 @@ test("member profile persists through the API with shared stable navigation", as
   await expect(
     page.getByRole("heading", { name: "Profile", exact: true }),
   ).toBeVisible();
-  await page.locator(".ws-workspace-disclosure > summary:visible").click();
+  await page.locator(".gx-workspace > summary:visible").click();
   await expect(
     page.getByRole("link", { name: "Inventory", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("First name", { exact: true }).fill("Updated");
+  await page.getByRole("textbox", { name: /^First name/ }).fill("Updated");
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Profile saved.");
   expect(profileBody).toMatchObject({ firstName: "Updated", lastName: "User" });

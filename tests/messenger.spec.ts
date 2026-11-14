@@ -13,7 +13,7 @@ test("Stayblz Chat: honest free-plan notice, unread badge and settings", async (
   const server = await fakeServer(page, { personal: 2, requests: 1, team: 0 });
   await page.goto("/messages");
   await expect(page.getByRole("heading", { name: "Stayblz Chat", exact: true })).toBeVisible();
-  await expect(page.locator(".ws-version")).toHaveText(/^v\d+\.\d+/);
+  await expect(page.locator(".gx-version")).toHaveText(/^v\d+\.\d+/);
   await expect(page.getByRole("link", { name: "Stayblz Chat (3 unread)" })).toBeVisible();
   await expect(page.getByText("Free plan:")).toBeVisible();
   await page.getByRole("button", { name: "What this means" }).click();

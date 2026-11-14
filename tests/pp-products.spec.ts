@@ -103,7 +103,7 @@ test("cart preview deduplicates selections, persists per account, and never enab
   await expect(page.getByRole("status")).toContainText("Cart updated");
   await page.getByRole("button", { name: "Add to cart", exact: true }).click();
   await page
-    .getByRole("button", { name: "Shopping cart", exact: true })
+    .getByRole("button", { name: /^Shopping cart/ })
     .click();
   const modal = page.getByRole("dialog", { name: "Shopping cart" });
   await expect(modal.locator(".pp-cart-items li")).toHaveCount(2);
@@ -253,7 +253,7 @@ test("product forms, features, samples and cart fit mobile and desktop in both t
     }
   }
   await page.goto("/pps/detailed-racecard/features");
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.getByRole("switch", { name: "Dark mode" }).click();
   await page.screenshot({
     path: "test-results/pp-premium-features-dark.png",
     animations: "disabled",

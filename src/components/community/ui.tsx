@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useConfirm } from "../ui/Confirm";
+import AvatarFace from "../account/AvatarFace";
 import {
   STATUS_LABELS,
   community,
@@ -69,7 +70,7 @@ const initials = (name: string) =>
     .join("")
     .toUpperCase() || "?";
 
-/** Coloured initials; the hue comes from the id so each member keeps the same colour. */
+/** Profile picture, or coloured initials; the hue comes from the id so each member keeps the same colour. */
 export function Avatar({ id, name, size = 40 }: { id: string; name: string; size?: number }) {
   let hash = 0;
   for (const c of id) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
@@ -80,7 +81,7 @@ export function Avatar({ id, name, size = 40 }: { id: string; name: string; size
       style={{ width: size, height: size, fontSize: size * 0.36, ["--cm-hue" as string]: String(hue) }}
       aria-hidden="true"
     >
-      {initials(name)}
+      <AvatarFace id={id}>{initials(name)}</AvatarFace>
     </span>
   );
 }

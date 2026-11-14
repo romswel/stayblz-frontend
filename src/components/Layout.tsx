@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -26,12 +26,17 @@ import { useUpdates } from "./updates/UpdatesContext";
 import { useChatBadge } from "./messenger/useChatBadge";
 import { CHAT_NAME, TEAM_CHAT_NAME } from "./messenger/brand";
 import { TV_NAME } from "./tv/brand";
+import { PADDOCK_NAME } from "./paddock/brand";
+import { useActiveCall } from "./paddock/engine/store";
 import { VERSION_LABEL, VERSION_TITLE } from "../version";
 import "./updates/updates.css";
 import BackButton from "./ui/BackButton";
 import { useConfirm } from "./ui/Confirm";
 import DialogHead from "./ui/DialogHead";
 import { SearchSuggestions, useQuickSearch, type Suggestion } from "./community/SearchSuggestions";
+import AvatarFace from "./account/AvatarFace";
+// Shown on other pages while a Paddock call is going; loads only when there is one.
+const MiniCall = lazy(() => import("./paddock/MiniCall"));
 // Glass shell — loaded last so it wins over the legacy workspace styles.
 import "./layout-glass.css";
 
@@ -204,8 +209,8 @@ const OWN_BACK = (path: string) => path === "/dashboard" || path === "/community
 /** Switching between chats is one page, not a new one (no remount, no reload of the chat list). */
 const pageKey = (path: string) => path.replace(/^\/(messages|team-messages)\/[^/]+$/, "/$1");
 const countLabel = (n: number) => (n > 9 ? "9+" : String(n));
-/** Chat pages run as a full-window app: no page padding, page bar, notices or footer. */
-const APP_PAGE = (path: string) => /^\/(messages|team-messages)(\/|$)/.test(path);
+/** Chat pages and meetings run as a full-window app: no page padding, page bar, notices or footer. */
+const APP_PAGE = (path: string) => /^\/(messages|team-messages)(\/|$)/.test(path) || /^\/paddock\/[a-z]{4}-[a-z]{4}$/.test(path);
 /** An open conversation owns the bottom of the screen (composer), so the mobile tab bar steps aside. */
 const CHAT_THREAD = (path: string) => /^\/(messages|team-messages)\/[^/]+$/.test(path);
 const PP_PAGE = (path: string) => path === "/pps" || path.startsWith("/pps/");
@@ -238,7 +243,7 @@ const GROUPS = [
       { to: "/account/horses", label: "My horses", icon: <HorseIcon /> },
       { to: "/my-racing", label: "Following & notebook", icon: <StableIcon /> },
       { to: "/messages", label: CHAT_NAME, icon: <MessagesIcon /> },
-      { to: "/paddock", label: "Stayblz Paddock", icon: <PaddockIcon /> },
+      { to: "/paddock", label: PADDOCK_NAME, icon: <PaddockIcon /> },
       { to: "/account", label: "My account", icon: <UserIcon /> },
     ],
   },
@@ -262,6 +267,7 @@ export default function Layout() {
   const { active: stable, stables, select } = useWorkspace();
   const { user, logout } = useAuth();
   const { unread: unreadUpdates } = useUpdates();
+  const activeCall = useActiveCall();
   const unreadCount = unreadUpdates.length;
   const chats = useChatBadge(!!user && !user.passwordSetupRequired);
   const navBadge: Record<string, number> = {
@@ -746,7 +752,7 @@ export default function Layout() {
             </span>
           </button>
           <Link to="/account" className="gx-account gx-hide-sm" aria-label="Your account">
-            <span className="gx-avatar">{initialsOf(user?.displayName)}</span>
+            <span className="gx-avatar"><AvatarFace id={user?.id}>{initialsOf(user?.displayName)}</AvatarFace></span>
             <span className="gx-account-text">
               {user?.displayName}
               <small>My account</small>
@@ -805,7 +811,7 @@ export default function Layout() {
           <div className="gx-drawer" data-theme={isDark ? "dark" : "light"}>
             <DialogHead title="Menu" kicker="Stayblz" onClose={closeMenu} closeLabel="Close menu" />
             <Link to="/account" className="gx-drawer-account" onClick={closeMenu}>
-              <span className="gx-avatar">{initialsOf(user?.displayName)}</span>
+              <span className="gx-avatar"><AvatarFace id={user?.id}>{initialsOf(user?.displayName)}</AvatarFace></span>
               <span className="gx-account-text">
                 {user?.displayName ?? "Your account"}
                 <small>View account &amp; security</small>
@@ -929,6 +935,11 @@ export default function Layout() {
       )}
 
       <UpdatesPopup />
+      {activeCall && (
+        <Suspense fallback={null}>
+          <MiniCall />
+        </Suspense>
+      )}
       {cart && (
         <Modal label="Shopping cart" onClose={() => setCart(false)}>
           <DialogHead title="Your cart" kicker="Cart preview" onClose={() => setCart(false)} />

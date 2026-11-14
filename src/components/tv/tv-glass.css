@@ -691,6 +691,8 @@
   .tvg-hero { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .tvg-status { justify-self: start; grid-row: 1; }
   .tvg-search { height: 48px; padding-left: 12px; }
+  /* Phones: full-size buttons are 44px touch targets. */
+  .tvg-btn:not(.tvg-btn-sm) { height: 44px; }
   .tvg-search .tvg-btn { padding: 0 12px; }
   .tvg-screen { aspect-ratio: auto; min-height: 300px; border-radius: 16px; }
   .tvg-screen.is-live { aspect-ratio: 16 / 9; min-height: 0; }
@@ -705,6 +707,15 @@
   .tvg-dialog-wrap { padding: 0; place-items: end stretch; }
   .tvg-dialog { width: 100%; max-height: 92dvh; border-radius: 22px 22px 0 0; }
   .tvg-dialog-body { padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); }
+}
+
+/* Phone turned sideways: the live video fits the screen height instead of running off it. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .tvg-screen.is-live {
+    width: min(100%, calc(92vh * 16 / 9));
+    width: min(100%, calc(92svh * 16 / 9));
+    margin-inline: auto;
+  }
 }
 
 @media (hover: none) {

@@ -216,14 +216,19 @@ test("logging out asks first; Escape or 'Stay signed in' keeps you signed in", a
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
 });
 
-test("the sidebar collapses from its small button or by clicking its edge", async ({ page }) => {
+// The glass redesign (v0.12) dropped the clickable sidebar edge; the button and the "[" key remain.
+test("the sidebar collapses from its small button or the [ key", async ({ page }) => {
   await api(page, member);
   await page.goto("/dashboard");
   const sidebar = page.getByRole("complementary", { name: "Workspace navigation" });
   const wide = (await sidebar.boundingBox())!.width;
-  const edge = page.locator(".ws-edge-line");
-  const box = (await edge.boundingBox())!;
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.6);
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeLessThan(wide);
+  await page.keyboard.press("[");
+  await expect(page.getByRole("button", { name: "Collapse sidebar" })).toBeVisible();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(wide);
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
   await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeLessThan(wide);
   await page.getByRole("button", { name: "Expand sidebar" }).click();

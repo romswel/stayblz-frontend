@@ -292,7 +292,7 @@ test("Harness pages fit phone, tablet and desktop in both themes", async ({
     }
   }
   await page.goto("/pps/harness-workspace?list=horses");
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.getByRole("switch", { name: "Dark mode" }).click();
   await page.screenshot({
     path: "test-results/harness-workspace-desktop-dark.png",
     fullPage: true,

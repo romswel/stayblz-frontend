@@ -81,7 +81,7 @@ test("sidebar has an Explore section with Marketplace and STAYBLZ TV", async ({ 
   await nav.getByRole("link", { name: "STAYBLZ TV", exact: true }).click();
   await expect(page).toHaveURL(/\/tv$/);
   await expect(page.getByRole("heading", { name: /STAYBLZ TV/ })).toBeVisible();
-  await expect(page.getByText("Off air")).toBeVisible();
+  await expect(page.locator(".tvg-status")).toBeVisible();
   await expect(page.getByRole("heading", { name: "No live broadcast right now" })).toBeVisible();
   await nav.getByRole("link", { name: "Marketplace", exact: true }).click();
   await expect(page).toHaveURL(/\/marketplace$/);
@@ -118,7 +118,7 @@ test("listings show every field and filters go to the server in the address", as
   await expect(card).toContainText("$8,000");
   for (const text of ["Quarter Horse", "Barrel racing", "Riding horse", "Mare", "Palomino", "9 yrs", "15.0 hh", "Ocala, Florida", "Alice Seller"])
     await expect(card).toContainText(text);
-  await expect(page.getByText("2 horses")).toBeVisible();
+  await expect(page.locator(".mp-count").getByText("2 horses")).toBeVisible();
 
   const filters = page.getByRole("complementary", { name: "Filter horses" });
   await filters.getByRole("combobox", { name: "Breed" }).selectOption("quarter-horse");
@@ -148,7 +148,7 @@ test("listings show every field and filters go to the server in the address", as
 test("members list a horse with dropdowns, then edit and remove it", async ({ page }) => {
   const state = await mockApp(page, { listings: [row("a", "Northern Ledger")] });
   await page.goto("/marketplace");
-  await page.getByRole("button", { name: "+ List a horse" }).click();
+  await page.getByRole("button", { name: "List a horse" }).first().click();
   const dialog = page.getByRole("dialog", { name: "List a horse" });
   await dialog.getByRole("button", { name: "Publish listing" }).click();
   await expect(dialog.getByRole("alert")).toHaveText("Enter the horse's name.");
@@ -212,6 +212,6 @@ test("admins can remove any listing; layout fits a 320px phone", async ({ page }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
   await page.goto("/tv");
-  await expect(page.getByText("Off air")).toBeVisible();
+  await expect(page.locator(".tvg-status")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });

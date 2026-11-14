@@ -338,3 +338,12 @@ details[open] > :not(summary) {
 .landing .dlg-close:hover {
   background: var(--gold-tint);
 }
+
+/* Profile pictures inside any avatar circle (components/account/AvatarFace.tsx). */
+.avatar-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}

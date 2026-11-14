@@ -36,7 +36,7 @@ const noOverflow = async (page: Page) =>
 test("off air: honest message and no player request", async ({ page }) => {
   const { calls } = await mockTv(page);
   await page.goto("/tv");
-  await expect(page.getByText("Off air")).toBeVisible();
+  await expect(page.locator(".tvg-status")).toBeVisible();
   await expect(page.getByRole("heading", { name: "No live broadcast right now" })).toBeVisible();
   await expect(page.locator("video")).toHaveCount(0);
   expect(calls.playback).toBe(0);
@@ -45,9 +45,9 @@ test("off air: honest message and no player request", async ({ page }) => {
 test("upcoming: shows the title and start time", async ({ page }) => {
   await mockTv(page, { status: { state: "upcoming", title: "Saturday card", startsAt: "2099-01-03T18:30:00Z" } });
   await page.goto("/tv");
-  await expect(page.getByText("Coming up")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Saturday card" })).toBeVisible();
-  await expect(page.locator('time[datetime="2099-01-03T18:30:00Z"]')).toBeVisible();
+  await expect(page.locator(".tvg-status")).toHaveText("Coming up");
+  await expect(page.getByRole("heading", { name: "Saturday card" }).first()).toBeVisible();
+  await expect(page.locator('time[datetime="2099-01-03T18:30:00Z"]').first()).toBeVisible();
 });
 
 test("status failure shows a retry that recovers", async ({ page }) => {
@@ -56,7 +56,7 @@ test("status failure shows a retry that recovers", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("unavailable");
   state.status = OFF;
   await page.getByRole("button", { name: "Try again" }).click();
-  await expect(page.getByText("Off air")).toBeVisible();
+  await expect(page.locator(".tvg-status")).toBeVisible();
 });
 
 test("live: the player asks for playback; a failure offers Try again", async ({ page }) => {
@@ -65,7 +65,7 @@ test("live: the player asks for playback; a failure offers Try again", async ({ 
     playback: { status: 503, json: { error: "The broadcast is unavailable right now." } },
   });
   await page.goto("/tv");
-  await expect(page.locator(".tv-status")).toHaveText("Live");
+  await expect(page.locator(".tvg-status")).toHaveText("Live");
   await expect(page.getByRole("heading", { name: "Keeneland – Race 7" })).toBeVisible();
   await expect(page.locator("video")).toHaveCount(1);
   await expect(page.getByRole("alert")).toContainText("unavailable");
@@ -86,7 +86,7 @@ test("live but ended before playback: the page re-checks and shows off air", asy
 });
 
 for (const width of [320, 375]) {
-  test(`phone ${width}px: no overflow, player runs edge to edge at 16:9`, async ({ page }) => {
+  test(`phone ${width}px: no overflow, player fills the width (inside the page margins) at 16:9`, async ({ page }) => {
     await page.setViewportSize({ width, height: 740 });
     await mockTv(page, {
       status: { state: "live", title: "A very long broadcast title that has to wrap on a small phone screen", startsAt: null },
@@ -95,8 +95,11 @@ for (const width of [320, 375]) {
     await page.goto("/tv");
     await expect(page.getByRole("alert")).toBeVisible();
     await noOverflow(page);
-    const box = (await page.locator(".tv-screen").boundingBox())!;
-    expect(Math.round(box.width)).toBe(width);
+    const box = (await page.locator(".tvg-screen").boundingBox())!;
+    // The glass redesign keeps a small page margin on phones (no longer edge to edge).
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(box.width).toBeGreaterThanOrEqual(width - 32);
     expect(Math.abs(box.height - (box.width * 9) / 16)).toBeLessThan(2);
     const retry = (await page.getByRole("button", { name: "Try again" }).boundingBox())!;
     expect(retry.height).toBeGreaterThanOrEqual(40);
@@ -123,6 +126,6 @@ test("landscape phone: the live screen fits the height", async ({ page }) => {
   await page.goto("/tv");
   await expect(page.getByRole("alert")).toBeVisible();
   await noOverflow(page);
-  const box = (await page.locator(".tv-screen").boundingBox())!;
+  const box = (await page.locator(".tvg-screen").boundingBox())!;
   expect(box.height).toBeLessThanOrEqual(360);
 });

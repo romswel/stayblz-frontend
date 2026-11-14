@@ -705,6 +705,10 @@
   body:has(.mx-has-thread) {
     overflow: hidden;
   }
+  /* The pane slides in from 24px to the right; clip it so the page never scrolls sideways meanwhile. */
+  html:has(.mx-has-thread) {
+    overflow: clip;
+  }
 }
 @keyframes mx-slide-in {
   from { transform: translateX(24px); opacity: 0; }
