@@ -5,6 +5,8 @@ import { useAuth } from "../auth";
 import HorsePortrait from "../components/HorsePortrait";
 import { canUse } from "../components/account/roles";
 import ListingForm from "../components/marketplace/ListingForm";
+import ListingDetails from "../components/marketplace/ListingDetails";
+import { mediaUrl } from "../components/marketplace/media";
 import {
   AGE_FILTER,
   BREEDS,
@@ -122,6 +124,8 @@ const PinIcon = () => (<svg {...I} width={14} height={14}><path d="M12 21s7-6.1 
 const EditIcon = () => (<svg {...I} width={14} height={14}><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>);
 const TrashIcon = () => (<svg {...I} width={14} height={14}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>);
 const SearchIcon = () => (<svg {...I}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>);
+const PhotoIcon = () => (<svg {...I} width={13} height={13}><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="m21 16-5-5-8 8" /></svg>);
+const DocIcon = () => (<svg {...I} width={13} height={13}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>);
 
 type View = "grid" | "list";
 
@@ -135,6 +139,8 @@ export default function Marketplace() {
   const [version, setVersion] = useState(0);
   const [{ loading, error, listings, more }, setListings] = useListings(query, version);
   const [form, setForm] = useState<{ editing: Listing | null } | null>(null);
+  // The listing open in the photo gallery.
+  const [viewing, setViewing] = useState<Listing | null>(null);
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [removing, setRemoving] = useState<string | null>(null);
@@ -226,6 +232,7 @@ export default function Marketplace() {
 
   function saved(listing: Listing, created: boolean) {
     setForm(null);
+    setViewing(null);
     setActionError("");
     if (created) {
       setNotice(`${listing.name} is now listed on the marketplace.`);
@@ -569,6 +576,7 @@ export default function Marketplace() {
                       listing={l}
                       canRemove={l.mine || isAdmin}
                       busy={removing === l.id}
+                      onOpen={() => setViewing(l)}
                       onEdit={() => setForm({ editing: l })}
                       onRemove={() => void remove(l)}
                     />
@@ -585,6 +593,13 @@ export default function Marketplace() {
         </section>
       </div>
 
+      {viewing && !form && (
+        <ListingDetails
+          listing={viewing}
+          onClose={() => setViewing(null)}
+          onEdit={(l) => setForm({ editing: l })}
+        />
+      )}
       {form && <ListingForm editing={form.editing} onClose={() => setForm(null)} onSaved={saved} />}
     </div>
   );
@@ -594,12 +609,14 @@ function ListingCard({
   listing: l,
   canRemove,
   busy,
+  onOpen,
   onEdit,
   onRemove,
 }: {
   listing: Listing;
   canRemove: boolean;
   busy: boolean;
+  onOpen: () => void;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -609,16 +626,45 @@ function ListingCard({
   const seller = l.mine ? "You" : l.sellerName;
   return (
     <article className={`mp-card gx-glass${busy ? " is-busy" : ""}`} aria-label={`${l.name}, ${formatPrice(l.price)}`}>
-      <div className="mp-media">
-        <span className="mp-media-grid" aria-hidden="true" />
-        <HorsePortrait coat={coat.coat} mane={coat.mane} blaze={coat.blaze} size={84} title={l.name} />
+      <button
+        type="button"
+        className={`mp-media mkm-card-media${l.coverPhotoId ? " has-photo" : ""}`}
+        onClick={onOpen}
+        aria-label={`View ${l.name}${l.photoCount ? `: ${l.photoCount} ${l.photoCount === 1 ? "photo" : "photos"}` : ""}`}
+      >
+        {l.coverPhotoId ? (
+          <img className="mkm-card-img" src={mediaUrl(l.coverPhotoId)} alt="" loading="lazy" decoding="async" />
+        ) : (
+          <>
+            <span className="mp-media-grid" aria-hidden="true" />
+            <HorsePortrait coat={coat.coat} mane={coat.mane} blaze={coat.blaze} size={84} title={l.name} />
+          </>
+        )}
         <span className="mp-type">{labelOf(TYPES, l.type)}</span>
         {l.mine && <span className="mp-mine">Your listing</span>}
-      </div>
+        {(l.photoCount > 0 || l.documentCount > 0) && (
+          <span className="mkm-card-counts" aria-hidden="true">
+            {l.photoCount > 0 && (
+              <span>
+                <PhotoIcon /> {l.photoCount}
+              </span>
+            )}
+            {l.documentCount > 0 && (
+              <span>
+                <DocIcon /> {l.documentCount}
+              </span>
+            )}
+          </span>
+        )}
+      </button>
 
       <div className="mp-card-body">
         <div className="mp-card-title">
-          <h3>{l.name}</h3>
+          <h3>
+            <button type="button" className="mkm-title-btn" onClick={onOpen}>
+              {l.name}
+            </button>
+          </h3>
           <strong className="mp-price">{formatPrice(l.price)}</strong>
         </div>
         <p className="mp-loc">

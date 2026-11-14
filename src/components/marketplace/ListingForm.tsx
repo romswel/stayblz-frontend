@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import Modal from "../Modal";
@@ -11,12 +11,19 @@ import {
   DISCIPLINES,
   GENDERS,
   HEIGHTS,
+  MIN_PHOTOS,
   PRICE_MAX,
   TYPES,
   type Listing,
   type ListingInput,
   type Option,
 } from "./options";
+import { DocumentManager, PhotoManager, savedDocument, savedPhoto, type MediaItem } from "./ListingMedia";
+import { getListing, removeUpload } from "./media";
+import "./marketplace-media.css";
+
+/** The listing's details; photos and documents are added separately. */
+type Basics = Omit<ListingInput, "photoIds" | "documentIds">;
 
 type Fields = Record<
   "name" | "price" | "breed" | "discipline" | "type" | "gender" | "color" | "age" | "heightIn" | "location",
@@ -49,7 +56,7 @@ const fromListing = (l: Listing): Fields => ({
 const digits = (value: string) => value.replace(/[^\d]/g, "");
 
 /** Turns the form into what the server expects, or says what to fix. */
-function check(f: Fields): ListingInput | string {
+function check(f: Fields): Basics | string {
   if (!f.name.trim()) return "Enter the horse's name.";
   const price = Number(digits(f.price));
   if (!digits(f.price) || price < 1 || price > PRICE_MAX) return "Enter a price in whole US dollars.";
@@ -136,6 +143,51 @@ export default function ListingForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  /* ----- Photos and documents ----- */
+  const [photos, setPhotos] = useState<MediaItem[]>([]);
+  const [documents, setDocuments] = useState<MediaItem[]>([]);
+  const [photosInvalid, setPhotosInvalid] = useState(false);
+  // Editing: load the listing's current files first. Saving is blocked until they're in, so a
+  // failed load can never save the listing without its photos.
+  const [media, setMedia] = useState<{ loading: boolean; error: string }>({ loading: !!editing, error: "" });
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    if (!editing) return;
+    const c = new AbortController();
+    setMedia({ loading: true, error: "" });
+    getListing(editing.id, c.signal)
+      .then((listing) => {
+        if (c.signal.aborted) return;
+        setPhotos((listing.photos ?? []).map((p) => savedPhoto(p.id)));
+        setDocuments((listing.documents ?? []).map(savedDocument));
+        setMedia({ loading: false, error: "" });
+      })
+      .catch((e) => {
+        if (!c.signal.aborted) setMedia({ loading: false, error: e instanceof Error ? e.message : "Photos couldn't be loaded." });
+      });
+    return () => c.abort();
+  }, [editing, reload]);
+
+  // Uploads from this form that aren't saved yet: dropped from storage when removed, or on Cancel.
+  const saved = useRef(false);
+  const fresh = useRef(new Set<string>());
+  useEffect(() => {
+    const now = new Set([...photos, ...documents].filter((i) => i.fresh && i.id).map((i) => i.id!));
+    for (const id of fresh.current) if (!now.has(id)) void removeUpload(id);
+    fresh.current = now;
+  }, [photos, documents]);
+  useEffect(
+    () => () => {
+      if (!saved.current) for (const id of fresh.current) void removeUpload(id);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (photos.some((p) => p.status === "ready")) setPhotosInvalid(false);
+  }, [photos]);
+
+  const uploading = [...photos, ...documents].some((i) => i.status === "uploading");
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -144,13 +196,35 @@ export default function ListingForm({
       setError(input);
       return;
     }
+    if (media.loading || media.error) {
+      setError("The listing's photos haven't loaded yet. Try again in a moment.");
+      return;
+    }
+    if (uploading) {
+      setError("Wait for the uploads to finish, then save.");
+      return;
+    }
+    if ([...photos, ...documents].some((i) => i.status === "error")) {
+      setError("Remove the files that didn't upload (marked in red), then save.");
+      return;
+    }
+    const photoIds = photos.filter((p) => p.status === "ready" && p.id).map((p) => p.id!);
+    const documentIds = documents.filter((d) => d.status === "ready" && d.id).map((d) => d.id!);
+    if (photoIds.length < MIN_PHOTOS) {
+      setPhotosInvalid(true);
+      setError("Add at least one photo of the horse.");
+      document.querySelector(".mkm-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    const body: ListingInput = { ...input, photoIds, documentIds };
     setBusy(true);
     setError("");
     try {
       const data = editing
-        ? await api.patch<{ listing: Listing }>(`/api/marketplace/listings/${editing.id}`, input)
-        : await api.post<{ listing: Listing }>("/api/marketplace/listings", input);
+        ? await api.patch<{ listing: Listing }>(`/api/marketplace/listings/${editing.id}`, body)
+        : await api.post<{ listing: Listing }>("/api/marketplace/listings", body);
       if (!data?.listing?.id) throw new Error("The listing could not be saved. Please try again.");
+      saved.current = true;
       if (!editing) clearDraft();
       onSaved(data.listing, !editing);
     } catch (reason) {
@@ -168,6 +242,20 @@ export default function ListingForm({
           <p className="ws-notice" role="status">
             We kept what you typed last time.
           </p>
+        )}
+        {media.loading ? (
+          <div className="mkm-section mkm-loading" role="status">
+            <span className="mkm-spinner" aria-hidden="true" /> Loading photos and documents…
+          </div>
+        ) : media.error ? (
+          <div className="mkm-section mkm-load-error" role="alert">
+            <span>{media.error}</span>
+            <button type="button" className="btn btn-quiet" onClick={() => setReload((n) => n + 1)}>
+              Try again
+            </button>
+          </div>
+        ) : (
+          <PhotoManager items={photos} setItems={setPhotos} disabled={busy} invalid={photosInvalid} />
         )}
         <div className="mk-form-grid">
           <label htmlFor="mk-name" className="mk-span">
@@ -252,21 +340,22 @@ export default function ListingForm({
             />
           </label>
         </div>
+        {!media.loading && !media.error && <DocumentManager items={documents} setItems={setDocuments} disabled={busy} />}
         {error && (
           <p className="form-error" role="alert">
             {error}
           </p>
         )}
         <p className="mk-form-note">
-          Your listing is shown to signed-in Stayblz members with your display name. You can edit or remove it at any
-          time.
+          Your listing, photos and documents are shown to signed-in Stayblz members with your display name. You can edit
+          or remove them at any time.
         </p>
         <div className="dlg-actions">
           <button type="button" className="btn btn-quiet" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary" disabled={busy}>
-            {busy ? "Saving…" : editing ? "Save changes" : "Publish listing"}
+          <button type="submit" className="btn btn-primary" disabled={busy || media.loading}>
+            {busy ? "Saving…" : uploading ? "Uploading…" : editing ? "Save changes" : "Publish listing"}
           </button>
         </div>
       </form>

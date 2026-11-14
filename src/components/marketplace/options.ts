@@ -152,7 +152,39 @@ export interface Listing {
   mine: boolean;
   createdAt: string;
   updatedAt: string;
+  /** The first photo (shown on cards), or null for older listings without photos. */
+  coverPhotoId: string | null;
+  photoCount: number;
+  documentCount: number;
+  /** Only on a single listing (GET /listings/:id) and after saving. */
+  photos?: ListingPhoto[];
+  documents?: ListingDocument[];
 }
 
+export type ListingPhoto = { id: string; width: number | null; height: number | null };
+export type ListingDocument = { id: string; name: string; size: number };
+
+/** Photos (1 to 8) are required; PDF documents (vet records, papers…) are optional. */
+export const MIN_PHOTOS = 1;
+export const MAX_PHOTOS = 8;
+export const MAX_DOCUMENTS = 5;
+
 /** What the listing form sends (and the server checks again). */
-export type ListingInput = Omit<Listing, "id" | "sellerName" | "mine" | "createdAt" | "updatedAt">;
+export type ListingInput = {
+  name: string;
+  price: number;
+  breed: string;
+  discipline: string;
+  type: string;
+  gender: string;
+  color: string;
+  age: number;
+  heightIn: number;
+  location: string;
+  /** Uploaded files in display order; photo 0 is the cover. */
+  photoIds: string[];
+  documentIds: string[];
+};
+
+export const formatBytes = (n: number) =>
+  n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
