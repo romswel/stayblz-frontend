@@ -49,6 +49,12 @@ import RacingAdmin from "./pages/admin/RacingAdmin";
 import RaceDayEditor from "./pages/admin/RaceDayEditor";
 import AccountSecurity from "./pages/account/AccountSecurity";
 import AccountPreferences from "./pages/account/AccountPreferences";
+// Stayblz Community: Feeds, member profiles, horse profiles, and the member's own horses.
+import Feeds from "./pages/Feeds";
+import MemberProfile from "./pages/MemberProfile";
+import HorseProfile from "./pages/HorseProfile";
+import CommunityPost from "./pages/CommunityPost";
+import MyHorses from "./pages/MyHorses";
 import { isAppPath } from "./appPaths";
 import { Link } from "react-router-dom";
 
@@ -165,6 +171,11 @@ export default function App() {
         <Route path="/account" element={<Profile />} />
         <Route path="/account/security" element={<AccountSecurity />} />
         <Route path="/account/preferences" element={<AccountPreferences />} />
+        <Route path="/account/horses" element={<MyHorses />} />
+        <Route path="/community" element={<Feeds />} />
+        <Route path="/community/people/:id" element={<MemberProfile />} />
+        <Route path="/community/horses/:id" element={<HorseProfile />} />
+        <Route path="/community/posts/:id" element={<CommunityPost />} />
         <Route path="/updates" element={<Updates />} />
         <Route path="/updates/:slug" element={<UpdatePost />} />
         {/* Admin tools for posts live inside Updates (one menu entry). The API checks the role again. */}

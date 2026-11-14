@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -26,15 +26,12 @@ import { useUpdates } from "./updates/UpdatesContext";
 import { useChatBadge } from "./messenger/useChatBadge";
 import { CHAT_NAME, TEAM_CHAT_NAME } from "./messenger/brand";
 import { TV_NAME } from "./tv/brand";
-import { PADDOCK_NAME } from "./paddock/brand";
-import { useActiveCall } from "./paddock/engine/store";
-// Shown on other pages while a call is going; loads only when there is one.
-const MiniCall = lazy(() => import("./paddock/MiniCall"));
 import { VERSION_LABEL, VERSION_TITLE } from "../version";
 import "./updates/updates.css";
 import BackButton from "./ui/BackButton";
 import { useConfirm } from "./ui/Confirm";
 import DialogHead from "./ui/DialogHead";
+import { SearchSuggestions, useQuickSearch, type Suggestion } from "./community/SearchSuggestions";
 // Glass shell — loaded last so it wins over the legacy workspace styles.
 import "./layout-glass.css";
 
@@ -61,12 +58,6 @@ const DashboardIcon = () => (
 const MessagesIcon = () => (
   <svg {...ICON_PROPS}>
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  </svg>
-);
-const PaddockIcon = () => (
-  <svg {...ICON_PROPS}>
-    <rect x="2" y="6" width="14" height="12" rx="2.5" />
-    <path d="m16 10 6-3.5v11L16 14" />
   </svg>
 );
 const InventoryIcon = () => (
@@ -115,6 +106,18 @@ const TvIcon = () => (
   <svg {...ICON_PROPS}>
     <rect x="2.5" y="6" width="19" height="13" rx="2" />
     <path d="M8 2.5l4 3.5 4-3.5" />
+  </svg>
+);
+const FeedIcon = () => (
+  <svg {...ICON_PROPS}>
+    <rect x="3" y="3" width="18" height="7" rx="2" />
+    <rect x="3" y="14" width="18" height="7" rx="2" />
+    <path d="M7 6.5h6M7 17.5h4" />
+  </svg>
+);
+const HorseIcon = () => (
+  <svg {...ICON_PROPS}>
+    <path d="M4 20c0-6 2-10 7-12l3-4 1 3c3 1 5 4 5 7l-3 1-2-2-1 7" />
   </svg>
 );
 const SunIcon = () => (
@@ -190,12 +193,12 @@ const LogoutIcon = () => (
 );
 
 /** Pages with their own top bar (no shared Back bar). */
-const OWN_BACK = (path: string) => path === "/dashboard" || path === "/pps" || path.startsWith("/pps/");
+const OWN_BACK = (path: string) => path === "/dashboard" || path === "/community" || path === "/pps" || path.startsWith("/pps/");
 /** Switching between chats is one page, not a new one (no remount, no reload of the chat list). */
 const pageKey = (path: string) => path.replace(/^\/(messages|team-messages)\/[^/]+$/, "/$1");
 const countLabel = (n: number) => (n > 9 ? "9+" : String(n));
-/** Chat pages and meetings run as a full-window app: no page padding, page bar, notices or footer. */
-const APP_PAGE = (path: string) => /^\/(messages|team-messages)(\/|$)/.test(path) || /^\/paddock\/[a-z]{4}-[a-z]{4}$/.test(path);
+/** Chat pages run as a full-window app: no page padding, page bar, notices or footer. */
+const APP_PAGE = (path: string) => /^\/(messages|team-messages)(\/|$)/.test(path);
 /** An open conversation owns the bottom of the screen (composer), so the mobile tab bar steps aside. */
 const CHAT_THREAD = (path: string) => /^\/(messages|team-messages)\/[^/]+$/.test(path);
 const PP_PAGE = (path: string) => path === "/pps" || path.startsWith("/pps/");
@@ -217,6 +220,7 @@ const GROUPS = [
   {
     label: "Explore",
     items: [
+      { to: "/community", label: "Feeds", icon: <FeedIcon /> },
       { to: "/marketplace", label: "Marketplace", icon: <MarketIcon /> },
       { to: "/tv", label: TV_NAME, icon: <TvIcon /> },
     ],
@@ -224,9 +228,9 @@ const GROUPS = [
   {
     label: "My racing",
     items: [
+      { to: "/account/horses", label: "My horses", icon: <HorseIcon /> },
       { to: "/my-racing", label: "Following & notebook", icon: <StableIcon /> },
       { to: "/messages", label: CHAT_NAME, icon: <MessagesIcon /> },
-      { to: "/paddock", label: PADDOCK_NAME, icon: <PaddockIcon /> },
       { to: "/account", label: "My account", icon: <UserIcon /> },
     ],
   },
@@ -241,8 +245,8 @@ const WORKSPACE_ITEMS = [
 /** Thumb-reach destinations for the mobile tab bar (the fifth slot opens the full menu). */
 const MOBILE_TABS = [
   { to: "/dashboard", label: "Overview", icon: <DashboardIcon /> },
+  { to: "/community", label: "Feeds", icon: <FeedIcon /> },
   { to: "/marketplace", label: "Market", icon: <MarketIcon /> },
-  { to: "/tv", label: TV_NAME, icon: <TvIcon /> },
   { to: "/messages", label: CHAT_NAME, icon: <MessagesIcon /> },
 ];
 
@@ -250,7 +254,6 @@ export default function Layout() {
   const { active: stable, stables, select } = useWorkspace();
   const { user, logout } = useAuth();
   const { unread: unreadUpdates } = useUpdates();
-  const activeCall = useActiveCall();
   const unreadCount = unreadUpdates.length;
   const chats = useChatBadge(!!user && !user.passwordSetupRequired);
   const navBadge: Record<string, number> = {
@@ -272,6 +275,9 @@ export default function Layout() {
   const isDark = theme === "dark";
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  // Live member and horse suggestions under the search box.
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [scrolled, setScrolled] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -319,6 +325,7 @@ export default function Layout() {
   useEffect(() => {
     setOpen(false);
     setSearchOpen(false);
+    setSuggestOpen(false);
     setNotice("");
     window.scrollTo(0, 0);
   }, [path]);
@@ -332,6 +339,15 @@ export default function Layout() {
       /* Layout still works. */
     }
   }, [collapsed]);
+  const suggestions = useQuickSearch(query, suggestOpen);
+  function pickSuggestion(item: Suggestion) {
+    setSuggestOpen(false);
+    setActiveSuggestion(-1);
+    setSearchOpen(false);
+    if (item.kind === "person" || item.kind === "horse") setQuery("");
+    searchRef.current?.blur();
+    navigate(item.to);
+  }
   const confirm = useConfirm();
   async function handleLogout() {
     if (signingOut) return;
@@ -405,7 +421,7 @@ export default function Layout() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to !== "/messages" && item.to !== "/paddock"}
+              end={item.to !== "/messages" && item.to !== "/community"}
               aria-label={
                 navBadge[item.to]
                   ? `${item.label} (${navBadge[item.to]} unread)`
@@ -589,11 +605,16 @@ export default function Layout() {
 
         <form
           id="gx-search"
-          className={`gx-search${searchOpen ? " is-open" : ""}`}
+          className={`gx-search${searchOpen ? " is-open" : ""}${suggestOpen && query.trim().length >= 2 ? " is-suggesting" : ""}`}
           role="search"
           onSubmit={(e) => {
             e.preventDefault();
+            // A single member or horse match opens it straight away.
+            const direct = suggestions.items.filter((i) => i.kind === "person" || i.kind === "horse");
+            if (activeSuggestion >= 0 && suggestions.items[activeSuggestion]) return pickSuggestion(suggestions.items[activeSuggestion]);
+            if (direct.length === 1 && !suggestions.loading) return pickSuggestion(direct[0]);
             setSearchOpen(false);
+            setSuggestOpen(false);
             searchRef.current?.blur();
             navigate(
               `/dashboard${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ""}`,
@@ -605,16 +626,37 @@ export default function Layout() {
           </span>
           <input
             ref={searchRef}
-            aria-label="Search racing records"
+            role="combobox"
+            aria-label="Search members, horses and racing records"
             aria-keyshortcuts="/"
-            placeholder="Search horses, races, people…"
+            aria-autocomplete="list"
+            aria-expanded={suggestOpen && query.trim().length >= 2}
+            aria-controls="gx-suggest"
+            aria-activedescendant={activeSuggestion >= 0 ? `gx-suggest-opt-${activeSuggestion}` : undefined}
+            placeholder="Search members, horses, races…"
             title="Search (shortcut: /)"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            autoComplete="off"
+            onFocus={() => setSuggestOpen(true)}
+            onBlur={() => setSuggestOpen(false)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSuggestOpen(true);
+              setActiveSuggestion(-1);
+            }}
             onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setSearchOpen(false);
-                e.currentTarget.blur();
+              const count = suggestions.items.length;
+              if ((e.key === "ArrowDown" || e.key === "ArrowUp") && count && suggestOpen) {
+                e.preventDefault();
+                setActiveSuggestion((i) => (e.key === "ArrowDown" ? (i + 1) % count : i <= 0 ? count - 1 : i - 1));
+              } else if (e.key === "Escape") {
+                if (suggestOpen && query.trim().length >= 2) {
+                  setSuggestOpen(false);
+                  setActiveSuggestion(-1);
+                } else {
+                  setSearchOpen(false);
+                  e.currentTarget.blur();
+                }
               }
             }}
             type="search"
@@ -625,6 +667,19 @@ export default function Layout() {
           <button type="submit" className="gx-search-go">
             Search
           </button>
+          {suggestOpen && (
+            <SearchSuggestions
+              id="gx-suggest"
+              query={query}
+              results={suggestions.results}
+              items={suggestions.items}
+              loading={suggestions.loading}
+              failed={suggestions.failed}
+              active={activeSuggestion}
+              onHover={setActiveSuggestion}
+              onPick={pickSuggestion}
+            />
+          )}
         </form>
 
         <div className="gx-actions">
@@ -837,7 +892,7 @@ export default function Layout() {
             <NavLink
               key={tab.to}
               to={tab.to}
-              end={tab.to !== "/messages"}
+              end={tab.to !== "/messages" && tab.to !== "/community"}
               className={({ isActive }) => `gx-tab${isActive ? " active" : ""}`}
               aria-label={
                 navBadge[tab.to] ? `${tab.label} (${navBadge[tab.to]} unread)` : tab.label
@@ -866,11 +921,6 @@ export default function Layout() {
       )}
 
       <UpdatesPopup />
-      {activeCall && (
-        <Suspense fallback={null}>
-          <MiniCall />
-        </Suspense>
-      )}
       {cart && (
         <Modal label="Shopping cart" onClose={() => setCart(false)}>
           <DialogHead title="Your cart" kicker="Cart preview" onClose={() => setCart(false)} />

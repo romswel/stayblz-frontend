@@ -333,6 +333,21 @@ export default function Profile() {
             </ul>
           </section>
 
+          <section className="pf-next pf-horses gx-glass">
+            <h2>My horses</h2>
+            <p>Give each of your horses a profile with photos, pedigree and race history, then share updates in Feeds.</p>
+            <div className="pf-next-actions">
+              <Link className="pf-btn pf-btn-primary" to="/account/horses">
+                Manage my horses <Arrow />
+              </Link>
+              {user && (
+                <Link className="pf-btn" to={`/community/people/${user.id}`}>
+                  Public profile <Arrow />
+                </Link>
+              )}
+            </div>
+          </section>
+
           <section className="pf-next gx-glass">
             <h2>Racing records</h2>
             <p>View racing records, save notes, follow horses, and send private messages. You can also create a stable or join a team.</p>
