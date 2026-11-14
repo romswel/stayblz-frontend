@@ -63,6 +63,20 @@ export default function Login() {
     navigate("/");
     heroRef.current?.focus({ preventScroll: true });
   }
+  // Escape closes the card wherever focus is (just after opening it, focus is still on the header
+  // button), but not while a dialog opened from it (e.g. Terms) is on top.
+  const closeRef = useRef(closeAuth);
+  closeRef.current = closeAuth;
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (document.querySelector(".modal, [role='dialog'][aria-modal='true']")) return;
+      closeRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
   // The hero fills the screen below the header (and the development notice), so the footer
   // only comes into view on scroll. Measured, because the notice and a wrapped header vary.
   useEffect(() => {
@@ -173,17 +187,7 @@ export default function Login() {
               <p>Racecards, results, workouts, and standings.</p>
             </div>
             <span className="ld-photo-credit">Illustrative racing image</span>
-            <div
-              className="ld-auth-shell"
-              onKeyDown={(event) => {
-                // Escape closes the card, but not while a dialog opened from it (e.g. Terms) is on top.
-                if (
-                  event.key === "Escape" &&
-                  event.currentTarget.contains(event.target as Node)
-                )
-                  closeAuth();
-              }}
-            >
+            <div className="ld-auth-shell">
               <LandingAuth
                 ref={authRef}
                 mode={mode}
