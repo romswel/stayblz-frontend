@@ -175,8 +175,11 @@ export type ListingMedia = {
 };
 export type ListingDocument = { id: string; name: string; size: number };
 
-/** At least one photo or video is required; PDF documents (vet records, papers…) are optional. */
-export const MIN_MEDIA = 1;
+/**
+ * Photos, videos and PDF documents (vet records, papers…) are all optional: any mix, or none.
+ * A card without a picture shows the drawn horse portrait.
+ */
+export const MIN_MEDIA = 0;
 export const MAX_PHOTOS = 8;
 export const MAX_VIDEOS = 3;
 export const MAX_VIDEO_SECONDS = 180;

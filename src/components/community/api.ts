@@ -1,9 +1,9 @@
-import { api } from "../../api";
+import { api, apiRaw } from "../../api";
 
 /* ==========================================================================
    Stayblz Community — types and calls for /api/community.
    JSON calls go through the app's `api` helper. Photo uploads send the raw image
-   bytes (like chat attachments), so they use fetch directly.
+   bytes (like chat attachments) through `apiRaw`, which keeps the same session handling.
    ========================================================================== */
 
 /**
@@ -247,15 +247,15 @@ export async function preparePhoto(file: File): Promise<{ blob: Blob; type: stri
 
 async function uploadRaw<T>(path: string, file: File, extra: Record<string, string> = {}): Promise<T> {
   const photo = await preparePhoto(file);
-  const response = await fetch(apiUrl(`${path}${q({ width: photo.width, height: photo.height, ...extra })}`), {
+  // apiRaw: same-origin "/api/..." in production like before, plus the app's session handling (one
+  // silent renewal when the session has expired, so a long-open tab doesn't fail its first upload)
+  // and friendly error messages. It throws on any failure.
+  const response = await apiRaw(`${path}${q({ width: photo.width, height: photo.height, ...extra })}`, {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": photo.type },
     body: photo.blob,
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error((data as { error?: string }).error ?? "The photo couldn't be uploaded. Try again.");
-  return data as T;
+  return (await response.json().catch(() => ({}))) as T;
 }
 
 export const uploadHorseImage = (horseId: string, file: File) =>

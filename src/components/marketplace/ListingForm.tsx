@@ -11,7 +11,6 @@ import {
   DISCIPLINES,
   GENDERS,
   HEIGHTS,
-  MIN_MEDIA,
   PRICE_MAX,
   TYPES,
   type Listing,
@@ -146,7 +145,6 @@ export default function ListingForm({
   /* ----- Photos, videos and documents ----- */
   const [photos, setPhotos] = useState<MediaItem[]>([]);
   const [documents, setDocuments] = useState<MediaItem[]>([]);
-  const [photosInvalid, setPhotosInvalid] = useState(false);
   // Editing: load the listing's current files first. Saving is blocked until they're in, so a
   // failed load can never save the listing without its photos.
   const [media, setMedia] = useState<{ loading: boolean; error: string }>({ loading: !!editing, error: "" });
@@ -182,10 +180,6 @@ export default function ListingForm({
     },
     [],
   );
-  useEffect(() => {
-    if (photos.some((p) => p.status === "ready")) setPhotosInvalid(false);
-  }, [photos]);
-
   const uploading = [...photos, ...documents].some((i) => i.status === "uploading");
 
   async function submit(e: FormEvent) {
@@ -210,12 +204,7 @@ export default function ListingForm({
     }
     const mediaIds = photos.filter((p) => p.status === "ready" && p.id).map((p) => p.id!);
     const documentIds = documents.filter((d) => d.status === "ready" && d.id).map((d) => d.id!);
-    if (mediaIds.length < MIN_MEDIA) {
-      setPhotosInvalid(true);
-      setError("Add at least one photo or video of the horse.");
-      document.querySelector(".mkm-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
+    // Photos and videos are optional (MIN_MEDIA is 0): a listing can be published without any.
     const body: ListingInput = { ...input, mediaIds, documentIds };
     setBusy(true);
     setError("");
@@ -255,7 +244,7 @@ export default function ListingForm({
             </button>
           </div>
         ) : (
-          <MediaManager items={photos} setItems={setPhotos} disabled={busy} invalid={photosInvalid} />
+          <MediaManager items={photos} setItems={setPhotos} disabled={busy} />
         )}
         <div className="mk-form-grid">
           <label htmlFor="mk-name" className="mk-span">

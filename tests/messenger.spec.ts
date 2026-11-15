@@ -140,8 +140,13 @@ test("emoji button, photos and files: send, preview, and open large", async ({ p
   const photo = page.getByRole("button", { name: "Photo: paddock.png. Open larger" });
   await expect(photo).toBeEnabled();
   await expect(page.getByRole("button", { name: /Download card\.csv/ })).toBeVisible();
-  const uploads = server.posts.filter((p) => p.path.includes("/attachments?"));
-  expect(uploads.map((p) => new URL("http://x" + p.path).searchParams.get("name")).sort()).toEqual(["card.csv", "paddock.png"]);
+  // The photo can still be on its way when the file's row shows, so wait for both uploads.
+  const uploadNames = () =>
+    server.posts
+      .filter((p) => p.path.includes("/attachments?"))
+      .map((p) => new URL("http://x" + p.path).searchParams.get("name"))
+      .sort();
+  await expect.poll(uploadNames).toEqual(["card.csv", "paddock.png"]);
   expect(server.threads[ANN].messages.find((m) => m.attachment?.name === "card.csv")?.attachment?.type).toBe("text/csv");
   await photo.click();
   await expect(page.getByRole("dialog", { name: "Photo: paddock.png" })).toBeVisible();

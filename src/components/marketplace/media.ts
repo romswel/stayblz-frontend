@@ -1,4 +1,4 @@
-import { api } from "../../api";
+import { API_BASE, api, apiRaw, getToken } from "../../api";
 import { MAX_VIDEO_SECONDS, type Listing, type ListingMedia } from "./options";
 
 /**
@@ -36,18 +36,44 @@ export const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 /** Progress callback: 0 to 1. */
 type Progress = (fraction: number) => void;
 
-/** Sends one file with upload progress (fetch can't report it). */
-function send(query: Record<string, string>, body: Blob, type: string, onProgress?: Progress, path = `${BASE}/uploads`) {
+let renewing: Promise<boolean> | null = null;
+/** One silent session renewal, shared by uploads that hit an expired session at the same time. */
+const renewSession = () =>
+  (renewing ??= fetch(`${API_BASE}/api/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+  })
+    .then((r) => r.ok)
+    .catch(() => false)
+    .finally(() => {
+      renewing = null;
+    }));
+
+/**
+ * Sends one file with upload progress (fetch can't report it). Same session handling as the app's
+ * api helper: the cookie (or the dev token), and one silent renewal if the session has expired, so
+ * a form left open for a long time doesn't fail its first upload.
+ */
+function send(query: Record<string, string>, body: Blob, type: string, onProgress?: Progress, path = `${BASE}/uploads`, renewed = false) {
   return new Promise<any>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const params = new URLSearchParams(query).toString();
-    xhr.open("POST", params ? `${path}?${params}` : path);
+    xhr.open("POST", `${API_BASE}${params ? `${path}?${params}` : path}`);
     xhr.withCredentials = true;
     xhr.setRequestHeader("Content-Type", type);
+    const token = getToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.responseType = "json";
     if (onProgress) xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
     xhr.onload = () => {
       const data = xhr.response ?? {};
+      if (xhr.status === 401 && !renewed)
+        return void renewSession().then((ok) =>
+          ok
+            ? send(query, body, type, onProgress, path, true).then(resolve, reject)
+            : reject(new Error("You've been signed out. Sign in again, then add the file.")),
+        );
       if (xhr.status >= 200 && xhr.status < 300) resolve(data);
       else reject(new Error(data.error ?? (xhr.status === 413 ? "That file is too big." : "The file couldn't be uploaded. Try again.")));
     };
@@ -55,6 +81,29 @@ function send(query: Record<string, string>, body: Blob, type: string, onProgres
     xhr.send(body);
   });
 }
+
+/* ---------- Today's limits ---------- */
+
+let limits: Promise<{ videoBytes: number; videoSeconds: number }> | null = null;
+/**
+ * The biggest video the server takes right now: 100 MB once files are stored in R2, 50 MB while
+ * they're kept in Supabase Storage. Asked once per page load; quietly falls back to 100 MB (the
+ * server still checks every upload).
+ */
+export function uploadLimits() {
+  limits ??= apiRaw(`${BASE}/limits`)
+    .then((r) => r.json())
+    .then((d: { videoBytes?: unknown; videoSeconds?: unknown }) => ({
+      videoBytes: typeof d.videoBytes === "number" && d.videoBytes > 0 ? d.videoBytes : MAX_VIDEO_BYTES,
+      videoSeconds: typeof d.videoSeconds === "number" && d.videoSeconds > 0 ? d.videoSeconds : MAX_VIDEO_SECONDS,
+    }))
+    .catch(() => {
+      limits = null; // ask again next time
+      return { videoBytes: MAX_VIDEO_BYTES, videoSeconds: MAX_VIDEO_SECONDS };
+    });
+  return limits;
+}
+export const megabytes = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
 
 function fileOf(data: any): UploadedFile {
   if (!data?.file?.id) throw new Error("The file couldn't be uploaded. Try again.");
@@ -129,7 +178,15 @@ export function inspectVideo(file: File): Promise<{ duration: number; width: num
       video.load();
       result instanceof Error ? reject(result) : resolve(result);
     };
-    const timer = window.setTimeout(() => finish(new Error(`${file.name} couldn't be read.`)), 15_000);
+    const known = () => ({
+      duration: Number.isFinite(video.duration) ? video.duration : 0,
+      width: video.videoWidth || 0,
+      height: video.videoHeight || 0,
+      poster: null,
+    });
+    // No frame in time (iPhone Safari often won't load one for a video that isn't playing): the
+    // video still uploads, with whatever length and size are known and no poster.
+    const timer = window.setTimeout(() => finish(known()), 10_000);
     video.onerror = () => {
       window.clearTimeout(timer);
       // Can't decode it here, but the file may still play elsewhere (e.g. HEVC on iPhone). Length unknown.
@@ -137,10 +194,13 @@ export function inspectVideo(file: File): Promise<{ duration: number; width: num
     };
     video.onloadedmetadata = () => {
       const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      // Phones only load frames once playback starts; muted inline playback is always allowed.
+      video.play()?.catch(() => undefined);
       video.currentTime = Math.min(1, duration / 2 || 0);
     };
     video.onseeked = () => {
       window.clearTimeout(timer);
+      video.pause();
       const width = video.videoWidth;
       const height = video.videoHeight;
       const duration = Number.isFinite(video.duration) ? video.duration : 0;
@@ -163,9 +223,11 @@ export function inspectVideo(file: File): Promise<{ duration: number; width: num
 export async function uploadVideo(file: File, onProgress?: Progress) {
   const type = videoType(file);
   if (!type) throw new Error(`${file.name}: videos must be MP4, MOV or WebM.`);
-  if (file.size > MAX_VIDEO_BYTES) throw new Error(`${file.name} is too big (videos up to 100 MB).`);
+  const limit = await uploadLimits();
+  if (file.size > limit.videoBytes)
+    throw new Error(`${file.name} is too big (videos up to ${megabytes(limit.videoBytes)} for now). Trim the clip, or record at 1080p instead of 4K.`);
   const info = await inspectVideo(file);
-  if (info.duration > MAX_VIDEO_SECONDS + 0.5) throw new Error(`${file.name} is longer than 3 minutes.`);
+  if (info.duration > limit.videoSeconds + 0.5) throw new Error(`${file.name} is longer than ${Math.round(limit.videoSeconds / 60)} minutes.`);
   const query: Record<string, string> = { kind: "video" };
   if (info.duration) query.duration = String(Math.round(info.duration));
   if (info.width) query.width = String(info.width);

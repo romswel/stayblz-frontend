@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 
 // Every API is mocked: these tests prove the page flow, not the real backend.
@@ -21,13 +22,31 @@ const row = (id: string, name: string, extra: Partial<Row> = {}): Row => ({
   ...extra,
 });
 
-async function mockApp(page: Page, { role = "member", listings = [] as Row[] } = {}) {
+async function mockApp(page: Page, { role = "member", listings = [] as Row[], videoBytes = 100 * 1024 * 1024 } = {}) {
   const state = {
     listings: [...listings],
     queries: [] as string[],
     posted: [] as unknown[],
     removed: [] as string[],
+    dropped: [] as string[],
+    // Uploaded files by id, with what the browser sent.
+    files: new Map<string, { kind: string; type: string; body: Buffer; query: Record<string, string>; poster?: Buffer }>(),
+    serveVideo: null as Buffer | null,
   };
+  let next = 0;
+  const fileView = (id: string) => {
+    const f = state.files.get(id)!;
+    return {
+      id,
+      kind: f.kind,
+      width: Number(f.query.width) || null,
+      height: Number(f.query.height) || null,
+      ...(f.kind === "video" ? { duration: f.query.duration ? Number(f.query.duration) : null, poster: !!f.poster } : {}),
+      name: f.query.name ?? "",
+      size: f.body.length,
+    };
+  };
+  const mediaOf = (l: Row) => ((l.mediaIds as string[] | undefined) ?? []).filter((id) => state.files.has(id)).map(fileView);
   await page.addInitScript(() => localStorage.setItem("stayblz.theme", "light"));
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -48,10 +67,49 @@ async function mockApp(page: Page, { role = "member", listings = [] as Row[] } =
       );
       return route.fulfill({ json: { listings: shown, more: false } });
     }
+    if (path === "/api/marketplace/limits") return route.fulfill({ json: { videoBytes, videoSeconds: 180, photos: 8, videos: 3, documents: 5 } });
+    if (path === "/api/marketplace/uploads" && request.method() === "POST") {
+      const id = `up-${++next}`;
+      const query = Object.fromEntries(url.searchParams);
+      state.files.set(id, { kind: query.kind, type: request.headers()["content-type"], body: request.postDataBuffer() ?? Buffer.alloc(0), query });
+      return route.fulfill({ status: 201, json: { file: fileView(id) } });
+    }
+    const still = path.match(/^\/api\/marketplace\/uploads\/([^/]+)\/poster$/);
+    if (still) {
+      state.files.get(still[1])!.poster = request.postDataBuffer() ?? Buffer.alloc(0);
+      return route.fulfill({ json: { ok: true } });
+    }
+    const drop = path.match(/^\/api\/marketplace\/uploads\/([^/]+)\/remove$/);
+    if (drop) {
+      state.dropped.push(drop[1]);
+      return route.fulfill({ json: { ok: true } });
+    }
+    const file = path.match(/^\/api\/marketplace\/media\/([^/]+)(\/poster)?$/);
+    if (file) {
+      const f = state.files.get(file[1]);
+      if (!f) return route.fulfill({ status: 404, json: { error: "File not found." } });
+      if (file[2]) return route.fulfill({ status: 200, contentType: "image/jpeg", body: f.poster ?? Buffer.alloc(0) });
+      return route.fulfill({ status: 200, contentType: f.type, body: f.kind === "video" ? (state.serveVideo ?? f.body) : f.body });
+    }
+    const one = path.match(/^\/api\/marketplace\/listings\/([^/]+)$/);
+    if (one && request.method() === "GET") {
+      const found = state.listings.find((l) => l.id === one[1]);
+      if (!found) return route.fulfill({ status: 404, json: { error: "Listing not found." } });
+      return route.fulfill({ json: { listing: { ...found, media: mediaOf(found), documents: [] } } });
+    }
     if (path === "/api/marketplace/listings" && request.method() === "POST") {
       const body = request.postDataJSON();
       state.posted.push(body);
-      const created = row("new-1", body.name, { ...body, sellerName: "Racing Member", mine: true });
+      const media = mediaOf(body);
+      const created = row(`new-${state.posted.length}`, body.name, {
+        ...body,
+        sellerName: "Racing Member",
+        mine: true,
+        cover: media[0] ?? null,
+        photoCount: media.filter((m) => m.kind === "photo").length,
+        videoCount: media.filter((m) => m.kind === "video").length,
+        documentCount: (body.documentIds ?? []).length,
+      });
       state.listings.unshift(created);
       return route.fulfill({ status: 201, json: { listing: created } });
     }
@@ -177,6 +235,9 @@ test("members list a horse with dropdowns, then edit and remove it", async ({ pa
     age: 1,
     heightIn: 62,
     location: "Newmarket, England",
+    // Photos, videos and documents are optional: a listing can be published with none.
+    mediaIds: [],
+    documentIds: [],
   });
   await expect(page.getByRole("status").filter({ hasText: "Gold Furlong is now listed" })).toBeVisible();
   const mine = page.getByRole("article", { name: /Gold Furlong/ });
@@ -214,4 +275,156 @@ test("admins can remove any listing; layout fits a 320px phone", async ({ page }
   await page.goto("/tv");
   await expect(page.locator(".tvg-status")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+});
+
+/* ---------- Photos and videos (optional) ---------- */
+
+// A 1x1 PNG.
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/** Records a real, short WebM clip in the test browser (Chromium can't play MP4/H.264). */
+async function recordClip(page: Page): Promise<Buffer> {
+  const base64 = await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 160;
+    canvas.height = 90;
+    const ctx = canvas.getContext("2d")!;
+    const recorder = new MediaRecorder(canvas.captureStream(15), { mimeType: "video/webm" });
+    const parts: Blob[] = [];
+    recorder.ondataavailable = (e) => parts.push(e.data);
+    const stopped = new Promise((resolve) => (recorder.onstop = resolve));
+    recorder.start();
+    let frame = 0;
+    await new Promise<void>((resolve) => {
+      const timer = setInterval(() => {
+        ctx.fillStyle = frame % 2 ? "#1f6b45" : "#c9a24a";
+        ctx.fillRect(0, 0, 160, 90);
+        if (++frame > 12) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 60);
+    });
+    recorder.stop();
+    await stopped;
+    const bytes = new Uint8Array(await new Blob(parts, { type: "video/webm" }).arrayBuffer());
+    let text = "";
+    for (const b of bytes) text += String.fromCharCode(b);
+    return btoa(text);
+  });
+  return Buffer.from(base64, "base64");
+}
+
+async function fillHorse(dialog: ReturnType<Page["getByRole"]>, name: string) {
+  await dialog.getByLabel("Horse name").fill(name);
+  await dialog.getByLabel("Price (USD)").fill("30000");
+  await dialog.getByLabel("Breed").selectOption("thoroughbred");
+  await dialog.getByLabel("Discipline").selectOption("flat-racing");
+  await dialog.getByLabel("Type").selectOption("racing-prospect");
+  await dialog.getByLabel("Gender").selectOption("filly");
+  await dialog.getByLabel("Color").selectOption("bay");
+  await dialog.getByLabel("Age (years)").fill("2");
+  await dialog.getByLabel("Height (hands)").selectOption({ label: "15.2 hh" });
+  await dialog.getByLabel("Location").fill("Ocala, Florida");
+}
+const mediaInput = (dialog: ReturnType<Page["getByRole"]>) => dialog.locator('input[type="file"][accept*="video/mp4"]');
+
+test("sellers add photos and videos (optional); buyers see and play them", async ({ page }) => {
+  const state = await mockApp(page);
+  await page.goto("/marketplace");
+  const clip = await recordClip(page);
+  await page.getByRole("button", { name: "List a horse" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "List a horse" });
+  const box = dialog.getByRole("group", { name: /Photos & videos/ });
+  await expect(box).toContainText("Optional");
+  await expect(box).not.toContainText("Required");
+  await expect(box).toContainText("100 MB each");
+  await fillHorse(dialog, "Reel Runner");
+
+  await mediaInput(dialog).setInputFiles([
+    { name: "side.png", mimeType: "image/png", buffer: PNG },
+    { name: "jog.webm", mimeType: "video/webm", buffer: clip },
+  ]);
+  await expect(dialog.locator(".mkm-photo.is-ready")).toHaveCount(2);
+  // A still frame was made in the browser and sent after the video.
+  await expect.poll(() => [...state.files.values()].find((f) => f.kind === "video")?.poster?.length ?? 0).toBeGreaterThan(100);
+  const [photoId] = [...state.files.entries()].find(([, f]) => f.kind === "photo")!;
+  const [videoId, video] = [...state.files.entries()].find(([, f]) => f.kind === "video")!;
+  expect(video.type).toBe("video/webm");
+  expect(video.query).toMatchObject({ kind: "video", width: "160", height: "90" });
+  expect(video.body.equals(clip)).toBe(true);
+
+  await dialog.getByRole("button", { name: "Publish listing" }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(state.posted[0]).toMatchObject({ mediaIds: [photoId, videoId], documentIds: [] });
+
+  const card = page.getByRole("article", { name: /Reel Runner/ });
+  await card.getByRole("button", { name: "View Reel Runner: 1 photo, 1 video" }).click();
+  const details = page.getByRole("dialog", { name: /Reel Runner/ });
+  await details.getByRole("tab", { name: "Video 2" }).click();
+  const player = details.locator("video").first();
+  await expect(player).toHaveAttribute("src", `/api/marketplace/media/${videoId}`);
+  // The browser really loads it.
+  await expect.poll(() => player.evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThanOrEqual(1);
+});
+
+test("a listing with only a video uses its still frame on the card", async ({ page }) => {
+  const state = await mockApp(page);
+  await page.goto("/marketplace");
+  const clip = await recordClip(page);
+  await page.getByRole("button", { name: "List a horse" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "List a horse" });
+  await fillHorse(dialog, "Only Moving");
+  await mediaInput(dialog).setInputFiles({ name: "walk.webm", mimeType: "video/webm", buffer: clip });
+  await expect(dialog.locator(".mkm-photo.is-ready")).toHaveCount(1);
+  await expect.poll(() => [...state.files.values()][0]?.poster?.length ?? 0).toBeGreaterThan(100);
+  await dialog.getByRole("button", { name: "Publish listing" }).click();
+  await expect(dialog).toHaveCount(0);
+  const card = page.getByRole("article", { name: /Only Moving/ });
+  const cover = card.locator("img.mkm-card-img");
+  await expect(cover).toHaveAttribute("src", /\/api\/marketplace\/media\/up-\d+\/poster$/);
+  await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  await expect(card.locator(".mkm-card-play")).toBeVisible();
+});
+
+test("while files are kept in Supabase, a video over 50 MB is stopped before it uploads", async ({ page }) => {
+  const state = await mockApp(page, { videoBytes: 50 * 1024 * 1024 });
+  await page.goto("/marketplace");
+  await page.getByRole("button", { name: "List a horse" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "List a horse" });
+  await expect(dialog.getByRole("group", { name: /Photos & videos/ })).toContainText("50 MB each");
+  // Playwright only passes files over 50 MB from disk.
+  const big = test.info().outputPath("long.webm");
+  writeFileSync(big, Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(50 * 1024 * 1024)]));
+  await mediaInput(dialog).setInputFiles(big);
+  await expect(dialog.getByRole("alert").filter({ hasText: "too big (videos up to 50 MB for now)" })).toBeVisible();
+  expect(state.files.size).toBe(0);
+});
+
+test("removing an upload before saving drops it; the form fits a 320px phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  const state = await mockApp(page);
+  await page.goto("/marketplace");
+  const clip = await recordClip(page);
+  await page.getByRole("button", { name: "List a horse" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "List a horse" });
+  await mediaInput(dialog).setInputFiles([
+    { name: "a.png", mimeType: "image/png", buffer: PNG },
+    { name: "b.webm", mimeType: "video/webm", buffer: clip },
+  ]);
+  await expect(dialog.locator(".mkm-photo.is-ready")).toHaveCount(2);
+  const wide = await page.evaluate(() =>
+    [...document.querySelectorAll(".mk-form *")].filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1).length,
+  );
+  expect(wide).toBe(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+  await dialog.getByRole("button", { name: "Remove video 2" }).click();
+  await expect(dialog.locator(".mkm-photo")).toHaveCount(1);
+  await expect.poll(() => state.dropped.length).toBe(1);
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect.poll(() => state.dropped.length).toBe(2);
+  expect(new Set(state.dropped)).toEqual(new Set(state.files.keys()));
 });

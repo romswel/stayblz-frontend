@@ -1,6 +1,30 @@
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { MAX_DOCUMENTS, MAX_PHOTOS, MAX_VIDEOS, formatBytes, formatDuration, type ListingMedia } from "./options";
-import { mediaUrl, pictureUrl, uploadDocument, uploadPhoto, uploadVideo, videoType, type UploadedFile } from "./media";
+import {
+  MAX_VIDEO_BYTES,
+  megabytes,
+  mediaUrl,
+  pictureUrl,
+  uploadDocument,
+  uploadLimits,
+  uploadPhoto,
+  uploadVideo,
+  videoType,
+  type UploadedFile,
+} from "./media";
+
+/** The biggest video the server takes right now (50 MB until files move to R2, then 100 MB). */
+function useVideoLimit() {
+  const [bytes, setBytes] = useState(MAX_VIDEO_BYTES);
+  useEffect(() => {
+    let live = true;
+    void uploadLimits().then((l) => live && setBytes(l.videoBytes));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return bytes;
+}
 
 /** One photo, video or document in the form: already saved, uploading, or failed. */
 export type MediaItem = {
@@ -117,17 +141,18 @@ export function MediaManager({
   items,
   setItems,
   disabled,
-  invalid,
+  invalid = false,
 }: {
   items: MediaItem[];
   setItems: (update: (items: MediaItem[]) => MediaItem[]) => void;
   disabled: boolean;
-  invalid: boolean;
+  invalid?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [note, setNote] = useState("");
   const add = useUploader(items, setItems);
+  const videoBytes = useVideoLimit();
   const photos = items.filter((i) => i.kind === "photo").length;
   const videos = items.filter((i) => i.kind === "video").length;
   const full = photos >= MAX_PHOTOS && videos >= MAX_VIDEOS;
@@ -166,11 +191,11 @@ export function MediaManager({
   return (
     <fieldset className={`mkm-section${invalid ? " is-invalid" : ""}`} aria-describedby="mkm-media-help">
       <legend>
-        Photos &amp; videos <span className="mkm-req">Required</span>
+        Photos &amp; videos <span className="mkm-opt">Optional</span>
       </legend>
       <p id="mkm-media-help" className="mkm-help">
-        Add at least one photo or video: up to {MAX_PHOTOS} photos (JPG, PNG, WebP) and {MAX_VIDEOS} videos (MP4, MOV or
-        WebM, up to 3 minutes and 100 MB each). The first one is the cover buyers see first.
+        Up to {MAX_PHOTOS} photos (JPG, PNG, WebP) and {MAX_VIDEOS} videos (MP4, MOV or WebM, up to 3 minutes and{" "}
+        {megabytes(videoBytes)} each). The first one is the cover buyers see first. You can also publish without any.
       </p>
       <div className="mkm-photos">
         {items.map((item, index) => {
