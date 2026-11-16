@@ -3,11 +3,11 @@ import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import { useConfirm } from "../ui/Confirm";
 import { peopleApi } from "./chatApi";
+import { Link } from "react-router-dom";
+import { chatLimits, setChatLimits } from "./files";
 import { fileSize } from "./format";
 import { Avatar, DatabaseIcon, FolderIcon } from "./icons";
 import type { ChatFolder, ChatProfile, Person } from "./types";
-
-const QUOTA = 50 * 1024 * 1024;
 
 /** Chat settings: privacy, folders, blocked people, storage, and how the free plan affects chat. */
 export default function ChatSettingsDialog({
@@ -32,6 +32,7 @@ export default function ChatSettingsDialog({
   const [blocked, setBlocked] = useState<Person[] | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [limits, setLimits] = useState(chatLimits);
 
   useEffect(() => {
     const c = new AbortController();
@@ -39,6 +40,8 @@ export default function ChatSettingsDialog({
       .then(([p, b]) => {
         if (c.signal.aborted) return;
         setProfile(p?.profile ?? { discoverable: true, showActive: true, storageUsed: 0 });
+        setChatLimits(p?.limits);
+        setLimits(chatLimits());
         setBlocked(b?.blocked ?? []);
       })
       .catch((e) => !c.signal.aborted && setError(e instanceof Error ? e.message : "Settings could not be loaded."));
@@ -87,7 +90,7 @@ export default function ChatSettingsDialog({
 
   const used = profile?.storageUsed ?? 0;
   return (
-    <Modal label={`${name} settings`} onClose={onClose} className="modal-sm">
+    <Modal label={`${name} settings`} onClose={onClose} className="modal-sm mx-dialog mx-layer gx-layer">
       <DialogHead kicker={name} title="Settings" onClose={onClose} />
       <div className="dlg mx-settings">
         {error && (
@@ -141,7 +144,7 @@ export default function ChatSettingsDialog({
         <ul className="mx-rows">
           {(blocked ?? []).map((p) => (
             <li key={p.id}>
-              <Avatar name={p.name} size="xs" />
+              <Avatar name={p.name} id={p.id} size="sm" />
               <span>{p.name}</span>
               <button type="button" className="mx-pill" onClick={() => void unblock(p)}>
                 Unblock
@@ -150,14 +153,21 @@ export default function ChatSettingsDialog({
           ))}
         </ul>
 
+        <h3 className="mx-details-h">Notifications</h3>
+        <p className="mx-hint">
+          Alerts for new messages, sounds and previews are in <Link to="/account/notifications" onClick={onClose}>Notification settings</Link>.
+          Mute one chat from its ⋯ menu or Chat info.
+        </p>
+
         <h3 className="mx-details-h">Your files</h3>
         {profile && (
-          <div className="mx-meter" aria-label={`${fileSize(used)} of 50 MB used`}>
+          <div className="mx-meter" aria-label={`${fileSize(used)} of ${fileSize(limits.quotaBytes)} used`}>
             <div className="mx-meter-bar">
-              <span style={{ width: `${Math.min(100, (used / QUOTA) * 100)}%` }} />
+              <span style={{ width: `${Math.min(100, (used / limits.quotaBytes) * 100)}%` }} />
             </div>
             <p className="mx-hint">
-              {fileSize(used)} of 50 MB used. Unsending a photo or file frees its space.
+              {fileSize(used)} of {fileSize(limits.quotaBytes)} used · photos, videos and files up to {fileSize(limits.fileBytes)} each
+              {limits.storage === "r2" ? " (stored on Cloudflare R2)" : ""}. Unsending a file frees its space.
             </p>
           </div>
         )}

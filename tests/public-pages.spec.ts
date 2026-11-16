@@ -37,13 +37,13 @@ test("branded startup stays visible during session restore and respects reduced 
   const loader = page.getByRole("status", { name: "Loading Stayblz" });
   await expect(loader).toBeVisible();
   await expect(loader.getByText("STAYBLZ", { exact: false })).toBeVisible();
-  await expect(page.locator(".sb-startup-mark img")).toHaveCSS(
+  await expect(page.locator(".sb-startup-mark svg")).toHaveCSS(
     "animation-name",
     "sb-stride",
   );
   await page.screenshot({ path: "test-results/startup-mobile.png" });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect(page.locator(".sb-startup-mark img")).toHaveCSS(
+  await expect(page.locator(".sb-startup-mark svg")).toHaveCSS(
     "animation-name",
     "none",
   );

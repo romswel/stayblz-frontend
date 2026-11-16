@@ -313,6 +313,8 @@ test("personal conversations and private invitations require an account but no s
       },
     });
   });
+  // On narrower screens Chat info covers the conversation; close it to write.
+  await page.getByRole("button", { name: "Close chat info" }).click();
   await page.getByLabel("Write a message").fill("See you at the races.");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(

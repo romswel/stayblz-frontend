@@ -70,8 +70,19 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
     onSent: (chatId, m) => {
       activity.current = Date.now();
       mergeInto(chatId, [m]);
+      const t = m.attachment?.type ?? "";
       callbacks.current.onPatch(chatId, {
-        lastMessage: m.body || (m.attachment ? (m.attachment.type.startsWith("image/") ? "📷 Photo" : `📎 ${m.attachment.name}`) : ""),
+        lastMessage:
+          m.body ||
+          (m.attachment
+            ? t.startsWith("image/")
+              ? "📷 Photo"
+              : t.startsWith("audio/")
+                ? "🎤 Voice message"
+                : t.startsWith("video/")
+                  ? "🎬 Video"
+                  : `📎 ${m.attachment.name}`
+            : ""),
         lastMessageMine: true,
         lastMessageAt: m.sentAt,
         lastStatus: "sent",

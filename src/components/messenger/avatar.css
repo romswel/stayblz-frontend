@@ -1,0 +1,75 @@
+/* Stayblz Chat avatars (also used by notification toasts and the bell, outside the chat pages). */
+/* ————— Avatars ————— */
+.mx-av {
+  position: relative;
+  flex: none;
+  display: inline-grid;
+  border-radius: 50%;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  user-select: none;
+}
+.mx-av-face {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.mx-av-xs { width: 16px; height: 16px; font-size: 7px; letter-spacing: 0; }
+.mx-av-sm { width: 28px; height: 28px; font-size: 11px; }
+.mx-av-md { width: 52px; height: 52px; font-size: 17px; }
+.mx-av-lg { width: 60px; height: 60px; font-size: 20px; }
+.mx-av-xl { width: 84px; height: 84px; font-size: 28px; }
+.mx-av.is-pair {
+  background: transparent;
+}
+.mx-av.is-pair > .mx-av-face {
+  position: absolute;
+  width: 68%;
+  height: 68%;
+  border-radius: 50%;
+  font-size: 0.72em;
+}
+.mx-av.is-pair > .is-back {
+  top: 0;
+  right: 0;
+}
+.mx-av.is-pair > .is-front {
+  left: 0;
+  bottom: 0;
+  box-shadow: 0 0 0 2.5px var(--mx-solid, var(--gx-surface-solid, #fff));
+}
+.mx-av-dot {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 28%;
+  height: 28%;
+  min-width: 10px;
+  min-height: 10px;
+  border-radius: 50%;
+  background: var(--mx-online, #22c55e);
+  box-shadow: 0 0 0 2.5px var(--mx-solid, var(--gx-surface-solid, #fff));
+  animation: mx-pop 0.3s var(--mx-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+}
+.mx-tone-0 { background: #0d9f74; }
+.mx-tone-1 { background: #3b6cf6; }
+.mx-tone-2 { background: #8b5cf6; }
+.mx-tone-3 { background: #0e8fa8; }
+.mx-tone-4 { background: #c2630c; }
+.mx-tone-5 { background: #d0335d; }
+html[data-theme="dark"] .mx-tone-0 { background: #128a67; }
+html[data-theme="dark"] .mx-tone-1 { background: #3a63d8; }
+html[data-theme="dark"] .mx-tone-2 { background: #7651d6; }
+html[data-theme="dark"] .mx-tone-3 { background: #137f95; }
+html[data-theme="dark"] .mx-tone-4 { background: #a8580f; }
+html[data-theme="dark"] .mx-tone-5 { background: #b8305a; }
+
+@keyframes mx-pop {
+  0% { opacity: 0; transform: scale(0.4); }
+  70% { transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}

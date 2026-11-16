@@ -77,7 +77,7 @@ export default function NewChatDialog({
   }
 
   return (
-    <Modal label="New chat" onClose={onClose} className="modal-sm">
+    <Modal label="New chat" onClose={onClose} className="modal-sm mx-dialog mx-layer gx-layer">
       <DialogHead kicker={team ? "Team chat" : "Stayblz Chat"} title="New chat" onClose={onClose} />
       <form className="dlg mx-new" onSubmit={submit}>
         {byEmail ? (

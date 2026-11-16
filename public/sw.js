@@ -1,7 +1,51 @@
-/* Stayblz service worker: app shell + built assets only. Never caches /api/ (private or live data). */
-const VERSION = "stayblz-v1";
+/* Stayblz service worker: app shell + built assets only. Never caches /api/ (private or live data).
+   Also shows Web Push alerts (Stayblz Chat) and opens the right page when one is tapped. */
+const VERSION = "stayblz-v2";
 const MAX_ASSETS = 80;
-const SHELL = ["/", "/startup.css", "/favicon.svg", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
+const SHELL = ["/", "/startup.css", "/favicon.svg", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/badge-96.png"];
+
+/* A push from the server (backend lib/push.ts). If a Stayblz window is in front, it shows its own card instead. */
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "Stayblz", body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      const front = windows.filter((w) => w.visibilityState === "visible" && w.focused);
+      if (front.length && data.kind !== "test") {
+        front.forEach((w) => w.postMessage({ type: "stayblz:push", data }));
+        return undefined;
+      }
+      return self.registration.showNotification(data.title || "Stayblz", {
+        body: data.body || "",
+        tag: data.tag || "stayblz",
+        renotify: true,
+        icon: "/icons/icon-192.png",
+        badge: "/icons/badge-96.png",
+        data: { url: data.url || "/messages" },
+      });
+    }),
+  );
+});
+
+/* Tapping an alert: bring Stayblz forward on that page (or open it). */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || "/messages", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      const mine = windows.find((w) => new URL(w.url).origin === self.location.origin);
+      if (mine) {
+        mine.postMessage({ type: "stayblz:open", url });
+        return mine.focus();
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

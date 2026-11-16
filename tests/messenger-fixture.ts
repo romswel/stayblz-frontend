@@ -106,7 +106,14 @@ export async function fakeServer(page: Page, unread = { personal: 0, requests: 0
       { id: GUS_USER, name: "Gus Grant", role: "owner", status: "none" },
     ],
     profile: { discoverable: true, showActive: true, storageUsed: 1_200_000 },
+    limits: { storage: "supabase", fileBytes: 4 * 1024 * 1024, quotaBytes: 50 * 1024 * 1024 },
     blocked: [] as { id: string; name: string }[],
+    /** Notification settings (null = the server answers like an older backend: nothing). */
+    notify: null as null | Record<string, unknown>,
+    push: { available: false, publicKey: null as string | null },
+    /** New-message alerts the next unread poll returns. */
+    alerts: [] as Record<string, unknown>[],
+    meetings: 0,
   };
   const now = () => new Date().toISOString();
   const preview = ({ members, reads, delivered, pinnedMessages, typing, direct, messages, ...rest }: Chat) => rest;
@@ -121,7 +128,22 @@ export async function fakeServer(page: Page, unread = { personal: 0, requests: 0
     const body = req.method() === "POST" && !isUpload ? req.postDataJSON() : undefined;
     if (req.method() === "POST") state.posts.push({ path: path + url.search, body });
     if (path === "/api/auth/me") return json({ user: me });
-    if (path === "/api/messages/unread") return json(unread);
+    if (path === "/api/messages/unread") {
+      if (!url.searchParams.get("since")) return json(unread);
+      return json({ ...unread, incoming: state.alerts.splice(0), now: now() });
+    }
+    if (path === "/api/notifications/settings") {
+      if (!state.notify) return json({});
+      if (req.method() === "POST") {
+        const { prompted, ...rest } = body;
+        Object.assign(state.notify, rest, prompted ? { promptedAt: now() } : {});
+      }
+      return json({ settings: state.notify, push: state.push });
+    }
+    if (path === "/api/paddock" && req.method() === "POST") {
+      state.meetings++;
+      return json({ meeting: { id: "m1", code: "abcd-efgh", title: body.title, role: "host", inviteeIds: body.inviteeIds } }, 201);
+    }
     if (path === "/api/messages" && req.method() === "GET") {
       state.listCalls++;
       return json({ conversations: Object.values(state.threads).map(preview) });
@@ -143,7 +165,7 @@ export async function fakeServer(page: Page, unread = { personal: 0, requests: 0
     }
     if (path === "/api/messages/people/profile") {
       if (req.method() === "POST") Object.assign(state.profile, body);
-      return json({ profile: state.profile });
+      return json({ profile: state.profile, limits: state.limits });
     }
     if (path === "/api/messages/people/blocks") return json({ blocked: state.blocked });
     const friend = path.match(/^\/api\/messages\/people\/friends\/([^/]+)\/(request|accept|decline|remove)$/);
@@ -205,17 +227,28 @@ export async function fakeServer(page: Page, unread = { personal: 0, requests: 0
       const file = rest.match(/^files\/(.+)$/);
       if (file) return route.fulfill({ status: 200, body: PNG, headers: { "Content-Type": "image/png" } });
       if (rest === "media") return json({ messages: thread.messages.filter((m) => m.attachment && !m.removed) });
+      if (rest === "links") return json({ messages: thread.messages.filter((m) => /https?:\/\//.test(m.body)).reverse() });
       if (rest === "search") {
         const q = (url.searchParams.get("q") ?? "").toLowerCase();
         return json({ messages: thread.messages.filter((m) => m.body.toLowerCase().includes(q)).reverse() });
       }
       if (rest === "settings") {
         if ("pinned" in body) thread.pinned = body.pinned;
-        if ("muted" in body) thread.muted = body.muted;
+        if ("muted" in body) Object.assign(thread, { muted: body.muted, mutedUntil: null });
+        if ("muteMinutes" in body) Object.assign(thread, { muted: true, mutedUntil: new Date(Date.now() + body.muteMinutes * 60_000).toISOString() });
         if ("archived" in body) thread.archived = body.archived;
         if ("unread" in body) thread.unread = body.unread;
         if ("folder" in body) thread.folderId = body.folder;
-        return json({ settings: { pinned: thread.pinned, muted: thread.muted, archived: thread.archived, unread: thread.unread, folderId: thread.folderId } });
+        return json({
+          settings: {
+            pinned: thread.pinned,
+            muted: thread.muted,
+            mutedUntil: (thread as { mutedUntil?: string | null }).mutedUntil ?? null,
+            archived: thread.archived,
+            unread: thread.unread,
+            folderId: thread.folderId,
+          },
+        });
       }
       if (rest === "accept") thread.request = false;
       if (rest === "rename") thread.title = body.title;
@@ -223,7 +256,10 @@ export async function fakeServer(page: Page, unread = { personal: 0, requests: 0
       const action = rest.match(/^messages\/(.+)\/(react|unsend|edit|pin|forward)$/);
       const target = action && thread.messages.find((m) => m.id === action[1]);
       if (action && target) {
-        if (action[2] === "react") target.reactions = [{ emoji: body.emoji, count: 1, mine: true }];
+        if (action[2] === "react")
+          target.reactions = target.reactions.some((r) => r.mine && r.emoji === body.emoji)
+            ? []
+            : [{ emoji: body.emoji, count: 1, mine: true, ids: [me.id] } as { emoji: string; count: number; mine: boolean }];
         else if (action[2] === "edit") Object.assign(target, { body: body.body, edited: true });
         else if (action[2] === "pin") {
           target.pinned = body.pin;

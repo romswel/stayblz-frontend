@@ -6,6 +6,7 @@ import "../../components/account/account.css";
 const links = [
   { to: "/account", label: "Profile" },
   { to: "/account/security", label: "Security" },
+  { to: "/account/notifications", label: "Notifications" },
   { to: "/account/preferences", label: "Preferences" },
 ];
 

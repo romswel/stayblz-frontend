@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import type { ChatApi } from "./chatApi";
-import { Avatar, SearchIcon } from "./icons";
+import ChatAvatar from "./ChatAvatar";
+import { SearchIcon } from "./icons";
 import type { ChatMessage, ChatPreview } from "./types";
 
 /** Forward one message to up to 10 of your chats (same kind: personal → personal, team → same stable). */
@@ -52,7 +53,7 @@ export default function ForwardDialog({
   }
 
   return (
-    <Modal label="Forward message" onClose={onClose} className="modal-sm">
+    <Modal label="Forward message" onClose={onClose} className="modal-sm mx-dialog mx-layer gx-layer">
       <DialogHead kicker="Forward" title="Send to…" onClose={onClose} />
       <div className="dlg mx-new">
         <blockquote className="mx-forward-preview">{preview}</blockquote>
@@ -71,7 +72,7 @@ export default function ForwardDialog({
                   disabled={!picked.includes(c.id) && picked.length >= 10}
                   onChange={(e) => setPicked((old) => (e.target.checked ? [...old, c.id] : old.filter((id) => id !== c.id)))}
                 />
-                <Avatar name={c.title} group={c.kind === "group"} size="sm" />
+                <ChatAvatar c={c} size="sm" />
                 <span>{c.title}</span>
               </label>
             </li>

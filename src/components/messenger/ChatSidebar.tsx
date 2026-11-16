@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import BackButton from "../ui/BackButton";
+import ChatAvatar from "./ChatAvatar";
 import ChatListItem from "./ChatListItem";
+import { firstName } from "./format";
 import {
   ArchiveIcon,
   BellIcon,
@@ -25,8 +28,8 @@ export type ChatAction =
 type Filter = "all" | "unread" | "groups" | "requests" | "archived" | `folder:${string}`;
 
 /**
- * Left column: title + actions, Chats | People switch, search, filter tabs (All, Unread, Groups,
- * your folders, Requests, Archived), pinned chats first, and a ⋯ menu on every chat.
+ * Left column: title + actions, Chats | People switch, search, filter chips (All, Unread, Groups, your
+ * folders, Requests, Archived), people active now, pinned chats first, and a ⋯ menu on every chat.
  */
 export default function ChatSidebar({
   mode,
@@ -74,6 +77,7 @@ export default function ChatSidebar({
   const requests = items.filter((c) => c.request).length;
   const unread = items.filter((c) => c.unread && !c.request && !c.archived).length;
   const archived = items.filter((c) => c.archived && !c.request).length;
+  const activeNow = items.filter((c) => c.kind === "direct" && c.active && !c.request).slice(0, 12);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -104,11 +108,11 @@ export default function ChatSidebar({
       ? { label: "Mark as read", icon: <ChatsIcon size={16} />, onSelect: () => onAction(c, "read") }
       : { label: "Mark as unread", icon: <UnreadIcon />, onSelect: () => onAction(c, "unread") },
     c.muted
-      ? { label: "Unmute", icon: <BellIcon />, onSelect: () => onAction(c, "unmute") }
-      : { label: "Mute", icon: <MuteIcon />, onSelect: () => onAction(c, "mute") },
+      ? { label: "Unmute notifications", icon: <BellIcon />, onSelect: () => onAction(c, "unmute") }
+      : { label: "Mute notifications…", icon: <MuteIcon />, onSelect: () => onAction(c, "mute") },
     c.archived
-      ? { label: "Unarchive", icon: <ArchiveIcon />, onSelect: () => onAction(c, "unarchive") }
-      : { label: "Archive", icon: <ArchiveIcon />, onSelect: () => onAction(c, "archive") },
+      ? { label: "Unarchive chat", icon: <ArchiveIcon />, onSelect: () => onAction(c, "unarchive") }
+      : { label: "Archive chat", icon: <ArchiveIcon />, onSelect: () => onAction(c, "archive") },
     { section: "Move to folder" },
     ...folders.map<MenuEntry>((f) => ({
       label: f.name,
@@ -136,7 +140,7 @@ export default function ChatSidebar({
   ];
 
   return (
-    <aside className="mx-side" aria-label={`${title} chats`}>
+    <aside className="mx-side mx-card" aria-label={`${title} chats`}>
       <div className="mx-side-head">
         <BackButton iconOnly className="mx-side-back" />
         <h1>{title}</h1>
@@ -152,6 +156,7 @@ export default function ChatSidebar({
 
       {people && (
         <div className="mx-switch" role="tablist" aria-label="Show">
+          <span className="mx-switch-pill" data-at={tab} aria-hidden="true" />
           <button type="button" role="tab" aria-selected={tab === "chats"} onClick={() => setTab("chats")}>
             <ChatsIcon size={16} /> Chats
             {unread + requests > 0 && <span className="mx-chip-count">{unread + requests}</span>}
@@ -169,7 +174,14 @@ export default function ChatSidebar({
           <div className="mx-list-tools">
             <label className="mx-search">
               <SearchIcon />
-              <input type="search" placeholder="Search chats" aria-label="Search chats" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <input
+                type="search"
+                placeholder={`Search ${title}`}
+                aria-label="Search chats"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+              />
             </label>
             <div className="mx-filters" role="group" aria-label="Filter chats">
               {tabs.map((t) => (
@@ -190,10 +202,24 @@ export default function ChatSidebar({
             </p>
           )}
           <div className="mx-side-body">
+            {filter === "all" && !query && activeNow.length > 0 && (
+              <section className="mx-active-strip" aria-label="Active now">
+                <ul>
+                  {activeNow.map((c) => (
+                    <li key={c.id}>
+                      <Link to={`${basePath}/${c.id}`} state={{ fromList: true }} title={`${c.title} — active now`}>
+                        <ChatAvatar c={c} size="lg" />
+                        <span>{firstName(c.title)}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             {status === "loading" && (
               <div className="mx-skeletons" aria-label="Loading chats" role="status">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <div key={i} className="mx-skeleton">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="mx-skeleton" style={{ animationDelay: `${i * 80}ms` }}>
                     <span />
                     <div>
                       <i />
@@ -213,6 +239,9 @@ export default function ChatSidebar({
             )}
             {status === "ready" && !items.length && (
               <div className="mx-empty">
+                <span className="mx-empty-art" aria-hidden="true">
+                  <ChatsIcon size={30} />
+                </span>
                 <p className="mx-empty-title">No chats yet</p>
                 <p>
                   {mode === "team"
@@ -232,7 +261,7 @@ export default function ChatSidebar({
                     : filter === "requests"
                       ? "No message requests."
                       : filter === "unread"
-                        ? "You're all caught up."
+                        ? "You're all caught up. 🎉"
                         : filter === "archived"
                           ? "No archived chats."
                           : filter.startsWith("folder:")
@@ -243,14 +272,14 @@ export default function ChatSidebar({
             )}
             {pinned.length > 0 && <p className="mx-list-label">Pinned</p>}
             <ul className="mx-items">
-              {pinned.map((c) => (
-                <ChatListItem key={c.id} c={c} to={`${basePath}/${c.id}`} active={c.id === activeId} now={now} menu={menu} />
+              {pinned.map((c, i) => (
+                <ChatListItem key={c.id} c={c} to={`${basePath}/${c.id}`} active={c.id === activeId} now={now} index={i} menu={menu} />
               ))}
             </ul>
             {pinned.length > 0 && rest.length > 0 && <p className="mx-list-label">All chats</p>}
             <ul className="mx-items">
-              {rest.map((c) => (
-                <ChatListItem key={c.id} c={c} to={`${basePath}/${c.id}`} active={c.id === activeId} now={now} menu={menu} />
+              {rest.map((c, i) => (
+                <ChatListItem key={c.id} c={c} to={`${basePath}/${c.id}`} active={c.id === activeId} now={now} index={i + pinned.length} menu={menu} />
               ))}
             </ul>
           </div>

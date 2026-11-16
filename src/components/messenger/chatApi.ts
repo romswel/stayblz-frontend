@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { api, apiRaw } from "../../api";
 import { useStableApi, useWorkspace } from "../../workspace";
+import type { ChatLimits } from "./files";
 import type {
   ChatAttachment,
   ChatFolder,
@@ -40,13 +41,18 @@ export function useChatApi(mode: ChatMode) {
       send: (id: string, body: string, clientId: string, replyTo: string | null) =>
         client.post<{ message: ChatMessage }>(`${at(id)}/messages`, { body, clientId, replyTo }),
       /** One photo or file per message; the body is the raw file. */
-      upload: async (id: string, file: Blob, meta: { name: string; type: string; clientId: string; replyTo: string | null; width?: number; height?: number }) => {
+      upload: async (
+        id: string,
+        file: Blob,
+        meta: { name: string; type: string; clientId: string; replyTo: string | null; width?: number; height?: number; duration?: number },
+      ) => {
         const q = new URLSearchParams({ name: meta.name, clientId: meta.clientId });
         if (meta.replyTo) q.set("replyTo", meta.replyTo);
         if (meta.width && meta.height) {
           q.set("width", String(meta.width));
           q.set("height", String(meta.height));
         }
+        if (meta.duration) q.set("duration", String(Math.max(1, Math.round(meta.duration))));
         const res = await apiRaw(`${at(id)}/attachments?${q}`, {
           method: "POST",
           body: file,
@@ -66,11 +72,20 @@ export function useChatApi(mode: ChatMode) {
       read: (id: string) => client.post<{ ok: true }>(`${at(id)}/read`, {}),
       typing: (id: string, on: boolean) => client.post<{ ok: boolean }>(`${at(id)}/typing`, { on }),
       settings: (id: string, changes: ChatSettings) =>
-        client.post<{ settings: Record<string, unknown> }>(`${at(id)}/settings`, changes),
+        client.post<{ settings: { muted?: boolean; mutedUntil?: string | null } & Record<string, unknown> }>(`${at(id)}/settings`, changes),
+      links: (id: string, signal?: AbortSignal) => client.get<{ messages: ChatMessage[] }>(`${at(id)}/links`, { signal }),
       search: (id: string, q: string, signal?: AbortSignal) =>
         client.get<{ messages: ChatMessage[] }>(`${at(id)}/search?q=${encodeURIComponent(q)}`, { signal }),
       media: (id: string, signal?: AbortSignal) => client.get<{ messages: ChatMessage[] }>(`${at(id)}/media`, { signal }),
       rename: (id: string, title: string) => client.post<{ ok: true }>(`${at(id)}/rename`, { title }),
+      /** Group photo: a square JPEG made in the browser. */
+      setPhoto: async (id: string, photo: Blob) => {
+        const res = await apiRaw(`${at(id)}/photo`, { method: "POST", body: photo, headers: { "Content-Type": "image/jpeg", ...headers } });
+        return (await res.json()) as { photo: string };
+      },
+      removePhoto: (id: string) => client.post<{ photo: null }>(`${at(id)}/photo/remove`, {}),
+      photo: async (id: string, version: string, signal?: AbortSignal) =>
+        (await apiRaw(`${at(id)}/photo/${encodeURIComponent(version)}`, { headers, signal })).blob(),
       addMembers: (id: string, ids: string[]) => client.post<{ added: number }>(`${at(id)}/members`, { ids }),
       removeMember: (id: string, member: string) => client.post<{ ok: true }>(`${at(id)}/members/${encodeURIComponent(member)}/remove`, {}),
       leave: (id: string) => client.post<{ ok: true }>(`${at(id)}/leave`, {}),
@@ -95,7 +110,8 @@ export const peopleApi = {
   blocks: (signal?: AbortSignal) => api.get<{ blocked: Person[] }>("/api/messages/people/blocks", { signal }),
   block: (person: string, block: boolean) =>
     api.post<{ blocked: boolean }>(`/api/messages/people/blocks/${encodeURIComponent(person)}`, { block }),
-  profile: (signal?: AbortSignal) => api.get<{ profile: ChatProfile }>("/api/messages/people/profile", { signal }),
+  profile: (signal?: AbortSignal) =>
+    api.get<{ profile: ChatProfile; limits?: ChatLimits }>("/api/messages/people/profile", { signal }),
   saveProfile: (changes: Partial<Pick<ChatProfile, "discoverable" | "showActive">>) =>
     api.post<{ profile: ChatProfile }>("/api/messages/people/profile", changes),
   chatWith: (person: string) => api.post<ThreadResponse>(`/api/messages/people/${encodeURIComponent(person)}/chat`, {}),

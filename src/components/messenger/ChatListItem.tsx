@@ -1,29 +1,38 @@
 import { memo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { previewLine, shortTime } from "./format";
-import { Avatar, MoreIcon, MuteIcon, PinIcon, StatusMark } from "./icons";
+import ChatAvatar from "./ChatAvatar";
+import { muteLabel, previewLine, shortTime } from "./format";
+import { MoreIcon, MuteIcon, PinIcon, StatusMark } from "./icons";
 import Menu, { type MenuEntry } from "./Menu";
 import type { ChatPreview } from "./types";
 
-/** One chat in the list: avatar (+ active dot), name, last message, time, your send status, and a ⋯ menu. */
+/**
+ * One chat in the list, Messenger style: face (+ green dot when active), name, "Bo: on my way · 5m",
+ * and on the right a blue-green dot when unread, a crossed bell when muted, or your send status / their face
+ * when they've seen it. A ⋯ button (on hover, or always on phones) opens the chat's menu.
+ */
 function ChatListItem({
   c,
   to,
   active,
   now,
+  index,
   menu,
 }: {
   c: ChatPreview;
   to: string;
   active: boolean;
   now: number;
+  /** Position in the list, for a quick staggered entrance on first load. */
+  index: number;
   menu: (c: ChatPreview) => MenuEntry[];
 }) {
   const [open, setOpen] = useState(false);
   const more = useRef<HTMLButtonElement>(null);
-  const line = c.request ? "Wants to message you" : c.waiting && !c.lastMessage ? "Say hello" : previewLine(c);
+  const line = c.request ? "Wants to message you" : c.waiting && !c.lastMessage ? "Say hello 👋" : previewLine(c);
+  const time = shortTime(c.lastMessageAt, now);
   return (
-    <li className={`mx-item-wrap${open ? " is-menu" : ""}`}>
+    <li className={`mx-item-wrap${open ? " is-menu" : ""}`} style={{ animationDelay: `${Math.min(index, 12) * 18}ms` }}>
       <Link
         to={to}
         state={{ fromList: true }}
@@ -31,31 +40,35 @@ function ChatListItem({
         aria-current={active ? "page" : undefined}
         aria-label={`${c.title}${c.unread ? ", unread" : ""}${c.request ? ", message request" : ""}${c.pinned ? ", pinned" : ""}${c.muted ? ", muted" : ""}`}
       >
-        <Avatar name={c.title} group={c.kind === "group"} active={!!c.active} />
+        <ChatAvatar c={c} />
         <span className="mx-item-text">
           <span className="mx-item-top">
             <span className="mx-item-name">{c.title}</span>
             {c.pinned && (
               <span className="mx-item-flag" title="Pinned">
-                <PinIcon size={13} />
-              </span>
-            )}
-            {c.muted && (
-              <span className="mx-item-flag" title="Muted">
-                <MuteIcon size={13} />
+                <PinIcon size={12} />
               </span>
             )}
           </span>
           <span className="mx-item-line">
             <span className="mx-item-preview">{line}</span>
-            <span className="mx-item-time">· {shortTime(c.lastMessageAt, now)}</span>
+            {time && <span className="mx-item-time">· {time}</span>}
           </span>
         </span>
         <span className="mx-item-end">
+          {c.muted && (
+            <span className="mx-item-flag is-muted" title={muteLabel(c.mutedUntil)}>
+              <MuteIcon size={15} />
+            </span>
+          )}
           {c.unread ? (
             <span className={`mx-dot${c.muted ? " is-muted" : ""}`} aria-hidden="true" />
           ) : c.lastMessageMine && c.lastStatus ? (
-            <StatusMark status={c.lastStatus} seenBy={c.lastStatus === "seen" && c.kind === "direct" ? c.title : undefined} />
+            <StatusMark
+              status={c.lastStatus}
+              seenBy={c.lastStatus === "seen" && c.kind === "direct" ? c.title : undefined}
+              seenById={c.kind === "direct" ? c.otherId : undefined}
+            />
           ) : null}
         </span>
       </Link>

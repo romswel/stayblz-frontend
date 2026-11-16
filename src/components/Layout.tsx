@@ -23,7 +23,8 @@ import DevNotice from "./status/DevNotice";
 import ErrorBoundary from "./status/ErrorBoundary";
 import UpdatesPopup from "./updates/UpdatesPopup";
 import { useUpdates } from "./updates/UpdatesContext";
-import { useChatBadge } from "./messenger/useChatBadge";
+import { useNotifications } from "../notifications/NotificationsContext";
+import { NotificationBell, NotificationPrompt, NotificationToasts } from "../notifications/NotificationUI";
 import { CHAT_NAME, TEAM_CHAT_NAME } from "./messenger/brand";
 import { TV_NAME } from "./tv/brand";
 import { PADDOCK_NAME } from "./paddock/brand";
@@ -269,7 +270,8 @@ export default function Layout() {
   const { unread: unreadUpdates } = useUpdates();
   const activeCall = useActiveCall();
   const unreadCount = unreadUpdates.length;
-  const chats = useChatBadge(!!user && !user.passwordSetupRequired);
+  // Unread chat counts come from the notifications poll (one request feeds badges and alerts).
+  const { counts: chats } = useNotifications();
   const navBadge: Record<string, number> = {
     "/messages": chats.personal + chats.requests,
     "/team-messages": chats.team,
@@ -707,6 +709,7 @@ export default function Layout() {
           >
             <SearchIcon />
           </button>
+          <NotificationBell />
           <button
             type="button"
             className="gx-icon-btn gx-hide-sm"
@@ -935,6 +938,8 @@ export default function Layout() {
       )}
 
       <UpdatesPopup />
+      <NotificationToasts />
+      <NotificationPrompt />
       {activeCall && (
         <Suspense fallback={null}>
           <MiniCall />

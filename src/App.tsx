@@ -49,6 +49,8 @@ import RacingAdmin from "./pages/admin/RacingAdmin";
 import RaceDayEditor from "./pages/admin/RaceDayEditor";
 import AccountSecurity from "./pages/account/AccountSecurity";
 import AccountPreferences from "./pages/account/AccountPreferences";
+import AccountNotifications from "./pages/account/AccountNotifications";
+import { NotificationsProvider } from "./notifications/NotificationsContext";
 // Stayblz Community: Feeds, member profiles, horse profiles, and the member's own horses.
 import Feeds from "./pages/Feeds";
 import MemberProfile from "./pages/MemberProfile";
@@ -153,7 +155,9 @@ export default function App() {
           <WorkspaceProvider key={user.id}>
             <CartProvider key={user.id} accountId={user.id}>
               <UpdatesProvider>
-                <Layout />
+                <NotificationsProvider>
+                  <Layout />
+                </NotificationsProvider>
               </UpdatesProvider>
             </CartProvider>
           </WorkspaceProvider>
@@ -171,6 +175,7 @@ export default function App() {
         <Route path="/account" element={<Profile />} />
         <Route path="/account/security" element={<AccountSecurity />} />
         <Route path="/account/preferences" element={<AccountPreferences />} />
+        <Route path="/account/notifications" element={<AccountNotifications />} />
         <Route path="/account/horses" element={<MyHorses />} />
         <Route path="/community" element={<Feeds />} />
         <Route path="/community/people/:id" element={<MemberProfile />} />

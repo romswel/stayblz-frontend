@@ -1,22 +1,44 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent, type MutableRefObject } from "react";
 import EmojiPicker from "./EmojiPicker";
-import { ACCEPT_ATTR } from "./files";
-import { CloseIcon, EditIcon, PaperclipIcon, ReplyIcon, SendIcon, SmileIcon } from "./icons";
-import { MAX_MESSAGE, type ChatReply } from "./types";
+import { ACCEPT_ATTR, MEDIA_ATTR } from "./files";
+import { seconds } from "./format";
+import {
+  ChevronRightIcon,
+  CloseIcon,
+  EditIcon,
+  FileIcon,
+  ImageIcon,
+  MicIcon,
+  PhoneIcon,
+  PlusCircleIcon,
+  ReplyIcon,
+  SendIcon,
+  SmileIcon,
+  ThumbIcon,
+  TrashIcon,
+  VideoIcon,
+} from "./icons";
+import Menu, { type MenuEntry } from "./Menu";
+import { MAX_MESSAGE, MAX_VOICE_SECONDS, type ChatReply } from "./types";
+import { canRecord, useVoiceRecorder } from "./useVoiceRecorder";
 
 const coarse = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
 /**
- * Message box. Enter sends on a keyboard (Shift+Enter = new line); on phones Enter adds a line.
- * 📎 attaches photos/files (also paste or drag onto the chat), 🙂 opens emoji, ↑ edits your last
- * message. While editing, the box shows the message being changed; Escape cancels.
+ * Message box, Messenger style. Left: (+) more, photo/video, voice clip — they fold into one arrow while
+ * you type. Middle: "Aa" with emoji. Right: 👍 when empty, send when there's text.
+ * Enter sends on a keyboard (Shift+Enter = new line); on phones Enter adds a line. Paste or drop files to send
+ * them; ↑ edits your last message; Escape cancels a reply or edit.
  */
 export default function Composer({
   value,
   onChange,
   onSend,
   onFiles,
+  onVoice,
+  onCall,
   onTyping,
+  onError,
   replyTo,
   onCancelReply,
   editing,
@@ -29,7 +51,11 @@ export default function Composer({
   onChange: (text: string) => void;
   onSend: (text: string) => void;
   onFiles: (files: File[]) => void;
+  onVoice: (file: File, duration: number) => void;
+  /** Start a Stayblz Paddock call from here (omitted where calls aren't offered). */
+  onCall?: (video: boolean) => void;
   onTyping: (on: boolean) => void;
+  onError: (text: string) => void;
   replyTo: ChatReply | null;
   onCancelReply: () => void;
   editing: { id: string; body: string } | null;
@@ -40,10 +66,18 @@ export default function Composer({
 }) {
   const local = useRef<HTMLTextAreaElement | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const mediaInput = useRef<HTMLInputElement>(null);
+  const plusRef = useRef<HTMLButtonElement>(null);
   const [emoji, setEmoji] = useState(false);
+  const [plus, setPlus] = useState(false);
   const [editText, setEditText] = useState("");
+  const [toolsOpen, setToolsOpen] = useState(false);
   const shown = editing ? editText : value;
   const text = shown.trim();
+  const recorder = useVoiceRecorder(() => void finishVoice(true));
+  const recording = recorder.state !== "idle";
+  // While typing, the left buttons fold into one arrow (tap it to get them back).
+  const folded = !!text && !toolsOpen;
 
   useEffect(() => {
     if (editing) {
@@ -57,6 +91,9 @@ export default function Composer({
       });
     }
   }, [editing]);
+  useEffect(() => {
+    if (!text) setToolsOpen(false);
+  }, [text]);
 
   // Grow with the text, up to about six lines.
   useEffect(() => {
@@ -120,9 +157,39 @@ export default function Composer({
       onFiles(files);
     }
   }
+  async function startVoice() {
+    try {
+      await recorder.start();
+    } catch (reason) {
+      onError(reason instanceof Error ? reason.message : "The microphone couldn't start.");
+    }
+  }
+  async function finishVoice(keep: boolean) {
+    const clip = await recorder.stop(keep);
+    if (clip) onVoice(clip.file, clip.duration);
+  }
+
+  const plusItems: MenuEntry[] = [
+    { label: "Photo or video", icon: <ImageIcon size={18} />, onSelect: () => mediaInput.current?.click() },
+    { label: "File", icon: <FileIcon size={18} />, onSelect: () => fileInput.current?.click() },
+    ...(canRecord() ? [{ label: "Voice clip", icon: <MicIcon size={18} />, onSelect: () => void startVoice() }] : []),
+    ...(onCall
+      ? [
+          { section: "Stayblz Paddock" },
+          { label: "Voice call", icon: <PhoneIcon size={16} />, onSelect: () => onCall(false) },
+          { label: "Video call", icon: <VideoIcon size={18} />, onSelect: () => onCall(true) },
+        ]
+      : []),
+  ];
+
+  const pick = (input: HTMLInputElement | null) => {
+    const files = Array.from(input?.files ?? []);
+    if (input) input.value = "";
+    if (files.length) onFiles(files);
+  };
 
   return (
-    <form className="mx-composer" onSubmit={submit}>
+    <form className={`mx-composer${recording ? " is-recording" : ""}`} onSubmit={submit}>
       {editing ? (
         <div className="mx-replying is-editing">
           <EditIcon />
@@ -139,7 +206,9 @@ export default function Composer({
           <div className="mx-replying">
             <ReplyIcon />
             <span>
-              Replying to <strong>{replyTo.from}</strong>
+              <span>
+                Replying to <strong>{replyTo.from}</strong>
+              </span>
               <span className="mx-replying-text">{replyTo.body || (replyTo.attachment ? `📎 ${replyTo.attachment}` : "")}</span>
             </span>
             <button type="button" className="mx-icon-btn" aria-label="Cancel reply" onClick={onCancelReply}>
@@ -148,72 +217,120 @@ export default function Composer({
           </div>
         )
       )}
-      <div className="mx-compose-row">
-        {!editing && (
-          <>
-            <button type="button" className="mx-compose-btn" aria-label="Attach photos or files" title="Attach photos or files" onClick={() => fileInput.current?.click()}>
-              <PaperclipIcon />
-            </button>
-            <input
-              ref={fileInput}
-              type="file"
-              multiple
-              accept={ACCEPT_ATTR}
-              hidden
-              aria-hidden="true"
-              tabIndex={-1}
-              onChange={(e) => {
-                const files = Array.from(e.target.files ?? []);
-                e.target.value = "";
-                if (files.length) onFiles(files);
-              }}
-            />
-          </>
-        )}
-        <div className="mx-compose-field">
-          <textarea
-            ref={(el) => {
-              local.current = el;
-              inputRef.current = el;
-            }}
-            rows={1}
-            aria-label={editing ? "Edit message" : "Write a message"}
-            placeholder={editing ? "Edit your message" : "Aa"}
-            value={shown}
-            maxLength={MAX_MESSAGE}
-            onChange={(e) => change(e.target.value)}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            onBlur={() => onTyping(false)}
-            enterKeyHint="send"
-          />
-          <button
-            type="button"
-            className="mx-compose-emoji"
-            aria-label="Emoji"
-            title="Emoji"
-            aria-expanded={emoji}
-            data-emoji-toggle
-            onClick={() => setEmoji((v) => !v)}
-          >
-            <SmileIcon size={20} />
+      <input ref={fileInput} type="file" multiple accept={ACCEPT_ATTR} hidden aria-hidden="true" tabIndex={-1} onChange={(e) => pick(e.target)} />
+      <input ref={mediaInput} type="file" multiple accept={MEDIA_ATTR} hidden aria-hidden="true" tabIndex={-1} onChange={(e) => pick(e.target)} />
+
+      {recording ? (
+        <div className="mx-recorder" role="group" aria-label="Recording a voice clip">
+          <button type="button" className="mx-compose-btn is-danger" aria-label="Delete recording" title="Delete" onClick={() => void finishVoice(false)}>
+            <TrashIcon />
           </button>
-          {emoji && (
-            <div className="mx-compose-picker">
-              <EmojiPicker onPick={insert} onClose={() => setEmoji(false)} />
+          <div className="mx-rec-bar">
+            <span className="mx-rec-dot" aria-hidden="true" />
+            <span className="mx-rec-levels" aria-hidden="true">
+              {Array.from({ length: 28 }, (_, i) => {
+                const level = recorder.levels[recorder.levels.length - 28 + i] ?? 0;
+                return <i key={i} style={{ transform: `scaleY(${0.15 + level * 0.85})` }} />;
+              })}
+            </span>
+            <span className="mx-rec-time" aria-live="off">
+              {recorder.state === "starting" ? "Starting…" : `${seconds(recorder.elapsed)} / ${seconds(MAX_VOICE_SECONDS)}`}
+            </span>
+          </div>
+          <button type="button" className="mx-send" aria-label="Send voice clip" title="Send" disabled={recorder.state !== "recording"} onClick={() => void finishVoice(true)}>
+            <SendIcon />
+          </button>
+        </div>
+      ) : (
+        <div className="mx-compose-row">
+          {!editing && (
+            <div className={`mx-compose-tools${folded ? " is-folded" : ""}`}>
+              {folded ? (
+                <button type="button" className="mx-compose-btn" aria-label="Show more options" title="More" onClick={() => setToolsOpen(true)}>
+                  <ChevronRightIcon size={22} />
+                </button>
+              ) : (
+                <>
+                  <button
+                    ref={plusRef}
+                    type="button"
+                    className="mx-compose-btn"
+                    aria-label="More: files, voice clip, calls"
+                    title="More"
+                    aria-haspopup="menu"
+                    aria-expanded={plus}
+                    onClick={() => setPlus((v) => !v)}
+                  >
+                    <PlusCircleIcon />
+                  </button>
+                  <button type="button" className="mx-compose-btn" aria-label="Attach photos or videos" title="Photos & videos" onClick={() => mediaInput.current?.click()}>
+                    <ImageIcon />
+                  </button>
+                  <button type="button" className="mx-compose-btn" aria-label="Attach a file" title="Attach a file" onClick={() => fileInput.current?.click()}>
+                    <PaperclipSmall />
+                  </button>
+                  {canRecord() && (
+                    <button type="button" className="mx-compose-btn" aria-label="Record a voice clip" title="Voice clip" onClick={() => void startVoice()}>
+                      <MicIcon />
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           )}
+          {plus && <Menu anchor={plusRef.current} items={plusItems} onClose={() => setPlus(false)} label="More" align="start" />}
+          <div className="mx-compose-field">
+            <textarea
+              ref={(el) => {
+                local.current = el;
+                inputRef.current = el;
+              }}
+              rows={1}
+              aria-label={editing ? "Edit message" : "Write a message"}
+              placeholder={editing ? "Edit your message" : "Aa"}
+              value={shown}
+              maxLength={MAX_MESSAGE}
+              onChange={(e) => change(e.target.value)}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+              onBlur={() => onTyping(false)}
+              onFocus={() => setToolsOpen(false)}
+              enterKeyHint="send"
+            />
+            <button
+              type="button"
+              className="mx-compose-emoji"
+              aria-label="Emoji"
+              title="Emoji"
+              aria-expanded={emoji}
+              data-emoji-toggle
+              onClick={() => setEmoji((v) => !v)}
+            >
+              <SmileIcon size={22} />
+            </button>
+            {emoji && (
+              <div className="mx-compose-picker">
+                <EmojiPicker onPick={insert} onClose={() => setEmoji(false)} />
+              </div>
+            )}
+          </div>
+          {text || editing ? (
+            <button
+              type="submit"
+              className="mx-send is-go"
+              aria-label={editing ? "Save edit" : "Send"}
+              title={editing ? "Save (Enter)" : "Send (Enter)"}
+              disabled={!text}
+            >
+              {editing ? <span className="mx-send-check">✓</span> : <SendIcon />}
+            </button>
+          ) : (
+            <button type="button" className="mx-send is-like" aria-label="Send a thumbs up" title="Send 👍" onClick={() => onSend("👍")}>
+              <ThumbIcon />
+            </button>
+          )}
         </div>
-        {text || editing ? (
-          <button type="submit" className="mx-send" aria-label={editing ? "Save edit" : "Send"} title={editing ? "Save (Enter)" : "Send (Enter)"} disabled={!text}>
-            {editing ? "✓" : <SendIcon />}
-          </button>
-        ) : (
-          <button type="button" className="mx-send is-like" aria-label="Send a thumbs up" title="Send 👍" onClick={() => onSend("👍")}>
-            👍
-          </button>
-        )}
-      </div>
+      )}
       {shown.length > MAX_MESSAGE - 500 && (
         <p className="mx-count" aria-live="polite">
           {MAX_MESSAGE - shown.length} characters left
@@ -222,3 +339,9 @@ export default function Composer({
     </form>
   );
 }
+
+const PaperclipSmall = () => (
+  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m21.4 11-8.5 8.5a6 6 0 0 1-8.5-8.5l8.5-8.5a4 4 0 0 1 5.7 5.7l-8.5 8.5a2 2 0 0 1-2.8-2.8l7.8-7.8" />
+  </svg>
+);

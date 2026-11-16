@@ -6,6 +6,13 @@ export const ACCEPT_TYPES: Record<string, string> = {
   "image/png": "Photo",
   "image/webp": "Photo",
   "image/gif": "GIF",
+  "video/mp4": "Video",
+  "video/quicktime": "Video",
+  "video/webm": "Video",
+  "audio/webm": "Voice clip",
+  "audio/ogg": "Voice clip",
+  "audio/mp4": "Voice clip",
+  "audio/mpeg": "Audio",
   "application/pdf": "PDF",
   "text/plain": "Text file",
   "text/csv": "CSV file",
@@ -14,7 +21,9 @@ export const ACCEPT_TYPES: Record<string, string> = {
   "application/vnd.ms-excel": "Excel sheet",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Excel sheet",
 };
-export const ACCEPT_ATTR = Object.keys(ACCEPT_TYPES).join(",") + ",.csv,.txt,.doc,.docx,.xls,.xlsx,.pdf";
+export const ACCEPT_ATTR =
+  Object.keys(ACCEPT_TYPES).filter((t) => !t.startsWith("audio/")).join(",") + ",.csv,.txt,.doc,.docx,.xls,.xlsx,.pdf,.mov,.mp4";
+export const MEDIA_ATTR = "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,.mov";
 
 const BY_EXTENSION: Record<string, string> = {
   csv: "text/csv",
@@ -29,13 +38,36 @@ const BY_EXTENSION: Record<string, string> = {
   png: "image/png",
   webp: "image/webp",
   gif: "image/gif",
+  mp4: "video/mp4",
+  m4v: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  mp3: "audio/mpeg",
+  m4a: "audio/mp4",
+  ogg: "audio/ogg",
 };
-/** Browsers sometimes leave the type empty (CSV on Windows): fall back to the extension. */
+/** Browsers sometimes leave the type empty (CSV on Windows, MOV on some phones): fall back to the extension. */
 export function fileType(file: File): string {
-  if (file.type && ACCEPT_TYPES[file.type]) return file.type;
+  const bare = (file.type || "").split(";")[0].trim().toLowerCase();
+  if (bare && ACCEPT_TYPES[bare]) return bare;
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  return BY_EXTENSION[ext] ?? file.type;
+  return BY_EXTENSION[ext] ?? bare;
 }
+
+/** Where the server keeps files right now and how big they may be (GET /api/messages/people/profile). */
+export interface ChatLimits {
+  storage: "r2" | "supabase";
+  fileBytes: number;
+  quotaBytes: number;
+}
+export const DEFAULT_LIMITS: ChatLimits = { storage: "supabase", fileBytes: MAX_FILE_BYTES, quotaBytes: 50 * 1024 * 1024 };
+let limits: ChatLimits = DEFAULT_LIMITS;
+export const chatLimits = () => limits;
+export function setChatLimits(next: Partial<ChatLimits> | null | undefined) {
+  if (next && typeof next.fileBytes === "number" && typeof next.quotaBytes === "number")
+    limits = { storage: next.storage === "r2" ? "r2" : "supabase", fileBytes: next.fileBytes, quotaBytes: next.quotaBytes };
+}
+const mb = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
 
 export interface PreparedFile {
   blob: Blob;
@@ -43,6 +75,7 @@ export interface PreparedFile {
   type: string;
   width?: number;
   height?: number;
+  duration?: number;
 }
 
 const MAX_SIDE = 1600;
@@ -62,15 +95,50 @@ async function loadImage(file: Blob): Promise<{ draw: CanvasImageSource; width: 
   return { draw: img, width: img.naturalWidth, height: img.naturalHeight, close: () => URL.revokeObjectURL(url) };
 }
 
+/** A video's size and length, read by the browser (best effort; a phone format it can't read just has none). */
+function videoInfo(file: Blob): Promise<{ width?: number; height?: number; duration?: number }> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    const done = (info: { width?: number; height?: number; duration?: number }) => {
+      URL.revokeObjectURL(url);
+      resolve(info);
+    };
+    const timer = window.setTimeout(() => done({}), 4000);
+    video.preload = "metadata";
+    video.muted = true;
+    video.onloadedmetadata = () => {
+      window.clearTimeout(timer);
+      const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : undefined;
+      done({ width: video.videoWidth || undefined, height: video.videoHeight || undefined, duration });
+    };
+    video.onerror = () => {
+      window.clearTimeout(timer);
+      done({});
+    };
+    video.src = url;
+  });
+}
+
 /**
- * Photos are shrunk to at most 1600 px and saved as JPEG (about 200–400 KB) before upload, to save
- * free-plan storage. GIFs and small images are sent as they are. Other files are checked, not changed.
+ * Photos are shrunk to at most 1600 px and saved as JPEG (about 200–400 KB) before upload, to save storage.
+ * GIFs and small images are sent as they are. Videos, voice clips and other files are checked, not changed.
  */
-export async function prepareFile(file: File): Promise<PreparedFile> {
+export async function prepareFile(file: File, extra: { duration?: number } = {}): Promise<PreparedFile> {
   const type = fileType(file);
-  if (!ACCEPT_TYPES[type]) throw new Error("Send photos (JPG, PNG, WebP, GIF) or PDF, Word, Excel and text files.");
+  const max = limits.fileBytes;
+  if (!ACCEPT_TYPES[type]) throw new Error("Send photos, videos, voice clips, or PDF, Word, Excel and text files.");
+  if (type.startsWith("video/")) {
+    if (file.size > max) throw new Error(`“${file.name}” is over ${mb(max)}. Videos can be up to ${mb(max)}.`);
+    const info = await videoInfo(file);
+    return { blob: file, name: file.name, type, ...info };
+  }
+  if (type.startsWith("audio/")) {
+    if (file.size > max) throw new Error(`That clip is over ${mb(max)}.`);
+    return { blob: file, name: file.name, type, duration: extra.duration };
+  }
   if (!type.startsWith("image/")) {
-    if (file.size > MAX_FILE_BYTES) throw new Error(`“${file.name}” is over 4 MB.`);
+    if (file.size > max) throw new Error(`“${file.name}” is over ${mb(max)}.`);
     return { blob: file, name: file.name, type };
   }
   const image = await loadImage(file).catch(() => null);
@@ -80,7 +148,7 @@ export async function prepareFile(file: File): Promise<PreparedFile> {
     const width = Math.max(1, Math.round(image.width * scale));
     const height = Math.max(1, Math.round(image.height * scale));
     if (type === "image/gif" || (scale === 1 && file.size <= 400_000)) {
-      if (file.size > MAX_FILE_BYTES) throw new Error(`“${file.name}” is over 4 MB.`);
+      if (file.size > max) throw new Error(`“${file.name}” is over ${mb(max)}.`);
       return { blob: file, name: file.name, type, width: image.width, height: image.height };
     }
     const canvas = document.createElement("canvas");
@@ -92,7 +160,7 @@ export async function prepareFile(file: File): Promise<PreparedFile> {
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(image.draw, 0, 0, width, height);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
-    if (!blob || blob.size > MAX_FILE_BYTES) throw new Error(`“${file.name}” is too large even after shrinking.`);
+    if (!blob || blob.size > max) throw new Error(`“${file.name}” is too large even after shrinking.`);
     return { blob, name: file.name.replace(/\.[^.]+$/, "") + ".jpg", type: "image/jpeg", width, height };
   } finally {
     image.close();

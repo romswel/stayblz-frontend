@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import type { ChatMessage } from "./types";
 
 /** Postgres sends microseconds; trim to milliseconds so every browser parses it. */
@@ -141,10 +142,24 @@ export function linkify(text: string, highlight?: string): ReactNode[] {
   for (const match of text.matchAll(URL_PATTERN)) {
     const start = match.index ?? 0;
     if (start > last) out.push(...mark(text.slice(last, start), `t${last}`));
+    // Links to Stayblz itself open in the app (no new tab, no reload); everything else opens a new tab.
+    let inside: string | null = null;
+    try {
+      const url = new URL(match[0]);
+      if (url.origin === window.location.origin) inside = url.pathname + url.search + url.hash;
+    } catch {
+      /* Not a URL after all: shown as a plain link. */
+    }
     out.push(
-      <a key={start} href={match[0]} target="_blank" rel="noopener noreferrer nofollow">
-        {match[0]}
-      </a>,
+      inside ? (
+        <Link key={start} to={inside}>
+          {match[0]}
+        </Link>
+      ) : (
+        <a key={start} href={match[0]} target="_blank" rel="noopener noreferrer nofollow">
+          {match[0]}
+        </a>
+      ),
     );
     last = start + match[0].length;
   }
@@ -152,8 +167,52 @@ export function linkify(text: string, highlight?: string): ReactNode[] {
   return out;
 }
 
-/** The one-line preview under a chat's name. */
-export function previewLine(c: { lastMessage: string; lastMessageMine: boolean }): string {
-  if (!c.lastMessage) return "No messages yet";
-  return c.lastMessageMine ? `You: ${c.lastMessage}` : c.lastMessage;
+export const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
+
+/**
+ * The one-line preview under a chat's name, Messenger style: "You: on my way", "Bo: on my way" (groups),
+ * "Ann sent a photo.", "You sent a voice message."
+ */
+export function previewLine(c: {
+  lastMessage: string;
+  lastMessageMine: boolean;
+  lastSenderName?: string | null;
+  kind?: "direct" | "group";
+}): string {
+  const text = c.lastMessage;
+  if (!text) return "No messages yet";
+  const who = c.lastMessageMine ? "You" : c.lastSenderName ? firstName(c.lastSenderName) : "";
+  const sent = (what: string) => (who ? `${who} sent ${what}.` : `Sent ${what}.`);
+  if (text === "📷 Photo") return sent("a photo");
+  if (text === "🎤 Voice message") return sent("a voice message");
+  if (text === "🎬 Video") return sent("a video");
+  if (text.startsWith("📎 ")) return sent("a file");
+  if (text === "Message unsent") return c.lastMessageMine ? "You unsent a message" : `${who || "Someone"} unsent a message`;
+  if (c.lastMessageMine) return `You: ${text}`;
+  return c.kind === "group" && who ? `${who}: ${text}` : text;
+}
+
+/** "Muted until 3:45 PM", "Muted until Tue 9:00 AM", or "Muted". */
+export function muteLabel(mutedUntil?: string | null, now = Date.now()): string {
+  const ms = toMs(mutedUntil);
+  if (!Number.isFinite(ms) || ms <= now) return "Muted";
+  const d = new Date(ms);
+  const sameDayAsNow = sameDay(d, new Date(now));
+  return `Muted until ${sameDayAsNow ? "" : d.toLocaleDateString([], { weekday: "short" }) + " "}${time(d)}`;
+}
+
+/** 0:07, 1:42 */
+export function seconds(total: number): string {
+  const s = Math.max(0, Math.round(total || 0));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+export const isAudio = (type?: string) => !!type && type.startsWith("audio/");
+export const isVideo = (type?: string) => !!type && type.startsWith("video/");
+
+/** A Stayblz Paddock meeting link inside a message ("/paddock/abcd-efgh"). */
+export const PADDOCK_LINK = /(?:^|\s)(?:https?:\/\/[^\s/]+)?\/paddock\/([a-z]{4}-[a-z]{4})(?=$|[\s.,!?)])/;
+
+/** Up to two other members of a chat, for the pair-of-faces group avatar. */
+export function peopleOf(c: { participants: string[]; participantIds?: string[] }) {
+  return c.participants.slice(0, 2).map((name, i) => ({ name, id: c.participantIds?.[i] ?? null }));
 }

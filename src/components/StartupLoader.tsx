@@ -17,7 +17,13 @@ export default function StartupLoader() {
     <div className="sb-startup" role="status" aria-live="polite" aria-label="Loading Stayblz">
       <div className="sb-startup-content">
         <div className="sb-startup-mark">
-          <img src="/favicon.svg" alt="" />
+          {/* The ink crest (same as the header logo), coloured by the theme. */}
+          <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M24 3 42 10v15c0 10-10 17-18 20C16 42 6 35 6 25V10L24 3Z" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M15 34c1-8 6-9 8-14l-7 3-2-3 8-7 1-5 5 5c7 4 9 12 8 21H15Z" fill="currentColor" />
+            <path d="m25 14 5 4-4 3M13 38h23" stroke="#142820" strokeWidth="1.5" />
+            <circle cx="24.5" cy="16.5" r="1" fill="#142820" />
+          </svg>
         </div>
         <strong className="sb-startup-name">
           STAYBLZ<span>.</span>

@@ -87,7 +87,7 @@ export default function Menu({
   return createPortal(
     <div
       ref={box}
-      className="mx-menu"
+      className="mx-menu mx-layer gx-layer"
       role="menu"
       aria-label={label}
       style={pos ? { top: pos.top, left: pos.left } : { visibility: "hidden", top: 0, left: 0 }}

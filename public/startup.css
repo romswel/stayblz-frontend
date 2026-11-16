@@ -1,3 +1,5 @@
+/* First-load screen (index.html + StartupLoader.tsx), in the app's glass colours:
+   light = cool slate with emerald/blue light, dark = deep forest. The crest is the ink logo. */
 .sb-startup {
   position: fixed;
   inset: 0;
@@ -6,8 +8,16 @@
   place-items: center;
   box-sizing: border-box;
   padding: 28px;
-  background: #102019;
-  color: #f4f0e6;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(16, 185, 129, 0.2), transparent 45%),
+    radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.18), transparent 45%),
+    radial-gradient(circle at 40% 95%, rgba(139, 92, 246, 0.12), transparent 45%),
+    #eef2f9;
+  color: #0b1324;
+  --sb-accent: #0d9f74;
+  --sb-accent-2: #3b6cf6;
+  --sb-muted: #64748b;
+  --sb-line: rgba(15, 23, 42, 0.1);
   font:
     14px/1.5 Archivo,
     system-ui,
@@ -15,7 +25,15 @@
   text-align: center;
 }
 html[data-theme="dark"] .sb-startup {
-  background: #09120f;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(74, 190, 130, 0.16), transparent 45%),
+    radial-gradient(circle at 85% 30%, rgba(40, 150, 140, 0.12), transparent 45%),
+    linear-gradient(170deg, #163423 0%, #0e2318 55%, #08170f 100%);
+  color: #ecf5ef;
+  --sb-accent: #5fe3a9;
+  --sb-accent-2: #43c6c0;
+  --sb-muted: #8daa99;
+  --sb-line: rgba(200, 255, 225, 0.12);
 }
 .sb-startup-content {
   width: min(100%, 360px);
@@ -32,15 +50,18 @@ html[data-theme="dark"] .sb-startup {
   content: "";
   position: absolute;
   inset: 0;
-  border: 1px solid #c5a46830;
-  border-top-color: #c5a468;
-  border-bottom-color: #c5a468;
   border-radius: 50%;
-  animation: sb-track 1.5s linear infinite;
+  padding: 2px;
+  background: conic-gradient(from 0deg, var(--sb-accent), var(--sb-accent-2), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: sb-track 1.2s linear infinite;
 }
+.sb-startup-mark svg,
 .sb-startup-mark img {
-  width: 72px;
-  height: 72px;
+  width: 66px;
+  height: 66px;
   animation: sb-stride 0.8s ease-in-out infinite;
 }
 .sb-startup-name {
@@ -48,22 +69,24 @@ html[data-theme="dark"] .sb-startup {
   font-size: 34px;
   line-height: 1.2;
   letter-spacing: 0.14em;
-  font-weight: 700;
+  font-weight: 800;
 }
 .sb-startup-name span {
-  color: #c5a468;
+  color: var(--sb-accent);
 }
 .sb-startup-ledger {
   display: block;
   margin-top: 8px;
-  color: #c5a468;
+  color: var(--sb-muted);
   font-size: 9px;
+  font-weight: 600;
   letter-spacing: 0.26em;
 }
 .sb-startup-line {
   height: 2px;
   margin: 32px auto 20px;
-  background: #c5a46825;
+  border-radius: 2px;
+  background: var(--sb-line);
   overflow: hidden;
   width: 160px;
 }
@@ -72,20 +95,21 @@ html[data-theme="dark"] .sb-startup {
   display: block;
   height: 100%;
   width: 45%;
-  background: #c5a468;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--sb-accent), var(--sb-accent-2));
   animation: sb-progress 1s ease-in-out infinite;
 }
 .sb-startup-message {
-  color: #b6c1ac;
+  color: var(--sb-muted);
   font-size: 12px;
   margin: 0;
 }
 .sb-startup-note {
   margin: 18px auto 0;
   padding: 10px 12px;
-  border: 1px solid #c5a46855;
-  border-radius: 6px;
-  color: #e4dccb;
+  border: 1px solid var(--sb-line);
+  border-radius: 12px;
+  color: inherit;
   font-size: 12px;
   line-height: 1.6;
 }
@@ -116,6 +140,7 @@ html[data-theme="dark"] .sb-startup {
 }
 @media (prefers-reduced-motion: reduce) {
   .sb-startup-mark::before,
+  .sb-startup-mark svg,
   .sb-startup-mark img,
   .sb-startup-line::after {
     animation: none;

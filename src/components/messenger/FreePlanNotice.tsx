@@ -2,6 +2,8 @@ import { useState } from "react";
 import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import { CHAT_NAME } from "./brand";
+import { chatLimits } from "./files";
+import { fileSize } from "./format";
 import { CloseIcon, DatabaseIcon } from "./icons";
 
 const KEY = "stayblz.chatNotice.v1";
@@ -47,8 +49,9 @@ export function FreePlanBanner({ onMore }: { onMore: () => void }) {
 }
 
 export function FreePlanDialog({ onClose }: { onClose: () => void }) {
+  const limits = chatLimits();
   return (
-    <Modal label="About chat storage" onClose={onClose} className="modal-sm">
+    <Modal label="About chat storage" onClose={onClose} className="modal-sm mx-dialog mx-layer gx-layer">
       <DialogHead kicker="Good to know" title={`${CHAT_NAME} on a free plan`} onClose={onClose} />
       <div className="dlg">
         <div className="dlg-text mx-about">
@@ -59,7 +62,9 @@ export function FreePlanDialog({ onClose }: { onClose: () => void }) {
           <ul>
             <li>
               <strong>Not instant.</strong> New messages, "typing…" and "Seen" show up within a few seconds while a
-              chat is open; the menu count updates about once a minute. There are no push notifications or calls.
+              chat is open; elsewhere on Stayblz the count and alerts follow within about half a minute. Alerts when
+              Stayblz is closed only work once you turn them on in Notification settings, on devices that support them.
+              Calls open in Stayblz Paddock.
             </li>
             <li>
               <strong>Slow starts.</strong> After a quiet spell the server can take up to a minute to wake up.
@@ -70,8 +75,9 @@ export function FreePlanDialog({ onClose }: { onClose: () => void }) {
               afford to lose.
             </li>
             <li>
-              <strong>Small files only.</strong> Photos (shrunk before sending) and PDF, Word, Excel or text files up to
-              4 MB each, 50 MB per person in total. No voice notes or videos. Unsending a file deletes it.
+              <strong>File limits.</strong> Photos (shrunk before sending), videos, voice clips (up to 2 minutes) and PDF,
+              Word, Excel or text files, up to {fileSize(limits.fileBytes)} each and {fileSize(limits.quotaBytes)} per
+              person in total. Unsending a file deletes it.
             </li>
           </ul>
           <p>

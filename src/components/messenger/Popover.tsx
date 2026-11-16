@@ -11,11 +11,11 @@ export default function Popover({
   children,
 }: {
   anchor: HTMLElement | null;
-  align?: "start" | "end";
+  align?: "start" | "end" | "center";
   children: ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; below: boolean } | null>(null);
   useLayoutEffect(() => {
     const el = box.current;
     if (!anchor || !el) return;
@@ -23,14 +23,22 @@ export default function Popover({
     const w = el.offsetWidth;
     const h = el.offsetHeight;
     const pad = 8;
-    let left = align === "end" ? r.right - w : r.left;
+    let left = align === "end" ? r.right - w : align === "center" ? r.left + r.width / 2 - w / 2 : r.left;
     left = Math.max(pad, Math.min(left, window.innerWidth - w - pad));
     let top = r.top - h - 6;
-    if (top < pad) top = Math.max(pad, Math.min(r.bottom + 6, window.innerHeight - h - pad));
-    setPos({ top, left });
+    let below = false;
+    if (top < pad) {
+      top = Math.max(pad, Math.min(r.bottom + 6, window.innerHeight - h - pad));
+      below = true;
+    }
+    setPos({ top, left, below });
   }, [anchor, align, children]);
   return createPortal(
-    <div ref={box} className="mx-popover" style={pos ? { top: pos.top, left: pos.left } : { visibility: "hidden", top: 0, left: 0 }}>
+    <div
+      ref={box}
+      className={`mx-popover mx-layer gx-layer${pos?.below ? " is-below" : ""}`}
+      style={pos ? { top: pos.top, left: pos.left } : { visibility: "hidden", top: 0, left: 0 }}
+    >
       {children}
     </div>,
     document.body,

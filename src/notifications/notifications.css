@@ -1,0 +1,454 @@
+/* Notifications (toasts, bell, the "turn on" pop-up, settings page) + glass dialogs.
+   Uses the glass tokens (--gx-*); anything outside the shell carries .gx-layer. */
+
+/* ————— Glass dialogs: any <Modal className="… gx-layer"> ————— */
+.modal.gx-layer {
+  border-color: var(--gx-border);
+  background: linear-gradient(var(--gx-surface-strong), var(--gx-surface-strong)), var(--gx-bg-solid);
+  color: var(--gx-text);
+  box-shadow: var(--gx-shadow-lg);
+}
+.modal.gx-layer::before {
+  background: var(--gx-border-strong);
+}
+.modal.gx-layer .dlg-head {
+  border-bottom-color: var(--gx-border);
+}
+.modal.gx-layer .dlg {
+  color: var(--gx-text);
+}
+.modal.gx-layer .dlg-title {
+  font-family: inherit;
+  font-size: clamp(19px, 2.2vw, 22px);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+.modal.gx-layer .dlg-kicker {
+  color: var(--gx-accent);
+}
+.modal.gx-layer .dlg-text {
+  color: var(--gx-text-2);
+}
+.modal.gx-layer .dlg-text a {
+  color: var(--gx-accent);
+  font-weight: 650;
+}
+.modal.gx-layer .dlg-close {
+  color: var(--gx-muted);
+}
+.modal.gx-layer .dlg-close:hover {
+  background: var(--gx-hover);
+  color: var(--gx-text);
+}
+.modal.gx-layer .btn {
+  min-height: 42px;
+  border-radius: 999px;
+  font-weight: 700;
+  transition: transform 0.15s var(--gx-ease), filter 0.15s ease, background-color 0.15s ease;
+}
+.modal.gx-layer .btn:active {
+  transform: scale(0.97);
+}
+.modal.gx-layer .btn-primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
+  color: var(--gx-accent-ink);
+}
+.modal.gx-layer .btn-primary:hover {
+  filter: brightness(1.07);
+}
+.modal.gx-layer .btn-quiet {
+  border-color: var(--gx-border-strong);
+  background: var(--gx-field);
+  color: var(--gx-text);
+}
+.modal.gx-layer .btn-quiet:hover {
+  background: var(--gx-hover);
+  border-color: var(--gx-border-strong);
+  color: var(--gx-text);
+}
+.modal.gx-layer :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--gx-border-strong);
+  background: var(--gx-field-strong);
+  color: var(--gx-text);
+}
+.modal.gx-layer :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--gx-accent) 55%, transparent);
+  box-shadow: 0 0 0 4px var(--gx-accent-soft);
+}
+.modal.gx-layer .mx-search input,
+.modal.gx-layer .mx-emoji-search {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.modal.gx-layer .mx-emoji-search {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-field);
+}
+.modal.gx-layer .form-error {
+  color: var(--gx-danger);
+}
+
+/* ————— Corner toasts ————— */
+.nt-stack {
+  position: fixed;
+  top: calc(84px + var(--safe-top, 0px));
+  right: 16px;
+  z-index: 85;
+  display: grid;
+  gap: 10px;
+  width: min(360px, calc(100vw - 24px));
+  pointer-events: none;
+}
+.nt-toast {
+  position: relative;
+  pointer-events: auto;
+  display: flex;
+  align-items: stretch;
+  border-radius: 18px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-surface-strong);
+  -webkit-backdrop-filter: var(--gx-blur);
+  backdrop-filter: var(--gx-blur);
+  box-shadow: var(--gx-shadow-lg), inset 0 1px 0 var(--gx-highlight);
+  color: var(--gx-text);
+  overflow: hidden;
+  animation: nt-in 0.32s var(--gx-ease) both;
+}
+@keyframes nt-in {
+  from { opacity: 0; transform: translateX(24px) scale(0.96); }
+}
+.nt-toast-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 6px 12px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nt-toast-main .mx-av-md {
+  width: 44px;
+  height: 44px;
+  font-size: 15px;
+}
+.nt-toast-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.nt-toast-text strong {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nt-toast-text span {
+  font-size: 13px;
+  color: var(--gx-text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.nt-toast-kind {
+  position: absolute;
+  top: 6px;
+  right: 40px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gx-accent);
+}
+.nt-toast-close {
+  flex: none;
+  width: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--gx-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.nt-toast-close:hover {
+  color: var(--gx-text);
+}
+.nt-toast-timer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, var(--gx-accent), var(--gx-accent-2));
+  transform-origin: left;
+  animation: nt-timer 6.5s linear forwards;
+}
+.nt-toast:hover .nt-toast-timer {
+  animation-play-state: paused;
+}
+@keyframes nt-timer {
+  to { transform: scaleX(0); }
+}
+@media (max-width: 900px) {
+  .nt-stack {
+    top: calc(72px + var(--safe-top, 0px));
+    right: 50%;
+    transform: translateX(50%);
+  }
+  @keyframes nt-in {
+    from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+  }
+}
+
+/* ————— Header bell ————— */
+.nt-bell-wrap {
+  position: relative;
+}
+/* Very small phones: the header is full; notifications stay in My account → Notifications. */
+@media (max-width: 420px) {
+  .nt-bell-wrap {
+    display: none;
+  }
+}
+.nt-off-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gx-warn);
+  box-shadow: 0 0 0 2px var(--gx-bg-solid);
+}
+.nt-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -60px;
+  z-index: 70;
+  width: min(360px, calc(100vw - 20px));
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 18px;
+  border: 1px solid var(--gx-border);
+  background: linear-gradient(var(--gx-surface-strong), var(--gx-surface-strong)), var(--gx-bg);
+  box-shadow: var(--gx-shadow-lg), inset 0 1px 0 var(--gx-highlight);
+  color: var(--gx-text);
+  animation: nt-drop 0.18s var(--gx-ease) both;
+}
+@keyframes nt-drop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+}
+@media (max-width: 600px) {
+  .nt-panel {
+    position: fixed;
+    top: calc(70px + var(--safe-top, 0px));
+    left: 10px;
+    right: 10px;
+    width: auto;
+  }
+}
+.nt-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 8px;
+}
+.nt-panel-head strong {
+  font-size: 15px;
+}
+.nt-panel-head a {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gx-accent);
+  text-decoration: none;
+}
+.nt-panel-off {
+  display: grid;
+  gap: 8px;
+  margin: 0 4px 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--gx-accent-soft);
+  font-size: 13px;
+}
+.nt-panel-off .btn {
+  justify-self: start;
+  width: auto;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
+  color: var(--gx-accent-ink);
+  font-weight: 700;
+}
+.nt-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.nt-panel-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.nt-panel-row:hover {
+  background: var(--gx-hover);
+}
+.nt-panel-row > span:not(.mx-av):not(.nt-panel-icon) {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.nt-panel-row strong {
+  font-size: 13.5px;
+}
+.nt-panel-row small {
+  font-size: 12.5px;
+  color: var(--gx-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nt-panel-row em {
+  flex: none;
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--gx-muted);
+}
+.nt-panel-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+}
+.nt-panel-empty {
+  padding: 10px 10px 12px;
+  font-size: 13px;
+  color: var(--gx-muted);
+}
+
+/* ————— "Turn on notifications?" ————— */
+.nt-prompt-art {
+  display: grid;
+  place-items: center;
+  margin: 2px 0 6px;
+}
+.nt-bell {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 22px;
+  color: var(--gx-accent-ink);
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
+  box-shadow: 0 14px 30px -12px var(--gx-accent);
+  animation: nt-ring 1.6s var(--gx-ease) 0.3s 2;
+  transform-origin: 50% 20%;
+}
+@keyframes nt-ring {
+  0%, 60%, 100% { transform: rotate(0); }
+  10% { transform: rotate(14deg); }
+  20% { transform: rotate(-12deg); }
+  30% { transform: rotate(9deg); }
+  40% { transform: rotate(-6deg); }
+  50% { transform: rotate(3deg); }
+}
+.nt-small {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--gx-muted, var(--ink-soft));
+}
+.nt-prompt .dlg-text p + p {
+  margin-top: 8px;
+}
+
+/* ————— Settings page ————— */
+.nt-device-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.nt-device-row p {
+  flex: 1 1 240px;
+  font-size: 14px;
+}
+.nt-device-row .btn {
+  width: auto;
+}
+.nt-state {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gx-muted, #94a3b8);
+}
+.nt-state.is-granted {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+.nt-state.is-denied {
+  background: var(--gx-danger, #e11d48);
+}
+.nt-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.nt-actions .btn {
+  width: auto;
+}
+.nt-actions small {
+  font-size: 12.5px;
+  color: var(--gx-muted, var(--ink-soft));
+}
+.nt-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.nt-fieldset:disabled {
+  opacity: 0.55;
+}
+.nt-notice {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--gx-accent-soft, rgba(13, 159, 116, 0.12));
+  color: var(--gx-text, inherit);
+  font-size: 13.5px;
+  animation: nt-drop 0.2s var(--gx-ease, ease-out) both;
+}

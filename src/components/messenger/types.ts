@@ -1,20 +1,28 @@
 /** Shapes returned by /api/messages and /api/team-messages (see backend routes/chat.ts). */
 export type ChatMode = "personal" | "team";
 
-/** Quick reactions. Must be allowed by chat_reactions() in the backend migration. */
-export const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🐎"] as const;
+/** Quick reactions (any emoji works through "+"; the backend accepts any single emoji). */
+export const REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🐎"] as const;
+/** Double-tap / double-click a message to send this one. */
+export const QUICK_REACTION = "❤️";
 export const MAX_MESSAGE = 4000;
 export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 export const EDIT_WINDOW_MS = 15 * 60_000;
+/** Voice clips stop recording on their own after this long. */
+export const MAX_VOICE_SECONDS = 120;
 
 export interface ChatReaction {
   emoji: string;
   count: number;
   mine: boolean;
+  /** Account ids of who reacted (newer servers). */
+  ids?: string[];
 }
 export interface ChatReply {
   id: string;
   from: string;
+  /** Who wrote the quoted message (newer servers), for "replied to you". */
+  senderId?: string;
   body: string;
   removed: boolean;
   /** File name when the quoted message was a photo or file. */
@@ -26,6 +34,8 @@ export interface ChatAttachment {
   type: string;
   width?: number;
   height?: number;
+  /** Voice clips: length in whole seconds. */
+  duration?: number;
 }
 export interface ChatMessage {
   id: string;
@@ -57,10 +67,14 @@ export interface ChatPreview {
   title: string;
   /** The other people in the chat (not you). */
   participants: string[];
+  /** Their account ids, same order (newer servers). */
+  participantIds?: string[];
   otherId?: string | null;
   createdBy?: string | null;
   lastMessage: string;
   lastMessageMine: boolean;
+  lastSenderId?: string | null;
+  lastSenderName?: string | null;
   lastMessageAt: string;
   lastStatus?: DeliveryStatus | null;
   unread: boolean;
@@ -72,9 +86,13 @@ export interface ChatPreview {
   pinned?: boolean;
   archived?: boolean;
   muted?: boolean;
+  /** Muted for a while: until this time. */
+  mutedUntil?: string | null;
   folderId?: string | null;
   /** The other person is on Stayblz Chat right now (one-to-one chats). */
   active?: boolean;
+  /** Group photo version (members-only file), or null. */
+  photo?: string | null;
 }
 export interface ChatMember {
   id: string;
@@ -127,6 +145,8 @@ export interface ChatSettings {
   pinned?: boolean;
   archived?: boolean;
   muted?: boolean;
+  /** Mute for a while (15 min … 7 days). */
+  muteMinutes?: number;
   unread?: boolean;
   folder?: string | null;
 }

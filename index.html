@@ -2,11 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <meta name="theme-color" content="#153e2e" />
+    <meta name="theme-color" content="#eef2f9" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Stayblz" />
@@ -15,17 +16,20 @@
     <meta name="referrer" content="no-referrer" />
     <link rel="stylesheet" href="/startup.css" />
     <script>
-      try {
-        document.documentElement.dataset.theme =
-          localStorage.getItem("stayblz.theme") === "dark" ? "dark" : "light";
-      } catch {
-        document.documentElement.dataset.theme = "light";
-      }
+      (function () {
+        var theme = "light";
+        try {
+          if (localStorage.getItem("stayblz.theme") === "dark") theme = "dark";
+        } catch (e) {}
+        document.documentElement.dataset.theme = theme;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", theme === "dark" ? "#0d2318" : "#eef2f9");
+      })();
     </script>
-    <title>Stayblz — The Racing Ledger</title>
+    <title>Stayblz</title>
     <meta
       name="description"
-      content="Know the horse. Read the race. Explore the Stayblz racing ledger: racecards, form, field notes, and the stories behind the silks."
+      content="Know the horse. Read the race. Racecards, results, workouts, your racing notebook, and Stayblz Chat."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -43,7 +47,14 @@
         aria-label="Loading Stayblz"
       >
         <div class="sb-startup-content">
-          <div class="sb-startup-mark"><img src="/favicon.svg" alt="" /></div>
+          <div class="sb-startup-mark">
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <path d="M24 3 42 10v15c0 10-10 17-18 20C16 42 6 35 6 25V10L24 3Z" stroke="currentColor" stroke-width="1.4" />
+              <path d="M15 34c1-8 6-9 8-14l-7 3-2-3 8-7 1-5 5 5c7 4 9 12 8 21H15Z" fill="currentColor" />
+              <path d="m25 14 5 4-4 3M13 38h23" stroke="#142820" stroke-width="1.5" />
+              <circle cx="24.5" cy="16.5" r="1" fill="#142820" />
+            </svg>
+          </div>
           <strong class="sb-startup-name">STAYBLZ<span>.</span></strong>
           <span class="sb-startup-ledger">THE RACING LEDGER</span>
           <div class="sb-startup-line" aria-hidden="true"></div>

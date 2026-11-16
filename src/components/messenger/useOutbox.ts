@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRequestId } from "../../requestId";
 import { accountDraftKey, useDraft } from "../ui/useDraft";
 import type { ChatApi } from "./chatApi";
-import { prepareFile } from "./files";
+import { fileType, prepareFile } from "./files";
 import type { ChatMessage, ChatReply, OutboxItem } from "./types";
 
 const message = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
@@ -12,14 +12,16 @@ interface FileItem {
   chatId: string;
   file: File;
   previewUrl?: string;
+  /** Voice clips: length in seconds (measured while recording). */
+  duration?: number;
   replyTo: ChatReply | null;
   at: string;
 }
 
 /**
  * Sending. Text waits in an outbox saved on this device (so a failed send survives a reload) until
- * the server confirms it; files wait in memory with a preview. Retries reuse the same client id,
- * so the server never stores a message twice.
+ * the server confirms it; files (photos, videos, voice clips) wait in memory with a preview. Retries reuse
+ * the same client id, so the server never stores a message twice.
  */
 export function useOutbox(
   chatApi: ChatApi,
@@ -43,7 +45,7 @@ export function useOutbox(
     setInFlight([...flying.current]);
   };
 
-  // Free photo previews when they're no longer shown.
+  // Free previews when they're no longer shown.
   const filesRef = useRef(files);
   filesRef.current = files;
   useEffect(() => () => filesRef.current.forEach((f) => f.previewUrl && URL.revokeObjectURL(f.previewUrl)), []);
@@ -70,7 +72,7 @@ export function useOutbox(
       if (flying.current.has(item.clientId)) return;
       fly(item.clientId, true);
       try {
-        const ready = await prepareFile(item.file);
+        const ready = await prepareFile(item.file, { duration: item.duration });
         const data = await chatApi.upload(item.chatId, ready.blob, {
           name: ready.name,
           type: ready.type,
@@ -78,6 +80,7 @@ export function useOutbox(
           replyTo: item.replyTo?.id ?? null,
           width: ready.width,
           height: ready.height,
+          duration: ready.duration,
         });
         setFiles((old) => old.filter((f) => f.clientId !== item.clientId));
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
@@ -102,17 +105,22 @@ export function useOutbox(
   );
 
   const sendFiles = useCallback(
-    (list: File[], replyTo: ChatReply | null) => {
+    (list: File[], replyTo: ChatReply | null, extra: { duration?: number } = {}) => {
       if (!id) return;
       if (list.length > 10) callbacks.current.onError(id, `Up to 10 files at a time. Sending the first 10 of ${list.length}.`);
-      const items: FileItem[] = list.slice(0, 10).map((file, i) => ({
-        clientId: createRequestId(),
-        chatId: id,
-        file,
-        previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
-        replyTo: i === 0 ? replyTo : null,
-        at: new Date(Date.now() + i).toISOString(),
-      }));
+      const items: FileItem[] = list.slice(0, 10).map((file, i) => {
+        const type = fileType(file);
+        const previewable = type.startsWith("image/") || type.startsWith("video/") || type.startsWith("audio/");
+        return {
+          clientId: createRequestId(),
+          chatId: id,
+          file,
+          previewUrl: previewable ? URL.createObjectURL(file) : undefined,
+          duration: extra.duration,
+          replyTo: i === 0 ? replyTo : null,
+          at: new Date(Date.now() + i).toISOString(),
+        };
+      });
       setFiles((old) => [...old, ...items]);
       items.forEach((item) => void deliverFile(item));
     },
@@ -163,7 +171,7 @@ export function useOutbox(
         clientId: f.clientId,
         body: "",
         sentAt: f.at,
-        attachment: { name: f.file.name, size: f.file.size, type: f.file.type || "application/octet-stream" },
+        attachment: { name: f.file.name, size: f.file.size, type: fileType(f.file) || "application/octet-stream", duration: f.duration },
         file: f.file,
         previewUrl: f.previewUrl,
         replyTo: f.replyTo,

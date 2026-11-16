@@ -19,7 +19,7 @@ test("Stayblz Chat: honest free-plan notice, unread badge and settings", async (
   await page.getByRole("button", { name: "What this means" }).click();
   const about = page.getByRole("dialog", { name: "About chat storage" });
   await expect(about.getByText("Messages can go missing.")).toBeVisible();
-  await expect(about.getByText("Small files only.")).toBeVisible();
+  await expect(about.getByText("File limits.")).toBeVisible();
   await about.getByRole("button", { name: "Got it" }).click();
   await page.getByRole("button", { name: "Dismiss notice" }).click();
   await page.reload();
@@ -28,7 +28,7 @@ test("Stayblz Chat: honest free-plan notice, unread badge and settings", async (
 
   await page.getByRole("button", { name: "Chat settings" }).click();
   const settings = page.getByRole("dialog", { name: "Stayblz Chat settings" });
-  await expect(settings.getByText("1.1 MB of 50 MB used.")).toBeVisible();
+  await expect(settings.getByText(/1\.1 MB of 50 MB used/)).toBeVisible();
   await settings.getByRole("switch", { name: /Show when I'm active/ }).click();
   await expect.poll(() => server.posts.find((p) => p.path === "/api/messages/people/profile")?.body).toEqual({ showActive: false });
 });
@@ -59,7 +59,7 @@ test("People: find members by name, add a friend, and message them", async ({ pa
   expect(server.posts.some((p) => p.path.endsWith("/friends/a0000000-0000-4000-8000-00000000000b/request"))).toBe(true);
   await page.getByRole("button", { name: "Message Gus Grant" }).click();
   await expect(page).toHaveURL(new RegExp(`/messages/${NEW}$`));
-  await expect(page.locator(".mx-thread-head h2")).toHaveText("Gus Grant");
+  await expect(page.locator(".mx-thread-name")).toHaveText("Gus Grant");
 });
 
 test("message requests can be read first, then accepted before replying", async ({ page }) => {
@@ -83,11 +83,11 @@ test("react (quick or any emoji), reply, edit, pin, forward and unsend", async (
 
   const theirs = row(page, "Gallops at six?");
   await theirs.hover();
-  await theirs.getByRole("button", { name: "React" }).click();
+  await theirs.getByRole("button", { name: "React", exact: true }).click();
   await page.getByRole("group", { name: "Pick a reaction" }).getByRole("button", { name: "React ❤️" }).click();
-  await expect(theirs.getByRole("button", { name: "❤️ 1, including you" })).toBeVisible();
+  await expect(theirs.getByRole("button", { name: /Reactions: ❤️ 1, including yours/ })).toBeVisible();
   await theirs.hover();
-  await theirs.getByRole("button", { name: "React" }).click();
+  await theirs.getByRole("button", { name: "React", exact: true }).click();
   await page.getByRole("button", { name: "More reactions" }).click();
   await page.getByLabel("Search emoji").fill("trophy");
   await page.getByRole("button", { name: "trophy", exact: true }).click();
@@ -133,7 +133,7 @@ test("emoji button, photos and files: send, preview, and open large", async ({ p
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Emoji" })).toHaveCount(0);
 
-  await page.locator('input[type="file"]').setInputFiles([
+  await page.locator('input[type="file"]').first().setInputFiles([
     { name: "paddock.png", mimeType: "image/png", buffer: PNG },
     { name: "card.csv", mimeType: "", buffer: Buffer.from("Odds,Horse\n3-1,Ridge\n") },
   ]);
@@ -168,7 +168,10 @@ test("chat list: pin, mute, folders, and day dividers", async ({ page }) => {
 
   await item.hover();
   await item.getByRole("button", { name: "Options for Saturday syndicate" }).click();
-  await page.getByRole("menuitem", { name: "Mute" }).click();
+  await page.getByRole("menuitem", { name: "Mute notifications…" }).click();
+  const mute = page.getByRole("dialog", { name: "Mute notifications" });
+  await mute.getByLabel("For 8 hours").check();
+  await mute.getByRole("button", { name: "Mute", exact: true }).click();
   await expect(page.getByRole("link", { name: /Saturday syndicate.*muted/ })).toBeVisible();
 
   await page.getByRole("button", { name: "New folder" }).click();
@@ -183,7 +186,7 @@ test("chat list: pin, mute, folders, and day dividers", async ({ page }) => {
   await expect(page.locator(".mx-side .mx-items").getByRole("link", { name: /Ann Ames/ })).toBeVisible();
   expect(server.posts.filter((p) => p.path.endsWith("/settings")).map((p) => p.body)).toEqual([
     { pinned: true },
-    { muted: true },
+    { muteMinutes: 480 },
     { folder: "f0000000-0000-4000-8000-000000000001" },
   ]);
 });
@@ -200,14 +203,14 @@ test("Seen, typing, live updates, read receipts, and the info panel", async ({ p
   expect(server.listCalls).toBe(listCalls);
 
   server.typing = ["Ann Ames"];
-  await expect(page.locator(".mx-thread-title p")).toHaveText("typing…", { timeout: 10_000 });
+  await expect(page.locator(".mx-thread-sub")).toHaveText("typing…", { timeout: 10_000 });
   await expect(page.locator(".mx-typing")).toBeVisible();
   server.typing = [];
   server.incoming.push(msg("Ann Ames", "Track is fast today", false, 0));
   await expect(page.getByText("Track is fast today")).toBeVisible({ timeout: 10_000 });
   await expect.poll(() => server.posts.some((p) => p.path === `/api/messages/${ANN}/read`)).toBe(true);
 
-  await page.getByRole("button", { name: "Chat info" }).click();
+  await page.getByRole("button", { name: "Chat info", exact: true }).click();
   const info = page.getByRole("complementary", { name: "Chat info" });
   await expect(info.getByRole("heading", { name: "Ann Ames" })).toBeVisible();
   await info.getByText("Privacy & support").click();

@@ -6,8 +6,9 @@
    ========================================================================== */
 
 .gx-shell,
-.gx-drawer {
-  /* Light theme (default) */
+.gx-drawer,
+.gx-layer {
+  /* Light theme (default). .gx-layer = anything portalled to <body> (menus, popovers, dialogs) that wants these tokens. */
   --gx-bg: #eef2f9;
   --gx-bg-solid: #f7f9fc;
   --gx-surface: rgba(255, 255, 255, 0.58);
@@ -44,7 +45,8 @@
 }
 
 .gx-shell[data-theme="dark"],
-.gx-drawer[data-theme="dark"] {
+.gx-drawer[data-theme="dark"],
+html[data-theme="dark"] .gx-layer {
   /* Deep forest green: #15321f at the top fading to #08170f at the bottom */
   --gx-bg: #08170f;
   --gx-bg-solid: #0d2318;

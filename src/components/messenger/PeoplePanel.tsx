@@ -95,7 +95,7 @@ export default function PeoplePanel({ onOpen }: { onOpen: (data: ThreadResponse)
 
   const row = (p: Person, actions: "search" | "friend" | "incoming" | "outgoing") => (
     <li key={p.id} className="mx-person">
-      <Avatar name={p.name} size="sm" active={!!p.active} />
+      <Avatar name={p.name} id={p.id} size="sm" active={!!p.active} />
       <span className="mx-person-text">
         <span className="mx-person-name">{p.name}</span>
         <span className="mx-person-sub">

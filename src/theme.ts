@@ -7,8 +7,13 @@ const listeners = new Set<() => void>();
 function read(): Theme {
   return document.documentElement.dataset.theme === "light" ? "light" : "dark";
 }
+/** The phone's status bar / browser bar follows the app's background. */
+function paintBars(theme: Theme) {
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0d2318" : "#eef2f9");
+}
 function apply(theme: Theme) {
   document.documentElement.dataset.theme = theme;
+  paintBars(theme);
   try {
     localStorage.setItem(KEY, theme);
   } catch {
@@ -36,6 +41,7 @@ export function useTheme(): [Theme, () => void] {
   );
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    paintBars(theme);
   }, [theme]);
   return [theme, () => apply(read() === "dark" ? "light" : "dark")];
 }

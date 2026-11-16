@@ -5,7 +5,8 @@ import { readFileSync } from "node:fs";
 // vercel.json allows exactly one inline script by hash. Editing the theme script in
 // index.html without updating the hash would blank the theme in production.
 test("the production CSP allows the inline theme script and stays strict", () => {
-  const html = readFileSync("index.html", "utf8");
+  // Git stores (and Vercel serves) LF line endings; a Windows checkout may have CRLF, which changes the hash.
+  const html = readFileSync("index.html", "utf8").replace(/\r\n/g, "\n");
   const config = JSON.parse(readFileSync("vercel.json", "utf8"));
   const csp: string = config.headers[0].headers.find(
     (h: { key: string }) => h.key === "Content-Security-Policy",

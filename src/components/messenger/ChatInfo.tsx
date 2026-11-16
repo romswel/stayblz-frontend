@@ -1,38 +1,60 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { prepareAvatar } from "../account/avatars";
 import ConversationInvites from "../my-racing/ConversationInvites";
-import AttachmentView from "./AttachmentView";
+import ChatAvatar from "./ChatAvatar";
 import type { ChatApi } from "./chatApi";
-import { activeLabel, dayLabel, isImage } from "./format";
-import { normalizeMessage } from "./threadModel";
+import { activeLabel, muteLabel } from "./format";
 import {
   ArchiveIcon,
   Avatar,
   BellIcon,
   BlockIcon,
+  ChevronIcon,
+  ChevronRightIcon,
   CloseIcon,
   DatabaseIcon,
+  EditIcon,
+  FileIcon,
   FolderIcon,
+  ImageIcon,
   LeaveIcon,
+  LinkIcon,
+  MicIcon,
+  MoreIcon,
   MuteIcon,
   PinIcon,
   PlusIcon,
+  SearchIcon,
+  TrashIcon,
   UnreadIcon,
+  UserIcon,
   UserPlusIcon,
 } from "./icons";
+import InfoMedia, { type MediaTab } from "./InfoMedia";
+import Menu from "./Menu";
 import type { ChatFolder, ChatMessage, ChatMode, ChatSettings, ChatThread } from "./types";
 
-function Section({ title, open = false, children }: { title: string; open?: boolean; children: ReactNode }) {
+/** A Messenger-style collapsible section; opens and closes with a short height animation. */
+function Section({ title, open: initial = false, children }: { title: string; open?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(initial);
   return (
-    <details className="mx-info-sec" open={open}>
-      <summary>{title}</summary>
-      <div className="mx-info-body">{children}</div>
-    </details>
+    <section className={`mx-info-sec${open ? " is-open" : ""}`}>
+      <button type="button" className="mx-info-sec-head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <span>{title}</span>
+        <ChevronIcon />
+      </button>
+      {/* Closed sections are out of the tab order (inert) while their height animates to zero. */}
+      <div className="mx-info-sec-body" {...(open ? {} : { inert: "" })}>
+        <div className="mx-info-body">{children}</div>
+      </div>
+    </section>
   );
 }
 
 /**
- * Chat info (the right-hand panel): who's here, pinned messages, media & files, group name and
- * members, and your own options (mute, pin, folder, archive, block, leave).
+ * Chat info (right-hand panel), Messenger style: face, name, status, quick buttons (Profile, Mute, Search), then
+ * Chat info · Customize chat · Chat members · Media, files and links · Privacy & support.
  */
 export default function ChatInfo({
   mode,
@@ -40,19 +62,24 @@ export default function ChatInfo({
   chatApi,
   folders,
   userId,
-  focus,
   inviteOpen,
   onClose,
   onSetting,
+  onMute,
   onLeave,
   onBlock,
   onAddPeople,
   onRemoveMember,
-  onRenamed,
+  onMessageMember,
+  onRename,
+  onPhotoChanged,
+  onSearch,
+  onPinned,
   onJump,
   onOpenImage,
   onAbout,
   onNewFolder,
+  onError,
   fileLoader,
 }: {
   mode: ChatMode;
@@ -60,126 +87,180 @@ export default function ChatInfo({
   chatApi: ChatApi;
   folders: ChatFolder[];
   userId: string;
-  focus?: "pinned" | null;
   inviteOpen: boolean;
   onClose: () => void;
   onSetting: (changes: ChatSettings) => void;
+  onMute: () => void;
   onLeave: () => void;
   onBlock: (block: boolean) => void;
   onAddPeople: () => void;
   onRemoveMember: (id: string, name: string) => void;
-  onRenamed: (title: string) => void;
+  onMessageMember: (id: string) => void;
+  onRename: () => void;
+  onPhotoChanged: (photo: string | null) => void;
+  onSearch: () => void;
+  onPinned: () => void;
   onJump: (id: string) => void;
   onOpenImage: (m: ChatMessage, url: string) => void;
   onAbout: () => void;
   onNewFolder: () => void;
+  onError: (text: string) => void;
   fileLoader: (m: ChatMessage) => (() => Promise<Blob>) | null;
 }) {
+  const navigate = useNavigate();
   const direct = thread.kind === "direct";
   const other = thread.members.find((m) => !m.me);
   const admin = thread.createdBy === userId;
-  const [media, setMedia] = useState<ChatMessage[] | null>(null);
-  const [mediaError, setMediaError] = useState("");
-  const [title, setTitle] = useState(thread.title);
-  const [renaming, setRenaming] = useState(false);
-  const [renameError, setRenameError] = useState("");
-
+  const [sub, setSub] = useState<MediaTab | null>(null);
+  const [memberMenu, setMemberMenu] = useState<{ id: string; anchor: HTMLElement } | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInput = useRef<HTMLInputElement>(null);
   const fileCount = thread.messages.filter((m) => m.attachment && !m.removed).length;
-  useEffect(() => {
-    const c = new AbortController();
-    setMedia(null);
-    chatApi
-      .media(thread.id, c.signal)
-      .then((d) => !c.signal.aborted && setMedia((d?.messages ?? []).map(normalizeMessage)))
-      .catch((e) => !c.signal.aborted && setMediaError(e instanceof Error ? e.message : "Media couldn't be loaded."));
-    return () => c.abort();
-  }, [chatApi, thread.id, fileCount]);
-  useEffect(() => setTitle(thread.title), [thread.title]);
+  const status = direct ? (thread.waiting ? "Hasn't accepted yet" : activeLabel(other?.active, other?.seenAt)) : `${thread.members.length} members`;
 
-  async function rename(e: FormEvent) {
-    e.preventDefault();
-    if (renaming || !title.trim() || title.trim() === thread.title) return;
-    setRenaming(true);
-    setRenameError("");
+  async function changePhoto(file: File | undefined) {
+    if (!file || photoBusy) return;
+    setPhotoBusy(true);
     try {
-      await chatApi.rename(thread.id, title.trim());
-      onRenamed(title.trim());
+      const blob = await prepareAvatar(file);
+      const { photo } = await chatApi.setPhoto(thread.id, blob);
+      onPhotoChanged(photo);
     } catch (reason) {
-      setRenameError(reason instanceof Error ? reason.message : "The name wasn't saved.");
+      onError(reason instanceof Error ? reason.message : "The photo wasn't saved.");
     } finally {
-      setRenaming(false);
+      setPhotoBusy(false);
+    }
+  }
+  async function removePhoto() {
+    if (photoBusy) return;
+    setPhotoBusy(true);
+    try {
+      await chatApi.removePhoto(thread.id);
+      onPhotoChanged(null);
+    } catch (reason) {
+      onError(reason instanceof Error ? reason.message : "The photo wasn't removed.");
+    } finally {
+      setPhotoBusy(false);
     }
   }
 
-  const photos = (media ?? []).filter((m) => m.attachment && isImage(m.attachment.type));
-  const files = (media ?? []).filter((m) => m.attachment && !isImage(m.attachment.type));
-  const status = direct ? (thread.waiting ? "Hasn't accepted yet" : activeLabel(other?.active, other?.seenAt)) : `${thread.members.length} people`;
+  if (sub)
+    return (
+      <aside className="mx-info mx-card" aria-label="Chat info">
+        <InfoMedia
+          chatId={thread.id}
+          chatApi={chatApi}
+          tab={sub}
+          onTab={setSub}
+          onBack={() => setSub(null)}
+          onJump={onJump}
+          onOpenImage={onOpenImage}
+          fileLoader={fileLoader}
+          refreshKey={fileCount}
+        />
+      </aside>
+    );
 
+  const picked = memberMenu ? thread.members.find((m) => m.id === memberMenu.id) : undefined;
   return (
-    <aside className="mx-info" aria-label="Chat info">
+    <aside className="mx-info mx-card" aria-label="Chat info">
       <div className="mx-info-head">
         <button type="button" className="mx-icon-btn" aria-label="Close chat info" onClick={onClose}>
           <CloseIcon />
         </button>
       </div>
       <div className="mx-info-hero">
-        <Avatar name={thread.title} group={!direct} size="lg" active={direct && !!other?.active} />
+        <ChatAvatar c={thread} size="xl" active={direct && !!other?.active} />
         <h2>{thread.title}</h2>
         {status && <p>{status}</p>}
+        {thread.muted && <p className="mx-info-muted">{muteLabel(thread.mutedUntil)}</p>}
         <div className="mx-info-quick">
-          <button type="button" onClick={() => onSetting({ muted: !thread.muted })} aria-pressed={!!thread.muted}>
-            {thread.muted ? <BellIcon size={18} /> : <MuteIcon size={18} />}
-            <span>{thread.muted ? "Unmute" : "Mute"}</span>
-          </button>
-          <button type="button" onClick={() => onSetting({ pinned: !thread.pinned })} aria-pressed={!!thread.pinned}>
-            <PinIcon size={18} />
-            <span>{thread.pinned ? "Unpin" : "Pin chat"}</span>
-          </button>
-          {!direct && (
-            <button type="button" onClick={onAddPeople} disabled={thread.request}>
-              <UserPlusIcon size={18} />
-              <span>Add</span>
-            </button>
+          {direct && mode === "personal" && other && (
+            <Link to={`/community/people/${other.id}`} className="mx-quick">
+              <span>
+                <UserIcon />
+              </span>
+              Profile
+            </Link>
           )}
+          <button type="button" className="mx-quick" onClick={() => (thread.muted ? onSetting({ muted: false }) : onMute())} aria-pressed={!!thread.muted}>
+            <span>{thread.muted ? <BellIcon size={18} /> : <MuteIcon size={18} />}</span>
+            {thread.muted ? "Unmute" : "Mute"}
+          </button>
+          <button type="button" className="mx-quick" onClick={onSearch}>
+            <span>
+              <SearchIcon size={18} />
+            </span>
+            Search
+          </button>
         </div>
       </div>
 
-      <Section title={`Pinned messages${thread.pinnedMessages.length ? ` (${thread.pinnedMessages.length})` : ""}`} open={focus === "pinned"}>
-        {!thread.pinnedMessages.length && <p className="mx-hint">Nothing pinned. Use a message's ⋯ menu → Pin to keep it handy here.</p>}
-        <ul className="mx-pins">
-          {thread.pinnedMessages.map((p) => (
-            <li key={p.id}>
-              <button type="button" onClick={() => onJump(p.id)}>
-                <strong>{p.from}</strong>
-                <span>{p.body || (p.attachment ? `📎 ${p.attachment}` : "")}</span>
-                <small>{dayLabel(p.pinnedAt)}</small>
-              </button>
-            </li>
-          ))}
-        </ul>
+      <Section title="Chat info">
+        <button type="button" className="mx-action-row" onClick={onPinned}>
+          <PinIcon size={18} /> View pinned messages
+          {thread.pinnedMessages.length > 0 && <span className="mx-row-count">{thread.pinnedMessages.length}</span>}
+        </button>
+        <button type="button" className="mx-action-row" onClick={() => onSetting({ pinned: !thread.pinned })}>
+          <PinIcon size={18} /> {thread.pinned ? "Unpin this chat from the top" : "Pin this chat to the top"}
+        </button>
       </Section>
 
       {!direct && (
-        <Section title={`Members (${thread.members.length})`} open={!focus}>
-          <ul className="mx-rows">
+        <Section title="Customize chat">
+          <button type="button" className="mx-action-row" onClick={onRename} disabled={thread.request}>
+            <EditIcon size={18} /> Change chat name
+          </button>
+          <button type="button" className="mx-action-row" onClick={() => photoInput.current?.click()} disabled={thread.request || photoBusy}>
+            <ImageIcon size={18} /> {photoBusy ? "Saving photo…" : thread.photo ? "Change photo" : "Add a group photo"}
+          </button>
+          {thread.photo && (
+            <button type="button" className="mx-action-row" onClick={() => void removePhoto()} disabled={photoBusy}>
+              <TrashIcon size={18} /> Remove photo
+            </button>
+          )}
+          <input
+            ref={photoInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              void changePhoto(file);
+            }}
+          />
+        </Section>
+      )}
+
+      {!direct && (
+        <Section title={`Chat members (${thread.members.length})`} open>
+          <ul className="mx-rows mx-members">
             {thread.members.map((m) => (
               <li key={m.id}>
-                <Avatar name={m.name} size="xs" active={!!m.active} />
+                <Avatar name={m.name} id={m.id} size="sm" active={!!m.active} />
                 <span>
                   {m.me ? `${m.name} (you)` : m.name}
-                  {m.admin && <small className="mx-tag">Created the group</small>}
-                  {m.pending && <small className="mx-tag">Hasn't accepted</small>}
+                  <small>{m.admin ? "Created the group" : m.pending ? "Hasn't accepted" : m.active ? "Active now" : "Member"}</small>
                 </span>
-                {admin && !m.me && (
-                  <button type="button" className="mx-pill" onClick={() => onRemoveMember(m.id, m.name)}>
-                    Remove
+                {!m.me && (
+                  <button
+                    type="button"
+                    className="mx-icon-btn"
+                    aria-label={`Options for ${m.name}`}
+                    aria-haspopup="menu"
+                    onClick={(e) => setMemberMenu({ id: m.id, anchor: e.currentTarget })}
+                  >
+                    <MoreIcon />
                   </button>
                 )}
               </li>
             ))}
           </ul>
-          <button type="button" className="btn btn-quiet mx-inline-btn" onClick={onAddPeople} disabled={thread.request}>
-            <PlusIcon /> Add people
+          <button type="button" className="mx-action-row" onClick={onAddPeople} disabled={thread.request}>
+            <UserPlusIcon size={18} /> Add people
           </button>
           {mode === "personal" && thread.canInvite && (
             <div className="mx-info-invite">
@@ -189,82 +270,82 @@ export default function ChatInfo({
           )}
         </Section>
       )}
-
-      {!direct && (
-        <Section title="Group name">
-          <form className="mx-rename" onSubmit={rename}>
-            <input aria-label="Group name" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
-            <button type="submit" className="btn btn-quiet mx-inline-btn" disabled={renaming || !title.trim() || title.trim() === thread.title}>
-              {renaming ? "Saving…" : "Save"}
-            </button>
-          </form>
-          {renameError && <p className="form-error">{renameError}</p>}
-          <p className="mx-hint">Everyone in the group sees the new name.</p>
-        </Section>
+      {memberMenu && picked && (
+        <Menu
+          anchor={memberMenu.anchor}
+          label={`Options for ${picked.name}`}
+          onClose={() => setMemberMenu(null)}
+          items={[
+            ...(mode === "personal"
+              ? [
+                  { label: "Message", icon: <PlusIcon />, onSelect: () => onMessageMember(picked.id) },
+                  { label: "View profile", icon: <UserIcon size={16} />, onSelect: () => navigate(`/community/people/${picked.id}`) },
+                ]
+              : []),
+            ...(admin ? [{ label: "Remove from group", icon: <LeaveIcon />, danger: true, onSelect: () => onRemoveMember(picked.id, picked.name) }] : []),
+          ]}
+        />
       )}
 
-      <Section title={`Media & files${media ? ` (${media.length})` : ""}`}>
-        {mediaError && <p className="form-error">{mediaError}</p>}
-        {!media && !mediaError && <p className="mx-hint" role="status">Loading…</p>}
-        {media && !media.length && <p className="mx-hint">No photos or files yet.</p>}
-        {photos.length > 0 && (
-          <div className="mx-media-grid">
-            {photos.map((m) => (
-              <AttachmentView
-                key={m.id}
-                a={m.attachment!}
-                fileKey={m.id}
-                load={fileLoader(m)}
-                onOpenImage={(url) => onOpenImage(m, url)}
-                onError={setMediaError}
-              />
-            ))}
-          </div>
-        )}
-        {files.map((m) => (
-          <AttachmentView key={m.id} a={m.attachment!} fileKey={m.id} load={fileLoader(m)} onOpenImage={() => undefined} onError={setMediaError} />
-        ))}
+      <Section title="Media, files and links">
+        <button type="button" className="mx-action-row" onClick={() => setSub("media")}>
+          <ImageIcon size={18} /> Media <ChevronRightIcon />
+        </button>
+        <button type="button" className="mx-action-row" onClick={() => setSub("files")}>
+          <FileIcon size={18} /> Files <ChevronRightIcon />
+        </button>
+        <button type="button" className="mx-action-row" onClick={() => setSub("voice")}>
+          <MicIcon size={18} /> Voice clips <ChevronRightIcon />
+        </button>
+        <button type="button" className="mx-action-row" onClick={() => setSub("links")}>
+          <LinkIcon size={18} /> Links <ChevronRightIcon />
+        </button>
       </Section>
 
       <Section title="Privacy & support">
-        <div className="mx-info-actions">
-          <label className="mx-field">
-            <span className="ld-label">
-              <span>
-                <FolderIcon /> Folder
-              </span>
+        <button type="button" className="mx-action-row" onClick={() => (thread.muted ? onSetting({ muted: false }) : onMute())}>
+          {thread.muted ? <BellIcon size={18} /> : <MuteIcon size={18} />}
+          <span className="mx-action-text">
+            Chat notifications
+            <small>{thread.muted ? muteLabel(thread.mutedUntil) : "On"}</small>
+          </span>
+        </button>
+        <label className="mx-field">
+          <span className="ld-label">
+            <span>
+              <FolderIcon /> Folder
             </span>
-            <select
-              value={thread.folderId ?? ""}
-              onChange={(e) => (e.target.value === "__new" ? onNewFolder() : onSetting({ folder: e.target.value || null }))}
-            >
-              <option value="">No folder</option>
-              {folders.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-              <option value="__new">New folder…</option>
-            </select>
-          </label>
-          <button type="button" className="mx-action-row" onClick={() => onSetting({ unread: true })}>
-            <UnreadIcon /> Mark as unread
+          </span>
+          <select
+            value={thread.folderId ?? ""}
+            onChange={(e) => (e.target.value === "__new" ? onNewFolder() : onSetting({ folder: e.target.value || null }))}
+          >
+            <option value="">No folder</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+            <option value="__new">New folder…</option>
+          </select>
+        </label>
+        <button type="button" className="mx-action-row" onClick={() => onSetting({ unread: true })}>
+          <UnreadIcon size={18} /> Mark as unread
+        </button>
+        <button type="button" className="mx-action-row" onClick={() => onSetting({ archived: !thread.archived })}>
+          <ArchiveIcon size={18} /> {thread.archived ? "Unarchive chat" : "Archive chat"}
+        </button>
+        {direct && mode === "personal" && other && (
+          <button type="button" className="mx-action-row is-danger" onClick={() => onBlock(!thread.direct?.blockedByMe)}>
+            <BlockIcon size={18} /> {thread.direct?.blockedByMe ? `Unblock ${other.name}` : `Block ${other.name}`}
           </button>
-          <button type="button" className="mx-action-row" onClick={() => onSetting({ archived: !thread.archived })}>
-            <ArchiveIcon /> {thread.archived ? "Unarchive chat" : "Archive chat"}
-          </button>
-          {direct && mode === "personal" && other && (
-            <button type="button" className="mx-action-row is-danger" onClick={() => onBlock(!thread.direct?.blockedByMe)}>
-              <BlockIcon /> {thread.direct?.blockedByMe ? `Unblock ${other.name}` : `Block ${other.name}`}
-            </button>
-          )}
-          <button type="button" className="mx-action-row is-danger" onClick={onLeave}>
-            <LeaveIcon /> {thread.request ? "Delete request" : direct ? "Delete chat" : "Leave group"}
-          </button>
-          <button type="button" className="mx-action-row" onClick={onAbout}>
-            <DatabaseIcon /> How chat works on our free plan
-          </button>
-        </div>
+        )}
+        <button type="button" className="mx-action-row is-danger" onClick={onLeave}>
+          <LeaveIcon size={18} /> {thread.request ? "Delete request" : direct ? "Delete chat" : "Leave group"}
+        </button>
+        <button type="button" className="mx-action-row" onClick={onAbout}>
+          <DatabaseIcon /> How chat works on our free plan
+        </button>
       </Section>
     </aside>
   );

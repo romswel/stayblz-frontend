@@ -71,7 +71,7 @@ export default function PersonPicker({
         <ul className="mx-chips" aria-label="Chosen">
           {picked.map((p) => (
             <li key={p.id}>
-              <Avatar name={p.name} size="xs" />
+              <Avatar name={p.name} id={p.id} size="xs" />
               {p.name}
               <button type="button" aria-label={`Remove ${p.name}`} onClick={() => toggle(p)}>
                 <CloseIcon size={12} />
@@ -108,7 +108,7 @@ export default function PersonPicker({
           <li key={p.id}>
             <label>
               <input type="checkbox" checked={picked.some((x) => x.id === p.id)} onChange={() => toggle(p)} aria-label={p.name} />
-              <Avatar name={p.name} size="sm" active={!!p.active} />
+              <Avatar name={p.name} id={p.id} size="sm" active={!!p.active} />
               <span>{p.name}</span>
               {p.status === "friends" && !team && <span className="mx-tag">Friend</span>}
             </label>
