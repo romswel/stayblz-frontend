@@ -1,0 +1,293 @@
+/* ==========================================================================
+   Stable workspace — glass treatment for "Workspace overview" (.sg-overview)
+   and "My stables & team" (.sg-team).
+   The older --ws-* tokens these pages were built on are only defined on the
+   retired .workspace wrapper, so their borders resolved to nothing inside the
+   glass shell. Everything here uses the shell's --gx-* tokens (layout-glass.css),
+   which switch with the light/dark theme.
+   ========================================================================== */
+
+.sg-page {
+  --sg-card-shadow: var(--gx-shadow), inset 0 1px 0 var(--gx-highlight);
+  --sg-control-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), inset 0 1px 0 var(--gx-highlight);
+  --sg-focus-ring: 0 0 0 3px var(--gx-accent-soft);
+}
+.gx-shell[data-theme="dark"] .sg-page {
+  --sg-control-shadow: 0 1px 2px rgba(0, 12, 6, 0.5), inset 0 1px 0 var(--gx-highlight);
+}
+
+/* ---------- Cards ---------- */
+.sg-card,
+.sg-team .team-card,
+.sg-page .ws-access,
+.sg-overview .ov-stable-stats > a,
+.sg-overview .ov-stable-grid > div,
+.sg-overview .ov-load-error {
+  background: var(--gx-surface-strong);
+  border: 1px solid var(--gx-border-strong);
+  border-radius: var(--gx-radius-sm);
+  box-shadow: var(--sg-card-shadow);
+  -webkit-backdrop-filter: var(--gx-blur);
+  backdrop-filter: var(--gx-blur);
+  color: var(--gx-text);
+}
+.sg-team .team-card,
+.sg-page .ws-access,
+.sg-card {
+  border-radius: 18px;
+}
+.sg-team .team-card:hover,
+.sg-page .ws-access:hover {
+  border-color: var(--gx-border-strong);
+}
+
+/* ---------- Workspace overview layout ---------- */
+.sg-overview .ov-stable-stats {
+  gap: 12px;
+  border-bottom: 0;
+  margin-bottom: 16px;
+}
+.sg-overview .ov-stable-stats > a,
+.sg-overview .ov-stable-stats > a:last-child {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--gx-border-strong);
+  transition: transform 180ms var(--gx-ease), border-color 180ms ease, box-shadow 180ms ease;
+}
+/* Thin accent rule along the foot of each tile, like the dashboard stats. */
+.sg-overview .ov-stable-stats > a::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--gx-accent), var(--gx-accent-2));
+  opacity: 0.55;
+}
+.sg-overview .ov-stable-stats > a:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--gx-accent) 45%, var(--gx-border-strong));
+  box-shadow: var(--gx-shadow-lg), inset 0 1px 0 var(--gx-highlight);
+}
+.sg-overview .ov-stable-stats > a:focus-visible {
+  outline: none;
+  box-shadow: var(--sg-card-shadow), var(--sg-focus-ring);
+}
+.sg-overview .ov-stable-stats strong { color: var(--gx-text); }
+.sg-overview .ov-stable-stats span { color: var(--gx-muted); }
+
+.sg-overview .ov-stable-grid {
+  gap: 16px;
+}
+.sg-overview .ov-stable-grid > div {
+  padding: 22px;
+}
+.sg-overview .ov-stable-grid > div + div {
+  border-left: 1px solid var(--gx-border-strong);
+}
+.sg-overview .ov-post,
+.sg-overview .ov-message {
+  border-color: var(--gx-border);
+}
+.sg-overview .ov-message:last-of-type { border-bottom-color: transparent; }
+.sg-overview .ov-load-error {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+/* ---------- Controls: text boxes, drop-downs ---------- */
+.sg-page :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  background: var(--gx-field-strong);
+  color: var(--gx-text);
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
+  box-shadow: var(--sg-control-shadow);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+.sg-page :is(input, select) {
+  min-height: 44px;
+  padding: 10px 12px;
+}
+.sg-page select {
+  cursor: pointer;
+}
+.sg-page :is(input, select, textarea):hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--gx-accent) 30%, var(--gx-border-strong));
+}
+.sg-page :is(input, select, textarea):focus-visible {
+  outline: none;
+  border-color: var(--gx-accent);
+  box-shadow: var(--sg-control-shadow), var(--sg-focus-ring);
+}
+.sg-page :is(input, textarea)::placeholder {
+  color: var(--gx-muted);
+}
+.sg-page input[readonly] {
+  background: var(--gx-field);
+}
+.sg-page :is(input, select, textarea):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- Buttons ---------- */
+.sg-page .ws-button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
+  background: var(--gx-field-strong);
+  color: var(--gx-text);
+  font-weight: 650;
+  box-shadow: var(--sg-control-shadow);
+  cursor: pointer;
+}
+.sg-page .ws-button:hover:not(:disabled) {
+  background: var(--gx-surface-solid);
+  border-color: color-mix(in srgb, var(--gx-accent) 40%, var(--gx-border-strong));
+  box-shadow: 0 6px 16px -10px var(--gx-accent), inset 0 1px 0 var(--gx-highlight);
+  transform: translateY(-1px);
+}
+.sg-page .ws-button:focus-visible {
+  outline: none;
+  border-color: var(--gx-accent);
+  box-shadow: var(--sg-control-shadow), var(--sg-focus-ring);
+}
+.sg-page .ws-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+/* Form submit buttons and the main invite action carry the shell's accent. */
+.sg-team form .ws-button,
+.sg-page .ws-access .ws-button,
+.sg-overview .ov-composer .ws-button,
+.sg-page .sg-primary {
+  border-color: transparent;
+  color: var(--gx-accent-ink);
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
+  box-shadow: 0 8px 22px -12px var(--gx-accent), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.sg-team form .ws-button:hover:not(:disabled),
+.sg-page .ws-access .ws-button:hover:not(:disabled),
+.sg-overview .ov-composer .ws-button:hover:not(:disabled),
+.sg-page .sg-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
+  border-color: transparent;
+  filter: brightness(1.06);
+  box-shadow: 0 10px 24px -10px var(--gx-accent), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/* ---------- My stables & team details ---------- */
+.sg-team .team-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gx-border);
+  color: var(--gx-muted);
+}
+.sg-team .team-list li:last-child { border-bottom: 0; }
+.sg-team .team-list strong { color: var(--gx-text); }
+.sg-team .team-list select { width: auto; min-width: 130px; }
+.sg-team .team-card p { color: var(--gx-muted); }
+.sg-team .ws-notice {
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
+  background: var(--gx-accent-soft);
+  color: var(--gx-text);
+  padding: 10px 14px;
+}
+
+/* ---------- Invitations for you (workspace overview) ---------- */
+.sg-invites {
+  padding: 20px 22px;
+  margin: 0 0 28px;
+  border-color: color-mix(in srgb, var(--gx-accent) 35%, var(--gx-border-strong));
+  background:
+    linear-gradient(135deg, var(--gx-accent-soft), transparent 60%),
+    var(--gx-surface-strong);
+}
+.sg-invites-head h2 {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: 22px;
+  margin: 4px 0 4px;
+}
+.sg-kicker {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gx-accent);
+}
+.sg-invite-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.sg-invite {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 14px;
+  background: var(--gx-field-strong);
+  box-shadow: var(--sg-control-shadow);
+}
+.sg-invite-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.sg-invite-text strong {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.sg-invite-text small {
+  font-size: 12px;
+  color: var(--gx-muted);
+}
+.sg-invite-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sg-joined {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--gx-accent) 40%, transparent);
+  background: var(--gx-accent-soft);
+  font-size: 13px;
+}
+.sg-invites-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--gx-muted);
+}
+
+@media (max-width: 760px) {
+  .sg-overview .ov-stable-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .sg-overview .ov-stable-grid { grid-template-columns: minmax(0, 1fr); }
+  .sg-overview .ov-stable-grid > div + div { border-left: 1px solid var(--gx-border-strong); }
+  .sg-invite-actions { width: 100%; }
+  .sg-invite-actions .ws-button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sg-overview .ov-stable-stats > a,
+  .sg-page .ws-button { transition: none; }
+  .sg-overview .ov-stable-stats > a:hover,
+  .sg-page .ws-button:hover:not(:disabled) { transform: none; }
+}

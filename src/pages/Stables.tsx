@@ -6,6 +6,7 @@ import {
   type Stable,
   type Teammate,
 } from "../workspace";
+import "../components/stable-glass.css";
 export default function Stables() {
   const {
     active,
@@ -134,7 +135,7 @@ export default function Stables() {
     });
   }
   return (
-    <>
+    <div className="sg-page sg-team">
       <header className="page-head">
         <div className="eyebrow">Your workspace</div>
         <h1>My stables & team</h1>
@@ -370,6 +371,6 @@ export default function Stables() {
           )}
         </section>
       )}
-    </>
+    </div>
   );
 }
