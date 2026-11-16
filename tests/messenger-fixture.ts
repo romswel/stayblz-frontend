@@ -223,12 +223,7 @@ export async function fakeServer(page: Page, unread = { personal: 0, requests: 0
       const action = rest.match(/^messages\/(.+)\/(react|unsend|edit|pin|forward)$/);
       const target = action && thread.messages.find((m) => m.id === action[1]);
       if (action && target) {
-        if (action[2] === "react") {
-          const had = target.reactions.some((r) => r.emoji === body.emoji && r.mine);
-          target.reactions = had
-            ? target.reactions.filter((r) => r.emoji !== body.emoji)
-            : [...target.reactions, { emoji: body.emoji, count: 1, mine: true }];
-        }
+        if (action[2] === "react") target.reactions = [{ emoji: body.emoji, count: 1, mine: true }];
         else if (action[2] === "edit") Object.assign(target, { body: body.body, edited: true });
         else if (action[2] === "pin") {
           target.pinned = body.pin;

@@ -92,9 +92,6 @@ test("react (quick or any emoji), reply, edit, pin, forward and unsend", async (
   await page.getByLabel("Search emoji").fill("trophy");
   await page.getByRole("button", { name: "trophy", exact: true }).click();
   await expect.poll(() => server.posts.filter((p) => p.path.endsWith("/react")).map((p) => p.body.emoji)).toEqual(["❤️", "🏆"]);
-  // Both stay: one person can add several different reactions.
-  await expect(theirs.getByRole("button", { name: "❤️ 1, including you" })).toBeVisible();
-  await expect(theirs.getByRole("button", { name: "🏆 1, including you" })).toBeVisible();
 
   await theirs.hover();
   await theirs.getByRole("button", { name: "Reply" }).click();

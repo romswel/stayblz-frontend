@@ -171,7 +171,7 @@ export default function HorseEditor({
           <button className="ws-button" type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="ws-button sg-primary" disabled={busy}>
+          <button className="ws-button" disabled={busy}>
             {busy ? "Saving…" : "Save horse"}
           </button>
         </div>

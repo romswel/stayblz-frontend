@@ -5,7 +5,6 @@ import HorsePhoto, { HORSE_PHOTOS } from "../components/HorsePhoto";
 import HorsePortrait from "../components/HorsePortrait";
 import Modal from "../components/Modal";
 import HorseEditor from "../components/HorseEditor";
-import "../components/stable-glass.css";
 
 function statusChip(status: string): string {
   switch (status) {
@@ -86,7 +85,7 @@ export default function Inventory() {
   }, [items, query]);
 
   return (
-    <div className="sg-page sg-inventory">
+    <>
       <header className="page-head">
         <div className="eyebrow">Horse records</div>
         <h1>Inventory</h1>
@@ -336,6 +335,6 @@ export default function Inventory() {
           </div>
         </Modal>
       )}
-    </div>
+    </>
   );
 }
