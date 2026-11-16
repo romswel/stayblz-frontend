@@ -75,17 +75,18 @@ export function previewOf(thread: ChatThread): ChatPreview {
   return preview;
 }
 
-/** Your reaction moves to `emoji`, or is removed when it was already `emoji`. */
+/** Adds `emoji` to your reactions, or removes it when you already used it. Other emojis you picked stay. */
 export function toggleReaction(m: ChatMessage, emoji: string): ChatMessage {
-  const previous = m.reactions.find((r) => r.mine)?.emoji;
-  let reactions = m.reactions
-    .map((r) => (r.mine ? { ...r, count: r.count - 1, mine: false } : r))
-    .filter((r) => r.count > 0);
-  if (previous !== emoji) {
-    const found = reactions.find((r) => r.emoji === emoji);
-    reactions = found
-      ? reactions.map((r) => (r.emoji === emoji ? { ...r, count: r.count + 1, mine: true } : r))
-      : [...reactions, { emoji, count: 1, mine: true }];
+  const found = m.reactions.find((r) => r.emoji === emoji);
+  let reactions;
+  if (found?.mine) {
+    reactions = m.reactions
+      .map((r) => (r.emoji === emoji ? { ...r, count: r.count - 1, mine: false } : r))
+      .filter((r) => r.count > 0);
+  } else if (found) {
+    reactions = m.reactions.map((r) => (r.emoji === emoji ? { ...r, count: r.count + 1, mine: true } : r));
+  } else {
+    reactions = [...m.reactions, { emoji, count: 1, mine: true }];
   }
   return { ...m, reactions };
 }
