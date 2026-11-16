@@ -11,6 +11,8 @@
   --sg-card-shadow: var(--gx-shadow), inset 0 1px 0 var(--gx-highlight);
   --sg-control-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), inset 0 1px 0 var(--gx-highlight);
   --sg-focus-ring: 0 0 0 3px var(--gx-accent-soft);
+  --sg-control-border: var(--gx-border-strong);
+  --sg-primary-border: color-mix(in srgb, var(--gx-accent) 65%, var(--gx-text));
 }
 .gx-shell[data-theme="dark"] .sg-page {
   --sg-control-shadow: 0 1px 2px rgba(0, 12, 6, 0.5), inset 0 1px 0 var(--gx-highlight);
@@ -102,7 +104,7 @@
 .sg-page :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
   background: var(--gx-field-strong);
   color: var(--gx-text);
-  border: 1px solid var(--gx-border-strong);
+  border: 1px solid var(--sg-control-border);
   border-radius: 12px;
   box-shadow: var(--sg-control-shadow);
   transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
@@ -115,7 +117,7 @@
   cursor: pointer;
 }
 .sg-page :is(input, select, textarea):hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--gx-accent) 30%, var(--gx-border-strong));
+  border-color: color-mix(in srgb, var(--gx-accent) 55%, var(--sg-control-border));
 }
 .sg-page :is(input, select, textarea):focus-visible {
   outline: none;
@@ -137,7 +139,7 @@
 .sg-page .ws-button {
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid var(--gx-border-strong);
+  border: 1px solid var(--sg-control-border);
   border-radius: 12px;
   background: var(--gx-field-strong);
   color: var(--gx-text);
@@ -184,6 +186,24 @@
 }
 
 /* ---------- Inventory ---------- */
+/* Inventory fields and buttons sit on glass in a modal, where the default
+   hairline vanished — give them a firmer, accent-tinted edge in both themes. */
+.sg-inventory {
+  --sg-control-border: color-mix(in srgb, var(--gx-accent) 30%, var(--gx-border-strong));
+}
+.sg-inventory .inventory-add,
+.sg-inventory .inventory-add:hover:not(:disabled),
+.sg-inventory .sg-primary,
+.sg-inventory .sg-primary:hover:not(:disabled) {
+  border-color: var(--sg-primary-border);
+}
+.sg-inventory .inventory-add {
+  margin: 4px 0 20px;
+}
+.sg-inventory .inventory-add:focus-visible,
+.sg-inventory .sg-primary:focus-visible {
+  box-shadow: 0 8px 22px -12px var(--gx-accent), var(--sg-focus-ring);
+}
 .sg-inventory .toolbar input {
   min-width: 0;
 }
