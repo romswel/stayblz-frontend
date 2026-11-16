@@ -226,7 +226,8 @@ test("messages save only after the server confirms; failed sends keep the text a
     const body = route.request().postDataJSON();
     ids.push(body.clientId);
     expect(route.request().headers()["x-stayblz-stable"]).toBe(stableId);
-    await new Promise((r) => setTimeout(r, 150));
+    // Long enough for the transient "Sending…" state to be observed reliably.
+    await new Promise((r) => setTimeout(r, 800));
     return calls === 1
       ? route.fulfill({
           status: 503,
@@ -329,4 +330,51 @@ test("late invitation creation cannot display a link inside another stable", asy
   await page.getByLabel("Active stable").selectOption(stableId);
   await expect(page.getByLabel("Teammate email")).toBeVisible();
   await expect(page.getByLabel("Invitation link ? copy and share privately")).toHaveCount(0);
+});
+
+test("invitations addressed to the account show on the workspace overview and can be accepted or declined", async ({
+  page,
+}) => {
+  const joinedStable = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  let joined = false;
+  let invitations = [
+    { id: "99999999-9999-4999-8999-999999999991", stableId: joinedStable, stableName: "Oak Ridge Farm", role: "member", invitedBy: "Jamie Cole", expiresAt: new Date(Date.now() + 5 * 864e5).toISOString() },
+    { id: "99999999-9999-4999-8999-999999999992", stableId: otherStable, stableName: "Hill Barn", role: "manager", invitedBy: null, expiresAt: new Date(Date.now() + 5 * 864e5).toISOString() },
+  ];
+  const calls: string[] = [];
+  await page.route("**/api/workspaces**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/workspaces")
+      return route.fulfill({ json: { stables: joined ? [{ id: joinedStable, name: "Oak Ridge Farm", role: "member" }] : [] } });
+    if (path === "/api/workspaces/my-invitations")
+      return route.fulfill({ json: { invitations } });
+    const match = path.match(/my-invitations\/([^/]+)\/(accept|decline)$/);
+    if (match && route.request().method() === "POST") {
+      calls.push(match[2] + ":" + match[1]);
+      invitations = invitations.filter((i) => i.id !== match[1]);
+      if (match[2] === "accept") joined = true;
+      return route.fulfill({ json: match[2] === "accept" ? { stableId: joinedStable } : { ok: true } });
+    }
+    return route.fallback();
+  });
+  await page.goto("/workspace");
+  const card = page.getByRole("region", { name: "Stable invitations for you" });
+  await expect(card.getByText("Oak Ridge Farm")).toBeVisible();
+  await expect(card.getByText("Jamie Cole invited you as a member")).toBeVisible();
+  await expect(card.getByText("Invited as a manager")).toBeVisible();
+  // No stable yet: the start prompt still shows under the invitations.
+  await expect(page.getByRole("heading", { name: "Start your stable" })).toBeVisible();
+
+  await card.getByRole("listitem").filter({ hasText: "Hill Barn" }).getByRole("button", { name: "Decline" }).click();
+  await page.getByRole("button", { name: "Decline invitation" }).click();
+  await expect(card.getByText("Hill Barn")).toHaveCount(0);
+
+  await card.getByRole("button", { name: "Accept & join" }).click();
+  await expect(page.getByText("It’s now your active stable.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Oak Ridge Farm." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Accept & join" })).toHaveCount(0);
+  expect(calls).toEqual([
+    "decline:99999999-9999-4999-8999-999999999992",
+    "accept:99999999-9999-4999-8999-999999999991",
+  ]);
 });

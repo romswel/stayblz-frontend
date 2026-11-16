@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
 import { useWorkspace, StableGate } from "../workspace";
 import StableActivity from "../components/overview/StableActivity";
+import MyStableInvitations from "../components/overview/MyStableInvitations";
 import "../components/overview/overview.css";
+import "../components/stable-glass.css";
 export default function StableWorkspace() {
   const { active } = useWorkspace();
   return (
-    <div className="overview">
+    <div className="overview sg-page sg-overview">
       <header className="ov-heading">
         <div>
           <span className="ov-kicker">OPTIONAL · STABLE OPERATIONS</span>
@@ -34,6 +36,7 @@ export default function StableWorkspace() {
           </Link>
         ))}
       </nav>
+      <MyStableInvitations />
       <StableGate>
         <StableActivity />
       </StableGate>
