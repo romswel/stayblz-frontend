@@ -165,6 +165,7 @@
 .sg-team form .ws-button,
 .sg-page .ws-access .ws-button,
 .sg-overview .ov-composer .ws-button,
+.sg-inventory .inventory-add,
 .sg-page .sg-primary {
   border-color: transparent;
   color: var(--gx-accent-ink);
@@ -174,11 +175,28 @@
 .sg-team form .ws-button:hover:not(:disabled),
 .sg-page .ws-access .ws-button:hover:not(:disabled),
 .sg-overview .ov-composer .ws-button:hover:not(:disabled),
+.sg-inventory .inventory-add:hover:not(:disabled),
 .sg-page .sg-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
   border-color: transparent;
   filter: brightness(1.06);
   box-shadow: 0 10px 24px -10px var(--gx-accent), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/* ---------- Inventory ---------- */
+.sg-inventory .toolbar input {
+  min-width: 0;
+}
+.sg-inventory .table-wrap {
+  border: 1px solid var(--gx-border-strong);
+  border-radius: var(--gx-radius-sm);
+  box-shadow: var(--sg-card-shadow);
+}
+.sg-inventory .horse-editor label {
+  color: var(--gx-text);
+}
+.sg-inventory .horse-editor :is(input, select, textarea) {
+  font-size: 16px;
 }
 
 /* ---------- My stables & team details ---------- */
