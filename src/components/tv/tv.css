@@ -93,6 +93,12 @@
   background: #000;
   object-fit: contain;
 }
+.tv-video[hidden] {
+  display: none;
+}
+.tv-embed {
+  border: 0;
+}
 .tv-overlay {
   position: absolute;
   inset: 0;

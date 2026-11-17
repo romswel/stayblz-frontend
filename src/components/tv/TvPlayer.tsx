@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type Hls from "hls.js";
 import { api, ApiError } from "../../api";
 
-type Playback = { url: string; title: string | null };
+/** `kind` "embed" (demo until a stream provider is connected) means `url` is a YouTube embed, shown in YouTube's own player. */
+type Playback = { url: string; title: string | null; kind?: "hls" | "embed" };
 type Phase = "connecting" | "playing" | "buffering" | "error" | "unsupported";
 
 /** How many times a dropped stream reconnects by itself before asking the viewer. */
@@ -15,6 +16,9 @@ const AUTO_RETRIES = 3;
  *
  * Starts muted because browsers block autoplay with sound; a button turns the sound on.
  * `onOffAir` tells the page the broadcast ended so it can refresh what's on.
+ *
+ * Demo: when playback says `kind: "embed"`, the server-built YouTube embed address is shown in an
+ * iframe instead (YouTube's player, controls and sound button). The site CSP allows only YouTube frames.
  */
 export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -22,6 +26,7 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
   const [message, setMessage] = useState("");
   const [muted, setMuted] = useState(true);
   const [attempt, setAttempt] = useState(0);
+  const [embed, setEmbed] = useState<{ url: string; title: string | null } | null>(null);
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
@@ -42,6 +47,7 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
     element.addEventListener("waiting", onWaiting);
     element.addEventListener("playing", onPlaying);
     setPhase("connecting");
+    setEmbed(null);
 
     (async () => {
       let playback: Playback;
@@ -53,6 +59,12 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
         return fail(error instanceof ApiError ? error.message : "The broadcast couldn't be opened.");
       }
       if (stopped) return;
+
+      if (playback.kind === "embed") {
+        // "connecting" stays up until the iframe loads (onLoad below).
+        setEmbed({ url: playback.url, title: playback.title });
+        return;
+      }
 
       // Safari and iOS play HLS themselves (and iOS has no Media Source Extensions for hls.js).
       if (element.canPlayType("application/vnd.apple.mpegurl")) {
@@ -114,8 +126,21 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
 
   return (
     <div className="tv-player" data-phase={phase}>
+      {embed && (
+        <iframe
+          className="tv-video tv-embed"
+          src={embed.url}
+          title={embed.title ? `Live race telecast: ${embed.title}` : "Live race telecast"}
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+          // The site sends no referrer; YouTube's player refuses to start without one.
+          referrerPolicy="strict-origin-when-cross-origin"
+          onLoad={() => setPhase("playing")}
+        />
+      )}
       <video
         ref={video}
+        hidden={!!embed}
         className="tv-video"
         controls={phase === "playing" || phase === "buffering"}
         autoPlay
@@ -143,7 +168,7 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
           <p>This browser can't play live video. Try an up-to-date Chrome, Edge, Firefox or Safari.</p>
         </div>
       )}
-      {phase === "playing" && muted && (
+      {phase === "playing" && muted && !embed && (
         <button type="button" className="tv-action tv-unmute" onClick={unmute}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M11 5 6 9H2v6h4l5 4z" />

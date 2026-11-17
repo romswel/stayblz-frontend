@@ -74,6 +74,29 @@ test("live: the player asks for playback; a failure offers Try again", async ({ 
   await expect.poll(() => calls.playback).toBeGreaterThan(before);
 });
 
+test("live demo embed: YouTube's player fills the screen, no HLS video or our sound button", async ({ page }) => {
+  const url = "https://www.youtube-nocookie.com/embed/cJA4RJ5teuw?autoplay=1&mute=1&playsinline=1&rel=0";
+  await mockTv(page, {
+    status: { state: "live", title: "Los Alamitos Race Course", startsAt: null },
+    playback: { status: 200, json: { url, title: "Los Alamitos Race Course", kind: "embed" } },
+  });
+  // The test never reaches YouTube; an empty page stands in for its player.
+  await page.route("https://www.youtube-nocookie.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<html></html>" }));
+  await page.goto("/tv");
+  const frame = page.locator("iframe.tv-embed");
+  await expect(frame).toHaveAttribute("src", url);
+  await expect(frame).toHaveAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+  await expect(frame).toHaveAttribute("title", "Live race telecast: Los Alamitos Race Course");
+  await expect(page.locator("video")).toBeHidden();
+  await expect(page.getByText("Connecting to the broadcast…")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Tap for sound" })).toHaveCount(0);
+  const screen = (await page.locator(".tvg-player").boundingBox())!;
+  const box = (await frame.boundingBox())!;
+  expect(box.width).toBeGreaterThan(300);
+  expect(Math.abs(box.width - screen.width)).toBeLessThan(2);
+  expect(Math.abs(box.height - screen.height)).toBeLessThan(2);
+});
+
 test("live but ended before playback: the page re-checks and shows off air", async ({ page }) => {
   const { state } = await mockTv(page, { status: { state: "live", title: null, startsAt: null } });
   await page.route("**/api/tv/playback", async (route) => {
