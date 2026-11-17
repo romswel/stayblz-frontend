@@ -85,6 +85,8 @@
 }
 .tvg-chip.is-live { color: #fff; background: var(--tvg-live); border-color: transparent; box-shadow: 0 0 14px -2px var(--tvg-live); }
 .tvg-chip.is-grade { color: var(--gx-accent-ink); background: linear-gradient(135deg, var(--gx-accent-3), var(--gx-warn)); border-color: transparent; }
+.tvg-chip.is-replay { color: var(--gx-accent-ink); background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2)); border-color: transparent; }
+.tvg-chip.is-yt { color: #fff; background: #cc0000; border-color: transparent; }
 .tvg-chip.is-sample { color: var(--gx-warn); background: color-mix(in srgb, var(--gx-warn) 12%, transparent); border-color: color-mix(in srgb, var(--gx-warn) 30%, transparent); }
 .tvg-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
 
@@ -214,7 +216,9 @@
   background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px);
   mix-blend-mode: overlay;
 }
-.tvg-screen.is-live .tvg-scan { display: none; }
+.tvg-screen.is-live .tvg-scan,
+.tvg-screen.is-replay .tvg-scan { display: none; }
+.tvg-screen.is-replay { border-color: color-mix(in srgb, var(--gx-accent) 55%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--gx-accent) 30%, transparent), 0 20px 60px -20px color-mix(in srgb, var(--gx-accent) 45%, transparent); }
 .tvg-onscreen {
   position: absolute;
   top: 14px;
@@ -238,6 +242,26 @@
 }
 .tvg-onscreen.is-live { color: #fff; background: var(--tvg-live); border-color: transparent; }
 .tvg-onscreen.is-live .tvg-dot { animation: tvg-pulse 1.6s ease-out infinite; }
+.tvg-onscreen.is-replay { color: var(--gx-accent-ink); background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2)); border-color: transparent; }
+.tvg-onscreen svg { width: 12px; height: 12px; }
+/* Playing (live or replay): badge, title and Back to live sit in a strip above the video, never
+   on it — YouTube's player has its unmute button top left and volume/settings top right. */
+.tvg-screen.has-bar { display: flex; flex-direction: column; aspect-ratio: auto; }
+.tvg-screen-bar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.tvg-screen-bar .tvg-onscreen { position: static; flex: none; }
+.tvg-bar-title { flex: 1; min-width: 0; font-size: 0.84rem; font-weight: 650; color: rgba(233, 243, 236, 0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tvg-screen.has-bar .tvg-player { position: relative; inset: auto; width: 100%; aspect-ratio: 16 / 9; }
+.tvg-back-live { flex: none; height: 36px; padding: 0 14px; }
 .tvg-player { position: absolute; inset: 0; z-index: 2; }
 .tvg-player > * { width: 100%; height: 100%; }
 .tvg-screen-inner {
@@ -443,6 +467,7 @@
   cursor: pointer;
 }
 .tvg-seg button:hover { color: var(--gx-text); }
+.tvg-seg-divider { flex: none; align-self: center; width: 1px; height: 20px; margin: 0 4px; background: var(--gx-border-strong); }
 .tvg-seg button[aria-pressed="true"] {
   color: var(--gx-text);
   background: var(--gx-surface-strong);
@@ -506,6 +531,9 @@
   cursor: pointer;
   overflow: hidden;
 }
+.tvg-thumb-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tvg-card.is-playing { border-color: color-mix(in srgb, var(--gx-accent) 60%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--gx-accent) 35%, transparent); }
+.tvg-duration.is-playing { font-family: inherit; font-weight: 700; color: var(--gx-accent-ink); background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2)); }
 .tvg-thumb-art {
   position: absolute;
   inset: 0;
@@ -574,6 +602,13 @@
 .tvg-winner { display: flex; align-items: center; gap: 6px; font-size: 0.84rem; color: var(--gx-warn); }
 .tvg-winner strong { color: var(--gx-text); }
 .tvg-winner small { color: var(--gx-muted); }
+.tvg-yt-note { align-items: flex-start; line-height: 1.45; }
+.tvg-yt-note svg { flex: none; margin-top: 2px; }
+.tvg-yt-note span { color: var(--gx-text-2); }
+.tvg-yt-desc { font-size: 0.82rem; line-height: 1.5; color: var(--gx-text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tvg-facts.tvg-side-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tvg-side-facts dd { overflow-wrap: anywhere; }
+.tvg-side-foot a { color: var(--gx-accent); font-weight: 650; }
 .tvg-hit { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.84rem; color: var(--gx-text-2); }
 .tvg-hit strong { color: var(--gx-accent); }
 .tvg-podium {
@@ -684,7 +719,7 @@
 @media (max-width: 1100px) {
   .tvg-stage { grid-template-columns: minmax(0, 1fr); }
   .tvg-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; column-gap: 20px; }
-  .tvg-side-head, .tvg-now, .tvg-side-time { grid-column: 1; }
+  .tvg-side-head, .tvg-now, .tvg-side-time, .tvg-side-facts, .tvg-side-note { grid-column: 1; }
   .tvg-side-foot { grid-column: 2; grid-row: 1 / span 4; margin-top: 0; padding-top: 0; border-top: 0; border-left: 1px solid var(--gx-border); padding-left: 20px; }
 }
 @media (max-width: 640px) {
@@ -695,12 +730,18 @@
   .tvg-btn:not(.tvg-btn-sm) { height: 44px; }
   .tvg-search .tvg-btn { padding: 0 12px; }
   .tvg-screen { aspect-ratio: auto; min-height: 300px; border-radius: 16px; }
-  .tvg-screen.is-live { aspect-ratio: 16 / 9; min-height: 0; }
+  .tvg-screen.has-bar { min-height: 0; }
+  .tvg-screen-bar { min-height: 60px; }
+  .tvg-back-live { padding: 0 12px; font-size: 0.8rem; }
   .tvg-screen-inner .tvg-icon { width: 40px; height: 40px; }
   .tvg-count-cell strong { min-width: 44px; }
   .tvg-side { display: flex; }
   .tvg-side-foot { border-left: 0; padding-left: 0; border-top: 1px solid var(--gx-border); padding-top: 12px; flex-direction: row; align-items: center; justify-content: space-between; }
   .tvg-toolbar { flex-direction: column; align-items: stretch; }
+  /* Phones: wrap the options (surfaces, All YouTube, channels) instead of hiding some off to the side. */
+  .tvg-seg { display: flex; flex-wrap: wrap; }
+  .tvg-seg button { flex: 1 1 auto; }
+  .tvg-seg-divider { display: none; }
   .tvg-select select { flex: 1; }
   .tvg-finder-list { grid-template-columns: minmax(0, 1fr); }
   .tvg-grid { grid-template-columns: minmax(0, 1fr); }
@@ -711,9 +752,11 @@
 
 /* Phone turned sideways: the live video fits the screen height instead of running off it. */
 @media (max-height: 500px) and (orientation: landscape) {
-  .tvg-screen.is-live {
-    width: min(100%, calc(92vh * 16 / 9));
-    width: min(100%, calc(92svh * 16 / 9));
+  .tvg-screen.is-live,
+  .tvg-screen.is-replay {
+    /* The video is 16:9 under a 52px strip. */
+    width: min(100%, calc((92vh - 52px) * 16 / 9));
+    width: min(100%, calc((92svh - 52px) * 16 / 9));
     margin-inline: auto;
   }
 }
