@@ -80,7 +80,7 @@ const YT = {
 };
 const LIVE_EMBED = {
   status: 200,
-  json: { url: "https://www.youtube-nocookie.com/embed/83L5qoWNHYM?autoplay=1&mute=1", title: "Los Alamitos", kind: "embed" },
+  json: { url: "https://www.youtube-nocookie.com/embed/83L5qoWNHYM?autoplay=1", title: "Los Alamitos", kind: "embed" },
 };
 
 const noOverflow = async (page: Page) =>
@@ -128,7 +128,7 @@ test("live: the player asks for playback; a failure offers Try again", async ({ 
 });
 
 test("live demo embed: YouTube's player fills the screen, no HLS video or our sound button", async ({ page }) => {
-  const url = "https://www.youtube-nocookie.com/embed/cJA4RJ5teuw?autoplay=1&mute=1&playsinline=1&rel=0";
+  const url = "https://www.youtube-nocookie.com/embed/cJA4RJ5teuw?autoplay=1&playsinline=1&rel=0";
   await mockTv(page, {
     status: { state: "live", title: "Los Alamitos Race Course", startsAt: null },
     playback: { status: 200, json: { url, title: "Los Alamitos Race Course", kind: "embed" } },
@@ -176,7 +176,9 @@ for (const width of [320, 375]) {
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width);
     expect(box.width).toBeGreaterThanOrEqual(width - 32);
-    expect(Math.abs(box.height - (box.width * 9) / 16)).toBeLessThan(2);
+    // The video area under the Live strip stays 16:9.
+    const video = (await page.locator(".tvg-player").boundingBox())!;
+    expect(Math.abs(video.height - (video.width * 9) / 16)).toBeLessThan(2);
     const retry = (await page.getByRole("button", { name: "Try again" }).boundingBox())!;
     expect(retry.height).toBeGreaterThanOrEqual(40);
   });
@@ -285,9 +287,33 @@ for (const width of [320, 375]) {
     await expect(page.locator(".tvg-onscreen")).toHaveText("Replay");
     await noOverflow(page);
     const box = (await page.locator(".tvg-screen").boundingBox())!;
-    expect(Math.abs(box.height - (box.width * 9) / 16)).toBeLessThan(2);
+    const video = (await page.locator(".tvg-player").boundingBox())!;
+    expect(Math.abs(video.height - (video.width * 9) / 16)).toBeLessThan(2);
     const back = (await page.locator(".tvg-back-live").boundingBox())!;
     expect(back.height).toBeGreaterThanOrEqual(44);
     expect(back.x + back.width).toBeLessThanOrEqual(box.x + box.width);
   });
 }
+
+test("YouTube's player corners stay clear: the badge and Back to live sit above the video, not on it", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1400 });
+  await mockTv(page, { status: { state: "live", title: "Los Alamitos", startsAt: null }, playback: LIVE_EMBED, youtube: YT });
+  await stubYouTube(page);
+  for (const path of ["/tv", "/tv?yt=all&watch=cJA4RJ5teuw"]) {
+    await page.goto(path);
+    const frame = page.locator(".tvg-screen iframe");
+    await expect(frame).toHaveCount(1);
+    const video = (await frame.boundingBox())!;
+    for (const sel of [".tvg-onscreen", ".tvg-back-live"]) {
+      const el = page.locator(`.tvg-screen ${sel}`);
+      if (!(await el.count())) continue;
+      const b = (await el.boundingBox())!;
+      expect(b.y + b.height, `${sel} on ${path}`).toBeLessThanOrEqual(video.y + 0.5);
+    }
+    // Nothing of ours is on top of the player's corners (where its unmute and volume buttons are).
+    for (const [x, y] of [[24, 24], [video.width - 24, 24], [24, video.height - 24], [video.width - 24, video.height - 24]]) {
+      const hit = await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.tagName, [video.x + x, video.y + y]);
+      expect(hit, `${path} @${x},${y}`).toBe("IFRAME");
+    }
+  }
+});

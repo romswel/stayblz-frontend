@@ -290,15 +290,34 @@ export default function StayblzTV() {
       <div className="tvg-stage">
         <section
           ref={screenRef}
-          className={`tvg-screen${watching ? " is-replay" : live ? " is-live" : ""}`}
+          className={`tvg-screen${watching ? " is-replay has-bar" : live ? " is-live has-bar" : ""}`}
           aria-label={`${TV_NAME} player`}
         >
           <span className="tvg-scan" aria-hidden="true" />
-          {watching ? (
-            <span className="tvg-onscreen is-replay">
-              <ReplayIcon />
-              Replay
-            </span>
+          {watching || live ? (
+            // A strip above the video, not on it: YouTube's player keeps its own controls at the
+            // top corners (unmute top left, volume/captions/settings top right).
+            <div className="tvg-screen-bar">
+              {watching ? (
+                <span className="tvg-onscreen is-replay">
+                  <ReplayIcon />
+                  Replay
+                </span>
+              ) : (
+                <span className="tvg-onscreen is-live">
+                  <span className="tvg-dot" aria-hidden="true" />
+                  Live
+                </span>
+              )}
+              <span className="tvg-bar-title">
+                {watching ? `${watching.heading} · ${broadcastDate(watching)}` : status?.title ?? ""}
+              </span>
+              {watching && (
+                <button type="button" className="tvg-btn tvg-btn-primary tvg-back-live" onClick={() => watch("")}>
+                  {live ? <LiveIcon /> : <CloseIcon />} {backLabel}
+                </button>
+              )}
+            </div>
           ) : (
             badge && (
               <span className={`tvg-onscreen is-${status?.state ?? "off_air"}`}>
@@ -308,7 +327,6 @@ export default function StayblzTV() {
             )
           )}
           {watching ? (
-            <>
               <div className="tvg-player">
                 <iframe
                   key={watching.id}
@@ -321,10 +339,6 @@ export default function StayblzTV() {
                   referrerPolicy="strict-origin-when-cross-origin"
                 />
               </div>
-              <button type="button" className="tvg-btn tvg-btn-primary tvg-back-live" onClick={() => watch("")}>
-                {live ? <LiveIcon /> : <CloseIcon />} {backLabel}
-              </button>
-            </>
           ) : live ? (
             <div className="tvg-player">
               <TvPlayer onOffAir={load} />
