@@ -5,6 +5,8 @@ export interface NotificationSettings {
   enabled: boolean;
   chatMessages: boolean;
   chatRequests: boolean;
+  /** Stayblz Paddock: incoming calls, meetings starting, invitations. */
+  paddockCalls: boolean;
   previews: boolean;
   sound: boolean;
   promptedAt: string | null;
@@ -14,7 +16,7 @@ export interface PushInfo {
   available: boolean;
   publicKey: string | null;
 }
-export type SettingsChange = Partial<Pick<NotificationSettings, "enabled" | "chatMessages" | "chatRequests" | "previews" | "sound">> & {
+export type SettingsChange = Partial<Pick<NotificationSettings, "enabled" | "chatMessages" | "chatRequests" | "paddockCalls" | "previews" | "sound">> & {
   prompted?: boolean;
 };
 

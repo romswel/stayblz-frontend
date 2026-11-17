@@ -1,9 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { MAX_PEOPLE } from "./brand";
 import CornerFloat from "./CornerFloat";
 import type { CallView, PaddockCall } from "./engine/call";
-import { CopyLink } from "./InfoTab";
-import { arrange, fitGrid, type LayoutMode, type TileItem } from "./layout";
+import { arrange, fitGrid, type TileItem, type ViewPrefs } from "./layout";
 import Tile from "./Tile";
 
 function useSize<T extends HTMLElement>() {
@@ -28,46 +26,36 @@ const SelfFloat = ({ children }: { children: ReactNode }) => (
   </CornerFloat>
 );
 
+/** The video area: one big tile, a grid, or a main tile with a strip, as `arrange` decides. */
 export default function Stage({
   view,
   call,
-  mode,
+  prefs,
   pinned,
   onPin,
 }: {
   view: CallView;
   call: PaddockCall;
-  mode: LayoutMode;
+  prefs: ViewPrefs;
   pinned: string | null;
   onPin: (key: string | null) => void;
 }) {
   const [ref, size] = useSize<HTMLDivElement>();
   // A pin on someone who left is dropped.
   const validPin = pinned && view.people.some((p) => pinned === p.id || (pinned === `${p.id}:screen` && p.state.screen)) ? pinned : null;
-  const layout = arrange(view, mode, validPin);
+  const layout = arrange(view, prefs, validPin);
   const tile = (item: TileItem, tileSize: "grid" | "main" | "strip" | "float" | "solo") => (
     <Tile key={item.key} item={item} view={view} call={call} size={tileSize} pinned={validPin} onPin={onPin} />
   );
 
   let body: ReactNode;
   if (layout.kind === "solo") {
-    body = (
-      <div className="pd-solo">
-        {tile(layout.main, "solo")}
-        {view.people.length === 1 && (
-          <div className="pd-alone">
-            <strong>You're the only one here</strong>
-            <p>Share this link to bring up to {MAX_PEOPLE - 1} more people in.</p>
-            <CopyLink code={view.code} label="Copy meeting link" />
-          </div>
-        )}
-      </div>
-    );
+    body = <div className="pd-solo">{tile(layout.main, "solo")}</div>;
   } else if (layout.kind === "duo") {
     body = (
       <>
         <div className="pd-duo">{tile(layout.main, "main")}</div>
-        <SelfFloat>{tile(layout.float, "float")}</SelfFloat>
+        {layout.float && <SelfFloat>{tile(layout.float, "float")}</SelfFloat>}
       </>
     );
   } else if (layout.kind === "grid") {

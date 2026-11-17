@@ -21,8 +21,10 @@ export async function startChatCall(thread: ChatThread, _mode: ChatMode, video: 
   });
   try {
     localStorage.setItem(PREJOIN_KEY, JSON.stringify({ mic: true, cam: video }));
+    // Once the caller is in, the call rings everyone in the chat (engine/call.ts reads this).
+    sessionStorage.setItem(`stayblz.paddock.ring.${meeting.code}`, video ? "video" : "voice");
   } catch {
-    /* The green room just uses its usual setting. */
+    /* The green room just uses its usual setting; people can still join from the chat message. */
   }
   const link = `${window.location.origin}/paddock/${meeting.code}`;
   return {

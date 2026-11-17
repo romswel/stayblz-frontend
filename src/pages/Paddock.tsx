@@ -20,7 +20,7 @@ export function GuestPaddock() {
   const { code = "" } = useParams();
   if (!/^[a-z]{4}-[a-z]{4}$/.test(code)) return <StatusPage kind="not-found" standalone />;
   return (
-    <div className="pd-guest-page">
+    <div className="pd-guest-page gx-layer">
       <PaddockMeeting code={code} />
     </div>
   );

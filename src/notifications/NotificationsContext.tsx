@@ -9,8 +9,8 @@ import { notifyApi, type IncomingChat, type NotificationSettings, type PushInfo,
 import { viewingChat } from "./viewing";
 
 /**
- * Notifications for the whole site. Stayblz Chat is the first thing that notifies; later features add their own
- * kinds here. Three ways an alert reaches you, all behind the account's "Notifications" switch:
+ * Notifications for the whole site: Stayblz Chat messages, and Stayblz Paddock calls and meetings (PaddockAlerts.tsx
+ * adds those through `addAlert`). Three ways an alert reaches you, all behind the account's "Notifications" switch:
  *  1. Stayblz open and in front: a small card in the corner (+ a soft chime).
  *  2. Stayblz open in a background tab or window: a system notification from the browser.
  *  3. Stayblz closed: Web Push (only on devices that turned it on, and only once the server has its keys).
@@ -18,11 +18,13 @@ import { viewingChat } from "./viewing";
  */
 export interface AppAlert {
   id: string;
-  kind: "chat";
+  kind: "chat" | "call" | "meeting";
   title: string;
   body: string;
   url: string;
   fromId: string | null;
+  /** Whose face to show (defaults to the title). */
+  fromName?: string;
   group: boolean;
   at: number;
 }
@@ -54,6 +56,8 @@ interface Ctx {
   dismiss: (id: string) => void;
   openAlert: (alert: AppAlert) => void;
   reload: () => void;
+  /** Another feature's alert: into the bell's list, and a corner card (+ chime) when `toast`. */
+  addAlert: (alert: AppAlert, toast: boolean) => void;
 }
 const Context = createContext<Ctx | null>(null);
 const EMPTY: UnreadCounts = { personal: 0, requests: 0, team: 0 };
@@ -307,6 +311,16 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     };
   }, [signedIn, user?.id, handleIncoming]);
 
+  // A page notification (no service worker) was tapped: open its page here.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const url = (e as CustomEvent<string>).detail;
+      if (typeof url === "string" && url.startsWith("/")) navigateRef.current(url);
+    };
+    window.addEventListener("stayblz:open", onOpen);
+    return () => window.removeEventListener("stayblz:open", onOpen);
+  }, []);
+
   // The service worker: a tapped notification opens its chat here; a push while we're in front just checks now.
   useEffect(() => {
     const sw = navigator.serviceWorker;
@@ -444,6 +458,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         navigate(alert.url);
       },
       reload: () => setReloadKey((k) => k + 1),
+      addAlert: (alert, toast) => {
+        setRecent((old) => [alert, ...old.filter((a) => a.id !== alert.id)].slice(0, 20));
+        if (toast) {
+          setToasts((old) => [...old.filter((t) => t.id !== alert.id), alert].slice(-3));
+          if (settingsRef.current?.sound !== false) chime();
+        }
+      },
     }),
     [counts, settings, push, loadError, permission, pushOn, promptHidden, save, enable, dismissPrompt, setPush, test, toasts, recent, navigate],
   );

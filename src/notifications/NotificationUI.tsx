@@ -39,14 +39,14 @@ function ToastCard({ alert, onOpen, onClose }: { alert: AppAlert; onOpen: () => 
     return () => window.clearTimeout(t);
   }, [paused]);
   return (
-    <div className="nt-toast" role="status" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <div className={`nt-toast is-${alert.kind}`} role="status" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <button type="button" className="nt-toast-main" onClick={onOpen}>
-        <Avatar name={alert.title} id={alert.group ? null : alert.fromId} group={alert.group} size="md" />
+        <Avatar name={alert.fromName ?? alert.title} id={alert.group ? null : alert.fromId} group={alert.group} size="md" />
         <span className="nt-toast-text">
           <strong>{alert.title}</strong>
           <span>{alert.body}</span>
         </span>
-        <small className="nt-toast-kind">Stayblz Chat</small>
+        <small className="nt-toast-kind">{alert.kind === "chat" ? "Stayblz Chat" : "Stayblz Paddock"}</small>
       </button>
       <button type="button" className="nt-toast-close" aria-label="Dismiss" onClick={onClose}>
         ×
@@ -89,7 +89,7 @@ export function NotificationPrompt() {
         </div>
         {step === "done" ? (
           <p className="dlg-text">
-            You'll get a heads-up when someone messages you on Stayblz Chat
+            You'll get a heads-up when someone messages or calls you on Stayblz
             {pushState === "on" ? ", even when Stayblz is closed on this device." : " while Stayblz is open in any tab."} Change it any time in{" "}
             <Link to="/account/notifications" onClick={() => setReady(false)}>
               Notification settings
@@ -104,7 +104,7 @@ export function NotificationPrompt() {
           </p>
         ) : (
           <div className="dlg-text">
-            <p>Get a heads-up when someone messages you on Stayblz Chat — even when you're on another page or tab.</p>
+            <p>Get a heads-up when someone messages or calls you on Stayblz — even when you're on another page or tab.</p>
             {unsupported && (
               <p>
                 This browser can't show system notifications here. We'll show alerts inside Stayblz while it's open.
@@ -221,7 +221,7 @@ export function NotificationBell() {
               {recent.map((a) => (
                 <li key={a.id}>
                   <button type="button" className="nt-panel-row" onClick={() => openAlert(a)}>
-                    <Avatar name={a.title} id={a.group ? null : a.fromId} group={a.group} size="sm" />
+                    <Avatar name={a.fromName ?? a.title} id={a.group ? null : a.fromId} group={a.group} size="sm" />
                     <span>
                       <strong>{a.title}</strong>
                       <small>{a.body}</small>
@@ -232,7 +232,7 @@ export function NotificationBell() {
               ))}
             </ul>
           ) : (
-            !unread && <p className="nt-panel-empty">You're all caught up. New message alerts show here while Stayblz is open.</p>
+            !unread && <p className="nt-panel-empty">You're all caught up. New messages, missed calls and meetings show here while Stayblz is open.</p>
           )}
         </div>
       )}

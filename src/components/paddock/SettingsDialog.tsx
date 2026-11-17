@@ -2,17 +2,19 @@ import { useState } from "react";
 import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import type { PaddockCall } from "./engine/call";
+import type { LocalMedia } from "./engine/media";
 import { setSoundsOn, soundsOn } from "./engine/sounds";
 import { DevicePickers, LevelMeter, StreamVideo } from "./Preview";
 import { modKey, useMedia } from "./useCall";
 
-export function SettingsDialog({ call, onClose }: { call: PaddockCall; onClose: () => void }) {
-  const media = call.media;
+/** Devices, mirror and sounds. In a call `call` is given, so a new speaker applies to everyone's sound. */
+export function SettingsDialog({ call, media: given, onClose }: { call?: PaddockCall; media?: LocalMedia; onClose: () => void }) {
+  const media = (call?.media ?? given)!;
   useMedia(media);
   const [sounds, setSounds] = useState(soundsOn);
   const [mirror, setMirror] = useState(media.mirror);
   return (
-    <Modal label="Call settings" onClose={onClose}>
+    <Modal label="Call settings" className="gx-layer pd-modal" onClose={onClose}>
       <DialogHead kicker="Stayblz Paddock" title="Settings" onClose={onClose} />
       <div className="dlg pd-settings">
         <div className="pd-settings-preview">
@@ -22,7 +24,7 @@ export function SettingsDialog({ call, onClose }: { call: PaddockCall; onClose: 
             <span className="pd-small">Your camera is off.</span>
           )}
         </div>
-        <DevicePickers media={media} onSpeaker={(id) => void call.chooseDevice("audiooutput", id)} />
+        <DevicePickers media={media} onSpeaker={(id) => void call?.chooseDevice("audiooutput", id)} />
         <p className="pd-small pd-level-row">
           Mic level <LevelMeter media={media} /> {media.micOn ? "" : "(you're muted)"}
         </p>
@@ -79,7 +81,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
     ["Esc", "Close a panel or menu"],
   ];
   return (
-    <Modal label="Keyboard shortcuts" className="modal-sm" onClose={onClose}>
+    <Modal label="Keyboard shortcuts" className="modal-sm gx-layer pd-modal" onClose={onClose}>
       <DialogHead kicker="Stayblz Paddock" title="Keyboard shortcuts" onClose={onClose} />
       <div className="dlg">
         <dl className="pd-keys">

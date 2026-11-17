@@ -76,7 +76,7 @@ export default function ScheduleDialog({ meeting, onClose, onSaved }: { meeting?
   }
 
   return (
-    <Modal label={editing ? "Edit meeting" : "Schedule a meeting"} onClose={onClose} className="modal-wide">
+    <Modal label={editing ? "Edit meeting" : "Schedule a meeting"} onClose={onClose} className="modal-wide gx-layer pd-modal">
       <DialogHead kicker={PADDOCK_NAME} title={editing ? "Edit meeting" : "Schedule a meeting"} onClose={onClose} />
       <form
         className="dlg pd-schedule"

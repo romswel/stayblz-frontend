@@ -6,26 +6,55 @@ import { meetingLink } from "./brand";
 import { downloadIcs } from "./ics";
 import { CalendarIcon, CopyIcon, LinkIcon, MoreIcon, PeopleIcon } from "./icons";
 import type { Meeting } from "./paddockApi";
-import { ago, dateBadge, meetingTime } from "./time";
+import { ago, dateBadge, meetingTime, timeRange } from "./time";
 
 const roleText: Record<Meeting["role"], string> = {
   host: "You're the host",
-  cohost: "You're a co-host",
-  invited: "You're invited",
+  cohost: "Co-host",
+  invited: "Invited",
   team: "Team meeting",
   none: "",
   guest: "",
 };
 
-export default function MeetingRow({ meeting, onEdit, onDelete, inCall }: { meeting: Meeting; onEdit: () => void; onDelete: () => Promise<void>; inCall: boolean }) {
+/** One meeting on the Paddock home: a card (agenda, live) or a compact row (recent, coming up). */
+export default function MeetingRow({
+  meeting,
+  onEdit,
+  onDelete,
+  inCall,
+  compact = false,
+  past = false,
+}: {
+  meeting: Meeting;
+  onEdit: () => void;
+  onDelete: () => Promise<void>;
+  inCall: boolean;
+  compact?: boolean;
+  past?: boolean;
+}) {
   const confirm = useConfirm();
   const more = useRef<HTMLButtonElement>(null);
   const [menu, setMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const live = meeting.live.count > 0;
   const badge = meeting.scheduledFor ? dateBadge(meeting.scheduledFor) : null;
-  const when = meetingTime(meeting.scheduledFor, meeting.durationMinutes, live);
-  const items: MenuEntry[] = [];
+  const when = meeting.scheduledFor
+    ? compact
+      ? meetingTime(meeting.scheduledFor, meeting.durationMinutes, live)
+      : timeRange(meeting.scheduledFor, meeting.durationMinutes)
+    : live
+      ? "Happening now"
+      : meeting.lastJoinedAt
+        ? `Last joined ${ago(meeting.lastJoinedAt)}`
+        : `Created ${ago(meeting.createdAt)}`;
+  const items: MenuEntry[] = [
+    {
+      label: copied ? "Link copied" : "Copy meeting link",
+      icon: <CopyIcon />,
+      onSelect: () => void copy(),
+    },
+  ];
   if (meeting.scheduledFor)
     items.push({
       label: "Add to calendar (.ics)",
@@ -50,67 +79,68 @@ export default function MeetingRow({ meeting, onEdit, onDelete, inCall }: { meet
       },
     });
   }
+  async function copy() {
+    try {
+      await navigator.clipboard?.writeText(meetingLink(meeting.code));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* The link is still in the menu and the meeting page. */
+    }
+  }
+  const names = meeting.live.names ?? [];
   return (
-    <li className={`pd-row${live ? " is-live" : ""}`}>
-      <span className={`pd-date${live ? " is-live" : badge ? "" : " is-now"}`} aria-hidden="true">
-        {live ? (
-          <>
+    <li className={`pd-meeting${live ? " is-live" : ""}${compact ? " is-compact" : ""}${past ? " is-past" : ""}`}>
+      {compact && (
+        <span className={`pd-date${live ? " is-live" : badge ? "" : " is-link"}`} aria-hidden="true">
+          {live ? (
             <i className="pd-pulse" />
-            LIVE
-          </>
-        ) : badge ? (
-          <>
-            <small>{badge.month}</small>
-            {badge.day}
-          </>
-        ) : (
-          <LinkIcon size={20} />
-        )}
-      </span>
-      <div className="pd-row-text">
-        <Link to={`/paddock/${meeting.code}`} className="pd-row-title">
+          ) : badge ? (
+            <>
+              <small>{badge.month}</small>
+              {badge.day}
+            </>
+          ) : (
+            <LinkIcon size={18} />
+          )}
+        </span>
+      )}
+      <div className="pd-meeting-text">
+        <span className="pd-meeting-when">
+          {live && !compact && <i className="pd-pulse" aria-hidden="true" />}
+          {when}
+        </span>
+        <Link to={`/paddock/${meeting.code}`} className="pd-meeting-title">
           {meeting.title}
         </Link>
-        <p className="pd-row-meta">
-          {when || (meeting.lastJoinedAt ? `Last joined ${ago(meeting.lastJoinedAt)}` : `Created ${ago(meeting.createdAt)}`)}
-          {" · "}
+        <span className="pd-meeting-meta">
           {meeting.role === "host" ? "You host" : `Host: ${meeting.hostName}`}
           {meeting.stableName && <> · {meeting.stableName}</>}
-        </p>
-        <p className="pd-row-tags">
-          {roleText[meeting.role] && <span className="pd-tag">{roleText[meeting.role]}</span>}
+          {roleText[meeting.role] && meeting.role !== "host" && <span className="pd-tag">{roleText[meeting.role]}</span>}
           {live && (
             <span className="pd-tag is-live">
               <PeopleIcon size={13} /> {meeting.live.count} in the call
-              {meeting.live.names?.length ? `: ${meeting.live.names.slice(0, 3).join(", ")}${meeting.live.count > 3 ? "…" : ""}` : ""}
+              {!compact && names.length ? `: ${names.slice(0, 3).join(", ")}${meeting.live.count > 3 ? "…" : ""}` : ""}
             </span>
           )}
-          {inCall && <span className="pd-tag is-gold">You're in this call</span>}
-        </p>
+          {inCall && <span className="pd-tag is-accent">You're in this call</span>}
+        </span>
       </div>
-      <div className="pd-row-actions">
-        <Link className={`btn ${live || inCall ? "btn-primary" : "btn-quiet"} pd-row-join`} to={`/paddock/${meeting.code}`}>
+      <div className="pd-meeting-actions">
+        <Link className={`pd-btn ${live || inCall ? "is-primary" : "is-quiet"} is-small pd-row-join`} to={`/paddock/${meeting.code}`}>
           {inCall ? "Return" : "Join"}
         </Link>
         <button
+          ref={more}
           type="button"
           className="pd-icon-btn"
-          aria-label={copied ? "Link copied" : `Copy link for ${meeting.title}`}
-          title={copied ? "Copied" : "Copy link"}
-          onClick={() =>
-            void navigator.clipboard?.writeText(meetingLink(meeting.code)).then(() => {
-              setCopied(true);
-              window.setTimeout(() => setCopied(false), 2000);
-            })
-          }
+          aria-label={`More for ${meeting.title}`}
+          aria-haspopup="menu"
+          aria-expanded={menu}
+          onClick={() => setMenu((v) => !v)}
         >
-          <CopyIcon />
+          <MoreIcon size={18} />
         </button>
-        {items.length > 0 && (
-          <button ref={more} type="button" className="pd-icon-btn" aria-label={`More for ${meeting.title}`} aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>
-            <MoreIcon size={18} />
-          </button>
-        )}
       </div>
       {menu && <Menu anchor={more.current} label={`More for ${meeting.title}`} items={items} onClose={() => setMenu(false)} />}
     </li>

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { canPickSpeaker, type LocalMedia } from "./engine/media";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import AvatarFace from "../account/AvatarFace";
+import Menu, { type MenuEntry } from "../messenger/Menu";
+import { canPickSpeaker, type DeviceChoice, type LocalMedia } from "./engine/media";
 import { play } from "./engine/sounds";
-import { CamIcon, CamOffIcon, MicIcon, MicOffIcon, SpeakerIcon } from "./icons";
+import { CamIcon, CamOffIcon, ChevronDownIcon, MicIcon, MicOffIcon, MoreIcon, SpeakerIcon } from "./icons";
 import { initials, useMedia } from "./useCall";
 
 /**
@@ -72,21 +74,60 @@ export function LevelMeter({ media, label = "Microphone level" }: { media: Local
   );
 }
 
-/** Camera preview with mic/camera switches (green room and settings). */
-export function SelfPreview({ media, name }: { media: LocalMedia; name: string }) {
+/** A face for someone with their camera off: their profile picture, or initials. */
+export function Face({ name, accountId, className = "pd-face", style }: { name: string; accountId?: string | null; className?: string; style?: CSSProperties }) {
+  return (
+    <span className={className} style={style} aria-hidden="true">
+      <AvatarFace id={accountId}>{initials(name)}</AvatarFace>
+    </span>
+  );
+}
+
+/** Camera preview with mic/camera switches (green room, waiting room). */
+export function SelfPreview({ media, name, accountId, onSettings, compact = false }: { media: LocalMedia; name: string; accountId?: string | null; onSettings?: () => void; compact?: boolean }) {
   useMedia(media);
   const blockedCam = media.problems.cam;
+  const more = useRef<HTMLButtonElement>(null);
+  const [menu, setMenu] = useState(false);
+  const starting = !media.camOn && !media.micOn && !media.problems.cam && !media.problems.mic && !media.devices.videoinput.length;
   return (
-    <div className="pd-preview">
+    <div className={`pd-preview${compact ? " is-compact" : ""}`}>
       {media.camOn && media.camStream ? (
         <StreamVideo stream={media.camStream} mirror={media.mirror} label="Your camera" />
       ) : (
         <div className="pd-preview-off">
-          <span className="pd-preview-avatar" aria-hidden="true">{initials(name)}</span>
-          <span>{blockedCam ? "Camera unavailable" : "Camera is off"}</span>
+          <Face name={name} accountId={accountId} className="pd-face is-large" />
+          {!compact && <span>{starting ? "Starting your camera…" : blockedCam ? "Camera unavailable" : "Camera is off"}</span>}
         </div>
       )}
       <span className="pd-preview-name">{name}</span>
+      {onSettings && (
+        <>
+          <button
+            ref={more}
+            type="button"
+            className="pd-preview-more"
+            aria-label="Preview options"
+            aria-haspopup="menu"
+            aria-expanded={menu}
+            onClick={() => setMenu((v) => !v)}
+          >
+            <MoreIcon size={18} />
+          </button>
+          {menu && (
+            <Menu
+              anchor={more.current}
+              label="Preview options"
+              items={[
+                { label: "Mirror my video", checked: media.mirror, onSelect: () => media.setMirror(!media.mirror) },
+                { label: "Play a test sound", icon: <SpeakerIcon size={16} />, onSelect: () => play("join", media.choice.audiooutput, true) },
+                { label: "All settings…", onSelect: onSettings },
+              ]}
+              onClose={() => setMenu(false)}
+            />
+          )}
+        </>
+      )}
       <div className="pd-preview-controls">
         <button
           type="button"
@@ -109,9 +150,75 @@ export function SelfPreview({ media, name }: { media: LocalMedia; name: string }
           {media.camOn ? <CamIcon /> : <CamOffIcon />}
         </button>
       </div>
-      <span className="pd-preview-level">
-        <LevelMeter media={media} />
-      </span>
+      {!compact && (
+        <span className="pd-preview-level">
+          <LevelMeter media={media} />
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Microphone ▾  Speaker ▾  Camera ▾ — quick device choices under the preview. */
+export function DeviceChips({ media, onSpeaker }: { media: LocalMedia; onSpeaker?: (id: string) => void }) {
+  useMedia(media);
+  const [open, setOpen] = useState<keyof DeviceChoice | null>(null);
+  const refs = { audioinput: useRef<HTMLButtonElement>(null), audiooutput: useRef<HTMLButtonElement>(null), videoinput: useRef<HTMLButtonElement>(null) };
+  const current = (kind: keyof DeviceChoice) =>
+    kind === "audioinput"
+      ? (media.micTrack?.getSettings?.().deviceId ?? media.choice.audioinput)
+      : kind === "videoinput"
+        ? (media.camTrack?.getSettings?.().deviceId ?? media.choice.videoinput)
+        : media.choice.audiooutput;
+  const word = { audioinput: "Microphone", audiooutput: "Speaker", videoinput: "Camera" } as const;
+  const labelOf = (kind: keyof DeviceChoice) => {
+    const list = media.devices[kind];
+    const id = current(kind);
+    const found = list.find((d) => d.deviceId === id) ?? (kind === "audiooutput" ? undefined : list[0]);
+    if (!list.length) return kind === "audiooutput" ? "System default" : `No ${word[kind].toLowerCase()}`;
+    return found?.label || (kind === "audiooutput" ? "System default" : `${word[kind]} 1`);
+  };
+  const items = (kind: keyof DeviceChoice): MenuEntry[] => {
+    const list = media.devices[kind].filter((d) => kind !== "audiooutput" || d.deviceId !== "default");
+    const id = current(kind);
+    const entries: MenuEntry[] = [{ section: word[kind] }];
+    if (kind === "audiooutput")
+      entries.push({ label: "System default", checked: !id, onSelect: () => (void media.choose(kind, ""), onSpeaker?.("")) });
+    if (!list.length && kind !== "audiooutput") entries.push({ label: `No ${word[kind].toLowerCase()} found`, disabled: true, onSelect: () => undefined });
+    list.forEach((d, i) =>
+      entries.push({
+        label: d.label || `${word[kind]} ${i + 1}`,
+        checked: d.deviceId === id,
+        onSelect: () => {
+          void media.choose(kind, d.deviceId);
+          if (kind === "audiooutput") onSpeaker?.(d.deviceId);
+        },
+      }),
+    );
+    if (kind === "audiooutput") entries.push({ label: "Play a test sound", icon: <SpeakerIcon size={16} />, onSelect: () => play("join", media.choice.audiooutput, true) });
+    return entries;
+  };
+  const kinds: (keyof DeviceChoice)[] = canPickSpeaker() && media.devices.audiooutput.length ? ["audioinput", "audiooutput", "videoinput"] : ["audioinput", "videoinput"];
+  const icon = { audioinput: <MicIcon size={16} />, audiooutput: <SpeakerIcon size={16} />, videoinput: <CamIcon size={16} /> };
+  return (
+    <div className="pd-chips" role="group" aria-label="Devices">
+      {kinds.map((kind) => (
+        <button
+          key={kind}
+          ref={refs[kind]}
+          type="button"
+          className="pd-chip-btn"
+          aria-haspopup="menu"
+          aria-expanded={open === kind}
+          aria-label={`${word[kind]}: ${labelOf(kind)}`}
+          onClick={() => setOpen((v) => (v === kind ? null : kind))}
+        >
+          {icon[kind]}
+          <span>{labelOf(kind)}</span>
+          <ChevronDownIcon />
+        </button>
+      ))}
+      {open && <Menu anchor={refs[open].current} label={`Choose ${word[open].toLowerCase()}`} align="start" items={items(open)} onClose={() => setOpen(null)} />}
     </div>
   );
 }

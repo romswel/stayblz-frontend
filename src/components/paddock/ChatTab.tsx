@@ -51,8 +51,17 @@ export default function ChatTab({ view, call }: { view: CallView; call: PaddockC
     nearBottom.current = true;
   }
 
+  const canSend = view.allowed.chat;
   return (
     <div className="pd-chat">
+      {view.canManage && (
+        <label className="pd-switch is-compact">
+          <span>
+            <strong>Let everyone send messages</strong>
+          </span>
+          <input type="checkbox" role="switch" checked={view.rules.chat} onChange={(e) => void call.setRule("chat", e.target.checked)} />
+        </label>
+      )}
       <p className="pd-chat-note">Only people in the call see these messages. They disappear when the call ends.</p>
       <ol
         ref={list}
@@ -64,7 +73,7 @@ export default function ChatTab({ view, call }: { view: CallView; call: PaddockC
           nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
         }}
       >
-        {view.chat.length === 0 && <li className="pd-chat-empty">No messages yet. Say hello!</li>}
+        {view.chat.length === 0 && <li className="pd-chat-empty">{canSend ? "No messages yet. Say hello!" : "No messages yet."}</li>}
         {view.chat.map((line, i) => {
           const previous = view.chat[i - 1];
           const grouped = previous && previous.from === line.from && line.at - previous.at < 3 * 60_000;
@@ -92,8 +101,9 @@ export default function ChatTab({ view, call }: { view: CallView; call: PaddockC
           );
         })}
       </ol>
+      {!canSend && <p className="pd-chat-off">The host turned off chat for everyone.</p>}
       <form
-        className="pd-compose"
+        className={`pd-compose${canSend ? "" : " is-off"}`}
         onSubmit={(e) => {
           e.preventDefault();
           send();
@@ -108,7 +118,8 @@ export default function ChatTab({ view, call }: { view: CallView; call: PaddockC
           rows={1}
           value={draft}
           maxLength={1000}
-          placeholder="Message everyone"
+          disabled={!canSend}
+          placeholder={canSend ? "Message everyone" : "Chat is off"}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -117,7 +128,7 @@ export default function ChatTab({ view, call }: { view: CallView; call: PaddockC
             }
           }}
         />
-        <button type="submit" className="pd-send" aria-label="Send message" title="Send (Enter)" disabled={!draft.trim()}>
+        <button type="submit" className="pd-send" aria-label="Send message" title="Send (Enter)" disabled={!draft.trim() || !canSend}>
           <SendIcon />
         </button>
       </form>

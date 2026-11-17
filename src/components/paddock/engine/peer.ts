@@ -2,9 +2,10 @@
  * One direct connection to one other person (WebRTC). Video and audio go straight between the two
  * browsers; only short setup messages (signals) pass through the Stayblz API.
  *
- * - The person with the smaller id starts ("initiator") and creates three fixed slots:
- *   audio, camera, screen. The other side fills the same slots when it answers, so turning the
- *   camera or screen on/off later is a track swap, not a new connection.
+ * - The person with the smaller id starts ("initiator") and creates four fixed slots:
+ *   audio, camera, screen, screen sound. The other side fills the same slots when it answers, so
+ *   turning the camera or screen on/off later is a track swap, not a new connection. (An older
+ *   browser tab that made three slots still works: the fourth is simply missing.)
  * - "Perfect negotiation" settles the rare moment when both sides change something at once.
  * - Every signal carries a generation (gen). A fresh connection (Retry) bumps it, so late
  *   messages for an old connection are ignored.
@@ -12,13 +13,15 @@
  */
 export type LinkStatus = "connecting" | "connected" | "reconnecting" | "failed" | "closed";
 export type Quality = "good" | "fair" | "poor";
-export type Slot = "audio" | "cam" | "screen";
-const SLOTS: Slot[] = ["audio", "cam", "screen"];
+export type Slot = "audio" | "cam" | "screen" | "screenAudio";
+const SLOTS: Slot[] = ["audio", "cam", "screen", "screenAudio"];
+const isAudio = (slot: Slot) => slot === "audio" || slot === "screenAudio";
 
 export interface LocalTracks {
   audio: MediaStreamTrack | null;
   cam: MediaStreamTrack | null;
   screen: MediaStreamTrack | null;
+  screenAudio: MediaStreamTrack | null;
 }
 export interface LinkOptions {
   selfId: string;
@@ -42,7 +45,7 @@ export class PeerLink {
   status: LinkStatus = "connecting";
   quality: Quality | null = null;
   relayed = false;
-  streams: Record<Slot, MediaStream | null> = { audio: null, cam: null, screen: null };
+  streams: Record<Slot, MediaStream | null> = { audio: null, cam: null, screen: null, screenAudio: null };
   private pc!: RTCPeerConnection;
   private makingOffer = false;
   private ignoreOffer = false;
@@ -64,7 +67,7 @@ export class PeerLink {
     const pc = new RTCPeerConnection({ iceServers: this.o.iceServers, bundlePolicy: "max-bundle" });
     this.pc = pc;
     this.makingOffer = this.ignoreOffer = this.settingAnswer = false;
-    this.streams = { audio: null, cam: null, screen: null };
+    this.streams = { audio: null, cam: null, screen: null, screenAudio: null };
     this.quality = null;
     const gen = this.gen;
     pc.onicecandidate = ({ candidate }) => {
@@ -94,9 +97,9 @@ export class PeerLink {
     };
     pc.onconnectionstatechange = () => pc === this.pc && this.onConnectionState();
     if (this.initiator) {
-      // The three slots, always in this order on both sides.
+      // The four slots, always in this order on both sides.
       const local = this.o.local();
-      for (const slot of SLOTS) pc.addTransceiver(local[slot] ?? (slot === "audio" ? "audio" : "video"), { direction: "sendrecv" });
+      for (const slot of SLOTS) pc.addTransceiver(local[slot] ?? (isAudio(slot) ? "audio" : "video"), { direction: "sendrecv" });
     }
     window.clearTimeout(this.connectTimer);
     this.connectTimer = window.setTimeout(() => this.connectTimedOut(), CONNECT_TIMEOUT_MS);

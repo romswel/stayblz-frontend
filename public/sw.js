@@ -1,5 +1,6 @@
 /* Stayblz service worker: app shell + built assets only. Never caches /api/ (private or live data).
-   Also shows Web Push alerts (Stayblz Chat) and opens the right page when one is tapped. */
+   Also shows Web Push alerts (Stayblz Chat messages, Stayblz Paddock calls and meetings) and opens the right page
+   when one is tapped. A ringing call stays until answered and has Join / Decline buttons. */
 const VERSION = "stayblz-v2";
 const MAX_ASSETS = 80;
 const SHELL = ["/", "/startup.css", "/favicon.svg", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/badge-96.png"];
@@ -19,13 +20,17 @@ self.addEventListener("push", (event) => {
         front.forEach((w) => w.postMessage({ type: "stayblz:push", data }));
         return undefined;
       }
+      const call = data.kind === "call";
       return self.registration.showNotification(data.title || "Stayblz", {
         body: data.body || "",
         tag: data.tag || "stayblz",
         renotify: true,
         icon: "/icons/icon-192.png",
         badge: "/icons/badge-96.png",
-        data: { url: data.url || "/messages" },
+        data: { url: data.url || "/messages", alertId: data.alertId || null },
+        requireInteraction: call,
+        vibrate: call ? [400, 200, 400, 200, 400] : undefined,
+        actions: call && data.alertId ? [{ action: "join", title: "Join" }, { action: "decline", title: "Decline" }] : [],
       });
     }),
   );
@@ -34,6 +39,19 @@ self.addEventListener("push", (event) => {
 /* Tapping an alert: bring Stayblz forward on that page (or open it). */
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const info = event.notification.data || {};
+  // "Decline" on a ringing call answers it without opening Stayblz.
+  if (event.action === "decline" && info.alertId) {
+    event.waitUntil(
+      fetch(`/api/paddock/alerts/${encodeURIComponent(info.alertId)}/decline`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }).catch(() => undefined),
+    );
+    return;
+  }
   const url = new URL((event.notification.data && event.notification.data.url) || "/messages", self.location.origin).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {

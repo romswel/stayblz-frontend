@@ -50,11 +50,19 @@ export const PlusIcon = ({ size = 18 }: P) => <Svg size={size}><path d="M12 5v14
 export const LinkIcon = ({ size = 18 }: P) => <Svg size={size}><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /></Svg>;
 export const ClockIcon = ({ size = 16 }: P) => <Svg size={size}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg>;
 
-/** The Paddock mark: a horseshoe framing a camera lens. */
-export const PaddockMark = ({ size = 22 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M6 20V11a6 6 0 0 1 12 0v9" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-    <path d="M4 20h4M16 20h4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    <circle cx="12" cy="11.5" r="2.6" fill="currentColor" />
+export const ShieldIcon = ({ size = 20 }: P) => <Svg size={size}><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6Z" /><path d="m9 12 2 2 4-4" /></Svg>;
+export const SpotlightIcon2 = ({ size = 16 }: P) => <Svg size={size}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></Svg>;
+export const PipIcon = ({ size = 16 }: P) => <Svg size={size}><rect x="2" y="4" width="20" height="16" rx="2" /><rect x="12" y="11" width="8" height="6" rx="1" /></Svg>;
+export const UserPlusIcon = ({ size = 16 }: P) => <Svg size={size}><path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></Svg>;
+export const RingIcon = ({ size = 16 }: P) => <Svg size={size}><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z" /><path d="M15 2a7 7 0 0 1 7 7M15 6a3 3 0 0 1 3 3" /></Svg>;
+export const SearchIcon = ({ size = 16 }: P) => <Svg size={size}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></Svg>;
+export const ChevronLeftIcon = ({ size = 18 }: P) => <Svg size={size}><path d="m15 18-6-6 6-6" /></Svg>;
+export const ChevronRightIcon = ({ size = 18 }: P) => <Svg size={size}><path d="m9 18 6-6-6-6" /></Svg>;
+export const ChevronDownIcon = ({ size = 14 }: P) => <Svg size={size}><path d="m6 9 6 6 6-6" /></Svg>;
+export const SoundOnIcon = ({ size = 16 }: P) => <Svg size={size}><path d="M11 5 6 9H2v6h4l5 4Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></Svg>;
+export const VideoOffBadge = ({ size = 14 }: P) => <Svg size={size}><path d="m3 3 18 18" /><path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2" /></Svg>;
+export const DotsGridIcon = ({ size = 18 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    {[5, 12, 19].flatMap((y) => [5, 12, 19].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.7" />))}
   </svg>
 );

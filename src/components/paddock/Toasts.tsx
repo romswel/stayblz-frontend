@@ -16,10 +16,10 @@ export function Toasts({ view, call, onOpenChat, onOpenPeople }: { view: CallVie
           )}
           {t.kind === "knock" && t.knockId && view.canManage && (
             <span className="pd-toast-actions">
-              <button type="button" className="btn btn-quiet" onClick={() => void call.admit(t.knockId!, false)}>
+              <button type="button" className="pd-btn is-quiet is-small" onClick={() => void call.admit(t.knockId!, false)}>
                 Deny
               </button>
-              <button type="button" className="btn btn-primary" onClick={() => void call.admit(t.knockId!, true)}>
+              <button type="button" className="pd-btn is-primary is-small" onClick={() => void call.admit(t.knockId!, true)}>
                 Admit
               </button>
               {view.knocks.length > 1 && (

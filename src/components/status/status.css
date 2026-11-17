@@ -23,12 +23,13 @@
   width: 34px;
   height: 34px;
 }
+/* The ink crest + plain wordmark, as in the app header. */
 .status-brand strong {
-  font: 700 18px Georgia, serif;
-  letter-spacing: 0.08em;
+  font: 800 16px Archivo, system-ui, sans-serif;
+  letter-spacing: 0.2em;
 }
 .status-brand strong span {
-  color: var(--gold);
+  display: none;
 }
 .status-main {
   flex: 1;
