@@ -6,7 +6,11 @@ const OFF: Status = { state: "off_air", title: null, startsAt: null };
 
 async function mockTv(
   page: Page,
-  { status = OFF as Status | number, playback = { status: 409, json: { code: "off_air", error: "Nothing is on air right now." } } as { status: number; json: unknown } } = {},
+  {
+    status = OFF as Status | number,
+    playback = { status: 409, json: { code: "off_air", error: "Nothing is on air right now." } } as { status: number; json: unknown },
+    youtube = { status: 200, json: { channels: [], videos: [] } } as { status: number; json: unknown },
+  } = {},
 ) {
   const calls = { status: 0, playback: 0 };
   const state = { status };
@@ -25,10 +29,59 @@ async function mockTv(
       calls.playback++;
       return route.fulfill(playback);
     }
+    if (path === "/api/tv/youtube") return route.fulfill(youtube);
     return route.fulfill({ status: 403, json: { error: "Private workspace" } });
   });
   return { calls, state };
 }
+
+// YouTube is never reached: its player and thumbnails are stood in for.
+async function stubYouTube(page: Page) {
+  await page.route("https://www.youtube-nocookie.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<html></html>" }));
+  await page.route("https://i.ytimg.com/**", (route) => route.fulfill({ status: 404, body: "" }));
+}
+
+const CH = "UCzU39Vjjyv2_SXipboFPAsQ";
+const YT = {
+  status: 200,
+  json: {
+    channels: [{ id: CH, name: "Los Alamitos Race Course", url: `https://www.youtube.com/channel/${CH}` }],
+    videos: [
+      {
+        id: "cJA4RJ5teuw",
+        channelId: CH,
+        title: "Los Alamitos NIGHTTIME Full Card & Replays on - Sunday, November 15",
+        kind: "card",
+        heading: "Sunday night card",
+        publishedAt: "2026-11-16T06:01:05.000Z",
+        raceDay: "2026-11-15",
+        races: 8,
+        firstPost: "5:10 PM",
+        highlight: "Paul Jones sets an all-time Quarter Horse win record!",
+        description: "8 Races starting at 5:10 PM. Paul Jones sets an all-time Quarter Horse win record!",
+        views: 1234,
+      },
+      {
+        id: "cHSBFpM-Oeg",
+        channelId: CH,
+        title: "Los Alamitos Preview Show for November 14-15",
+        kind: "preview",
+        heading: "Preview show",
+        publishedAt: "2026-11-14T01:40:12.000Z",
+        raceDay: null,
+        races: null,
+        firstPost: null,
+        highlight: null,
+        description: "The running of the G2 Las Damas headlines the weekend.",
+        views: null,
+      },
+    ],
+  },
+};
+const LIVE_EMBED = {
+  status: 200,
+  json: { url: "https://www.youtube-nocookie.com/embed/83L5qoWNHYM?autoplay=1&mute=1", title: "Los Alamitos", kind: "embed" },
+};
 
 const noOverflow = async (page: Page) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
@@ -152,3 +205,89 @@ test("landscape phone: the live screen fits the height", async ({ page }) => {
   const box = (await page.locator(".tvg-screen").boundingBox())!;
   expect(box.height).toBeLessThanOrEqual(360);
 });
+
+/* ---------- YouTube replays (demo) ---------- */
+
+test("YouTube: All YouTube and the channel sit with the surfaces; cards show the broadcast data", async ({ page }) => {
+  await mockTv(page, { youtube: YT });
+  await stubYouTube(page);
+  await page.goto("/tv");
+  const seg = page.getByRole("group", { name: "Surface or YouTube channel" });
+  await expect(seg.getByRole("button")).toHaveText(["All surfaces", "Dirt", "Turf", "Synthetic", "All YouTube", "Los Alamitos Race Course"]);
+  await seg.getByRole("button", { name: "Los Alamitos Race Course" }).click();
+  await expect(page).toHaveURL(new RegExp(`yt=${CH}`));
+  await expect(page.locator(".tvg-select")).toHaveCount(0);
+  await expect(page.locator(".tvg-count")).toContainText("2 broadcasts from Los Alamitos Race Course");
+  const card = page.locator(".tvg-card").first();
+  await expect(card.getByRole("heading", { name: "Sunday night card" })).toBeVisible();
+  await expect(card.locator(".tvg-race-no")).toHaveText("8 races");
+  await expect(card).toContainText("Paul Jones sets an all-time Quarter Horse win record!");
+  await expect(card.locator(".tvg-podium")).toContainText("First post5:10 PM");
+  await expect(card.locator("img")).toHaveAttribute("src", "https://i.ytimg.com/vi/cJA4RJ5teuw/hqdefault.jpg");
+  await seg.getByRole("button", { name: "Dirt" }).click();
+  await expect(page).not.toHaveURL(/yt=/);
+  await expect(page.locator(".tvg-select")).toHaveCount(1);
+});
+
+test("YouTube: a replay takes over the screen as Replay; Back to live returns to the live feed", async ({ page }) => {
+  const { calls } = await mockTv(page, { status: { state: "live", title: "Los Alamitos", startsAt: null }, playback: LIVE_EMBED, youtube: YT });
+  await stubYouTube(page);
+  await page.goto(`/tv?yt=all`);
+  await expect(page.locator(".tvg-onscreen")).toHaveText("Live");
+  const before = calls.playback;
+  await page.getByRole("button", { name: /Watch replay: Sunday night card/ }).click();
+  await expect(page).toHaveURL(/watch=cJA4RJ5teuw/);
+  const screen = page.locator(".tvg-screen");
+  await expect(screen.locator(".tvg-onscreen")).toHaveText("Replay");
+  await expect(screen.locator("iframe")).toHaveCount(1);
+  await expect(screen.locator("iframe")).toHaveAttribute("src", /^https:\/\/www\.youtube-nocookie\.com\/embed\/cJA4RJ5teuw\?/);
+  await expect(screen.locator("iframe")).toHaveAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+  const side = page.getByRole("complementary", { name: "Now playing" });
+  await expect(side.getByRole("heading", { name: "Sunday night card" })).toBeVisible();
+  await expect(side.locator(".tvg-facts")).toContainText("First post5:10 PM");
+  await expect(side.getByRole("link", { name: "Open on YouTube" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=cJA4RJ5teuw");
+  await expect(page.locator(".tvg-card.is-playing")).toHaveCount(1);
+
+  await screen.getByRole("button", { name: "Back to live" }).click();
+  await expect(page).not.toHaveURL(/watch=/);
+  await expect(screen.locator(".tvg-onscreen")).toHaveText("Live");
+  await expect(screen.locator("iframe")).toHaveAttribute("src", /83L5qoWNHYM/);
+  expect(calls.playback).toBeGreaterThan(before);
+
+  // The browser's Back button goes to the replay again.
+  await page.goBack();
+  await expect(screen.locator(".tvg-onscreen")).toHaveText("Replay");
+});
+
+test("YouTube: while off air the button closes the replay instead", async ({ page }) => {
+  await mockTv(page, { youtube: YT });
+  await stubYouTube(page);
+  await page.goto("/tv?yt=all&watch=cHSBFpM-Oeg");
+  await expect(page.locator(".tvg-onscreen")).toHaveText("Replay");
+  await expect(page.getByRole("complementary", { name: "Now playing" })).toContainText("The running of the G2 Las Damas");
+  await page.locator(".tvg-screen").getByRole("button", { name: "Close replay" }).click();
+  await expect(page.getByRole("heading", { name: "No live broadcast right now" })).toBeVisible();
+});
+
+test("YouTube: a failed load says so with Try again", async ({ page }) => {
+  await mockTv(page, { youtube: { status: 502, json: { error: "YouTube replays couldn't be loaded right now." } } });
+  await page.goto("/tv?yt=all");
+  await expect(page.getByRole("alert")).toContainText("YouTube replays could not be loaded.");
+  await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+});
+
+for (const width of [320, 375]) {
+  test(`YouTube phone ${width}px: replay screen at 16:9, no overflow, 44px back button`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 740 });
+    await mockTv(page, { status: { state: "live", title: "Los Alamitos", startsAt: null }, playback: LIVE_EMBED, youtube: YT });
+    await stubYouTube(page);
+    await page.goto("/tv?yt=all&watch=cJA4RJ5teuw");
+    await expect(page.locator(".tvg-onscreen")).toHaveText("Replay");
+    await noOverflow(page);
+    const box = (await page.locator(".tvg-screen").boundingBox())!;
+    expect(Math.abs(box.height - (box.width * 9) / 16)).toBeLessThan(2);
+    const back = (await page.locator(".tvg-back-live").boundingBox())!;
+    expect(back.height).toBeGreaterThanOrEqual(44);
+    expect(back.x + back.width).toBeLessThanOrEqual(box.x + box.width);
+  });
+}
