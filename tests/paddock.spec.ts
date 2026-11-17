@@ -49,7 +49,10 @@ test("start a meeting, check devices, join, browse Stayblz with the mini window,
   await expect(page.locator(".pd-preview video")).toBeVisible();
 
   await joinNow(page);
-  await expect(page.getByText("You're the only one here")).toBeVisible();
+  // Like a meeting app: a "ready" card with the link while you're alone.
+  const ready = page.getByRole("region", { name: "Your meeting's ready" });
+  await expect(ready).toBeVisible();
+  await expect(ready.getByLabel("Meeting link")).toHaveValue(/paddock\/[a-z]{4}-[a-z]{4}$/);
   await expect(tile(page, /^Hana Host \(you\)/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Turn off microphone/ })).toBeVisible();
 
@@ -83,7 +86,7 @@ test("two people: video both ways, mute, chat, hands, reactions and host tools",
   // Real video in both directions, with sound playing from a hidden audio element.
   await expectVideo(hana, /^Ivy Invitee/);
   await expectVideo(ivy, /^Hana Host(?! \(you\))/);
-  await expect.poll(() => hana.locator(".pd-audio audio").count()).toBe(1);
+  await expect.poll(() => hana.locator(".pd-audio audio.is-voice").count()).toBe(1);
 
   // Muting shows for the other person.
   await ivy.getByRole("button", { name: /Turn off microphone/ }).click();
@@ -118,7 +121,7 @@ test("two people: video both ways, mute, chat, hands, reactions and host tools",
   await ivy.getByRole("button", { name: "Leave call" }).click();
   await expect(ivy.getByRole("heading", { name: "You left the call" })).toBeVisible();
   await expect(hana.getByText("Ivy Invitee left")).toBeVisible();
-  await expect(hana.getByText("You're the only one here")).toBeVisible();
+  await expect(hana.getByRole("region", { name: "Your meeting's ready" })).toBeVisible();
   await ivy.context().close();
   await hana.context().close();
 });
@@ -176,8 +179,15 @@ test("schedule a meeting with a calendar file; wrong codes are explained", async
   expect(new Date(sent.scheduledFor).getHours()).toBe(9);
   await ready.locator(".dlg-actions").getByRole("button", { name: "Close" }).click();
 
-  await expect(page.getByRole("heading", { name: "Live and upcoming" })).toBeVisible();
+  // The week strip jumps to that day and shows the meeting with its time.
+  await expect(page.getByRole("button", { name: /has meetings/, pressed: true })).toBeVisible();
+  await expect(page.locator(".pd-meeting", { hasText: "Breeze-up review" })).toContainText(/9:30 AM – 10:15 AM/);
+  await page.getByRole("button", { name: "Today", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Coming up" })).toBeVisible();
   await expect(page.getByText(/Tomorrow at 9:30/)).toBeVisible();
+  // Let the page finish scrolling first: a menu closes when its button scrolls away.
+  await page.getByRole("button", { name: "More for Breeze-up review" }).scrollIntoViewIfNeeded();
+  await page.waitForTimeout(600);
   await page.getByRole("button", { name: "More for Breeze-up review" }).click();
   const download = page.waitForEvent("download");
   await page.getByRole("menuitem", { name: "Add to calendar (.ics)" }).click();
@@ -216,4 +226,88 @@ test("phones: compact controls, panels open as a sheet, nothing scrolls sideways
   await page.getByRole("button", { name: "Close panel" }).click();
   await expect(page.locator(".pd-panel")).toHaveCount(0);
   await page.context().close();
+});
+
+test("calls ring: an invited person hears it anywhere in Stayblz and joins with one tap; declining tells the caller", async ({ browser }) => {
+  const server = paddockServer();
+  const meeting = server.addMeeting({ hostId: HANA.id, hostName: HANA.displayName, title: "Quick call", invitees: [IVY.id] });
+  const hana = await open(browser, server, HANA, `/paddock/${meeting.code}`);
+  await joinNow(hana);
+  const ivy = await open(browser, server, IVY, "/paddock");
+  await expect(ivy.getByRole("heading", { name: "Stayblz Paddock", level: 1 })).toBeVisible();
+
+  // Ring, decline: the caller hears about it.
+  await hana.getByRole("button", { name: "More options" }).click();
+  await hana.getByRole("menuitem", { name: "Ring people who aren't here" }).click();
+  await expect(hana.getByText("Ringing Ivy Invitee…")).toBeVisible();
+  const card = ivy.getByRole("alertdialog", { name: "Video call from Hana Host" });
+  await expect(card).toContainText("Quick call");
+  await card.getByRole("button", { name: "Decline call from Hana Host" }).click();
+  await expect(card).toHaveCount(0);
+  await expect(hana.getByText("Ivy Invitee can't join right now")).toBeVisible();
+
+  // Ring again from People; this time Ivy answers and is straight in the call.
+  await hana.getByRole("button", { name: /^People/ }).first().click();
+  await hana.getByRole("button", { name: "Ring invited" }).click();
+  await ivy.getByRole("button", { name: "Join call from Hana Host" }).click();
+  await expect(ivy.getByRole("region", { name: "Call: Quick call" })).toBeVisible();
+  await expectVideo(hana, /^Ivy Invitee/);
+  await expect(ivy.getByRole("alertdialog")).toHaveCount(0);
+  await ivy.context().close();
+  await hana.context().close();
+});
+
+test("host controls: chat off for everyone, spotlight, and the host admits a guest from the mini window", async ({ browser }) => {
+  const server = paddockServer();
+  const meeting = server.addMeeting({ hostId: HANA.id, hostName: HANA.displayName, title: "Yard meeting", invitees: [IVY.id] });
+  const hana = await open(browser, server, HANA, `/paddock/${meeting.code}`);
+  await joinNow(hana);
+  const ivy = await open(browser, server, IVY, `/paddock/${meeting.code}`);
+  await joinNow(ivy);
+
+  await hana.getByRole("button", { name: "Host controls" }).click();
+  await hana.getByRole("switch", { name: /Send chat messages/ }).uncheck();
+  await expect(ivy.getByText(/turned off chat for everyone/)).toBeVisible();
+  await ivy.getByRole("button", { name: "Chat", exact: true }).click();
+  await expect(ivy.getByLabel("Message everyone")).toBeDisabled();
+  await expect(ivy.getByText("The host turned off chat for everyone.")).toBeVisible();
+
+  // Spotlight for everyone shows on every screen.
+  await hana.getByRole("button", { name: "Options for Ivy Invitee" }).first().click();
+  await hana.getByRole("menuitem", { name: "Spotlight for everyone" }).click();
+  await expect(tile(ivy, /^Ivy Invitee \(you\)/).getByText("Spotlight")).toBeVisible();
+
+  // Hana browses Stayblz; a guest asks to join; she lets them in from the mini window.
+  await hana.getByRole("button", { name: /Browse Stayblz/ }).click();
+  const mini = hana.getByRole("region", { name: "Call in progress" });
+  await expect(mini).toBeVisible();
+  const guest = await open(browser, server, null, `/paddock/${meeting.code}`);
+  await guest.getByLabel("Your name").fill("Gus Guest");
+  await guest.getByRole("button", { name: "Ask to join" }).click();
+  await expect(guest.getByText("Waiting for someone to let you in…")).toBeVisible();
+  await expect(mini.getByText("Gus Guest")).toBeVisible();
+  await mini.getByRole("button", { name: "Admit" }).click();
+  await expect(guest.getByRole("region", { name: /^Call: Yard meeting/ })).toBeVisible();
+  for (const p of [guest, ivy, hana]) await p.context().close();
+});
+
+test("layout choices are kept, and the shared confirm dialog is glass", async ({ browser }) => {
+  const server = paddockServer();
+  const meeting = server.addMeeting({ hostId: HANA.id, hostName: HANA.displayName, title: "Layout check" });
+  const hana = await open(browser, server, HANA, `/paddock/${meeting.code}`);
+  await joinNow(hana);
+  await hana.getByRole("button", { name: "More options" }).click();
+  await hana.getByRole("menuitem", { name: "Change layout" }).click();
+  const dialog = hana.getByRole("dialog", { name: "Change layout" });
+  await dialog.getByText("Tiled", { exact: true }).click();
+  await dialog.getByRole("switch", { name: /Hide my own tile/ }).check();
+  await dialog.getByRole("button", { name: "Done" }).click();
+  expect(await hana.evaluate(() => JSON.parse(localStorage.getItem("stayblz.paddock.view") ?? "{}"))).toMatchObject({ mode: "grid", hideSelf: true });
+  await hana.getByRole("button", { name: "Leave or end the call" }).click();
+  await hana.getByRole("menuitem", { name: "End the call for everyone" }).click();
+  const confirm = hana.getByRole("alertdialog", { name: "End the call for everyone?" });
+  await expect(confirm).toHaveClass(/gx-layer/);
+  await confirm.getByRole("button", { name: "End for everyone" }).click();
+  await expect(hana.getByRole("heading", { name: "The call has ended" })).toBeVisible();
+  await hana.context().close();
 });

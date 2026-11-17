@@ -69,3 +69,26 @@ export const timeZoneName = () => {
     return "your time zone";
   }
 };
+
+// ————— The week strip on the Paddock home —————
+export const dayStart = (at: number | Date) => startOfDay(new Date(at));
+export const weekStart = (at: number | Date) => {
+  const d = new Date(dayStart(at));
+  d.setDate(d.getDate() - d.getDay());
+  return d.getTime();
+};
+export const addDays = (at: number, days: number) => {
+  const d = new Date(at);
+  d.setDate(d.getDate() + days);
+  return d.getTime();
+};
+export const sameDay = (a: number | Date, b: number | Date) => dayStart(a) === dayStart(b);
+/** "2:00 PM – 3:00 PM" */
+export function timeRange(scheduledFor: string, minutes: number) {
+  const start = new Date(scheduledFor);
+  return `${time(start)} – ${time(new Date(start.getTime() + minutes * 60_000))}`;
+}
+/** "Tue, Nov 17" */
+export const longDay = (at: number) => new Date(at).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+/** The current time, "7:54 PM". */
+export const clockTime = (at: number) => time(new Date(at));

@@ -71,9 +71,21 @@ export interface WirePeer {
   name: string;
   role: PeerRole;
   guest: boolean;
+  /** Stayblz members only (for their profile picture). */
+  accountId?: string | null;
   state: PeerState;
   joinedAt: number;
 }
+/** "Let everyone…" switches a host controls. Hosts and co-hosts can always do all of it. */
+export interface RoomRules {
+  present: boolean;
+  chat: boolean;
+  react: boolean;
+  mic: boolean;
+  cam: boolean;
+}
+export type RuleKey = keyof RoomRules;
+export const OPEN_RULES: RoomRules = { present: true, chat: true, react: true, mic: true, cam: true };
 export interface WireSignal {
   seq: number;
   from: string;
@@ -100,7 +112,17 @@ export interface Snapshot {
   version: number;
   now: number;
   you: { id: string; role: PeerRole; state: PeerState; epoch: string };
-  room: { title: string; code: string; locked: boolean; startedAt: number; guestsAllowed: boolean; maxPeople: number };
+  room: {
+    title: string;
+    code: string;
+    locked: boolean;
+    startedAt: number;
+    guestsAllowed: boolean;
+    maxPeople: number;
+    rules?: RoomRules;
+    spotlight?: string | null;
+    ringing?: { name: string; until: number }[];
+  };
   peers: WirePeer[];
   signals: WireSignal[];
   feed: FeedItem[];
@@ -127,7 +149,35 @@ export const paddockApi = {
   join: (code: string, peerId: string, replaces?: string, state?: JoinState) =>
     api.post<JoinAnswer>(`/api/paddock/${code}/join`, { peerId, ...(replaces ? { replaces } : {}), ...(state ? { state } : {}) }),
   knock: (code: string) => api.post<{ knock: { id: string; token: string } }>(`/api/paddock/${code}/knock`, {}),
+  /** Ring the people named on the meeting who aren't in the call (or just `ids`). */
+  ring: (code: string, options: { ids?: string[]; video?: boolean } = {}) =>
+    api.post<{ rang: { id: string; name: string }[] }>(`/api/paddock/${code}/ring`, options),
+  /** Add Stayblz members to the meeting and ring them. */
+  invite: (code: string, ids: string[], ring = true) =>
+    api.post<{ added: number; rang: { id: string; name: string }[]; invited: { id: string; name: string }[] }>(`/api/paddock/${code}/invite`, { ids, ring }),
 };
+
+// ————— Alerts: incoming calls, meetings starting, invitations (backend lib/paddockAlerts.ts) —————
+export type PaddockAlertKind = "ring" | "started" | "invited";
+export type PaddockAlertStatus = "active" | "declined" | "answered" | "missed" | "cancelled";
+export interface PaddockAlert {
+  id: string;
+  kind: PaddockAlertKind;
+  status: PaddockAlertStatus;
+  code: string;
+  title: string;
+  fromId: string;
+  fromName: string;
+  video: boolean;
+  scheduledFor: string | null;
+  at: number;
+  expiresAt: number;
+}
+export interface AlertsAnswer {
+  version: number;
+  now: number;
+  alerts: PaddockAlert[];
+}
 
 // ————— In-call and guest routes: light requests, no cookies, no "slow connection" banner —————
 export interface LiveAnswer<T> {

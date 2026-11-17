@@ -57,6 +57,22 @@
 .modal.gx-layer .btn-primary:hover {
   filter: brightness(1.07);
 }
+.modal.gx-layer .btn-danger {
+  border-color: transparent;
+  background: var(--gx-danger);
+  color: #fff;
+}
+.modal.gx-layer .btn-danger:hover {
+  filter: brightness(1.08);
+}
+.modal.gx-layer .dlg-confirm-icon {
+  background: var(--gx-accent-soft);
+  color: var(--gx-accent);
+}
+.modal.gx-layer .dlg-confirm.is-danger .dlg-confirm-icon {
+  background: color-mix(in srgb, var(--gx-danger) 14%, transparent);
+  color: var(--gx-danger);
+}
 .modal.gx-layer .btn-quiet {
   border-color: var(--gx-border-strong);
   background: var(--gx-field);
@@ -451,4 +467,145 @@
   color: var(--gx-text, inherit);
   font-size: 13.5px;
   animation: nt-drop 0.2s var(--gx-ease, ease-out) both;
+}
+
+/* ————— Stayblz Paddock: incoming call (PaddockAlerts.tsx) ————— */
+.nt-calls {
+  position: fixed;
+  z-index: 95;
+  top: calc(18px + var(--safe-top, 0px));
+  left: 50%;
+  display: grid;
+  gap: 10px;
+  width: min(440px, calc(100vw - 24px));
+  transform: translateX(-50%);
+}
+.nt-call {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 14px 14px 16px;
+  border-radius: 24px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-surface-strong);
+  -webkit-backdrop-filter: var(--gx-blur);
+  backdrop-filter: var(--gx-blur);
+  box-shadow: var(--gx-shadow-lg), inset 0 1px 0 var(--gx-highlight);
+  color: var(--gx-text);
+  animation: nt-call-in 0.36s var(--gx-ease) both;
+}
+@keyframes nt-call-in {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.96);
+  }
+}
+.nt-call-face {
+  position: relative;
+  flex: none;
+  border-radius: 50%;
+}
+.nt-call-face::before,
+.nt-call-face::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--gx-accent);
+  animation: nt-ripple 1.8s ease-out infinite;
+}
+.nt-call-face::after {
+  animation-delay: 0.9s;
+}
+@keyframes nt-ripple {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+.nt-call-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.nt-call-text small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gx-accent);
+  font-size: 12px;
+  font-weight: 750;
+}
+.nt-call-text strong {
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nt-call-text > span {
+  overflow: hidden;
+  color: var(--gx-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nt-call-actions {
+  display: flex;
+  gap: 10px;
+  flex: none;
+}
+.nt-call-btn {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s var(--gx-ease), filter 0.15s ease;
+}
+.nt-call-btn:hover {
+  filter: brightness(1.08);
+}
+.nt-call-btn:active {
+  transform: scale(0.92);
+}
+.nt-call-btn:focus-visible {
+  outline: 2px solid var(--gx-accent);
+  outline-offset: 3px;
+}
+.nt-call-btn.is-decline {
+  background: #e5484d;
+}
+.nt-call-btn.is-decline svg {
+  transform: rotate(135deg);
+}
+.nt-call-btn.is-join {
+  background: linear-gradient(135deg, #10b981, #0d9f74);
+  animation: nt-join 1.6s ease-in-out infinite;
+}
+@keyframes nt-join {
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.18);
+  }
+}
+@media (max-width: 560px) {
+  .nt-calls {
+    top: auto;
+    bottom: calc(86px + var(--safe-bottom, 0px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nt-call,
+  .nt-call-face::before,
+  .nt-call-face::after,
+  .nt-call-btn.is-join {
+    animation: none;
+  }
 }

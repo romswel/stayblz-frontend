@@ -47,7 +47,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           key={request.id}
           label={request.title}
           role="alertdialog"
-          className="modal-sm"
+          className="modal-sm gx-layer"
           describedBy={request.message ? "dlg-confirm-text" : undefined}
           onClose={() => answer(false)}
         >

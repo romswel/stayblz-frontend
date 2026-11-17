@@ -25,6 +25,7 @@ import UpdatesPopup from "./updates/UpdatesPopup";
 import { useUpdates } from "./updates/UpdatesContext";
 import { useNotifications } from "../notifications/NotificationsContext";
 import { NotificationBell, NotificationPrompt, NotificationToasts } from "../notifications/NotificationUI";
+import PaddockAlerts from "../notifications/PaddockAlerts";
 import { CHAT_NAME, TEAM_CHAT_NAME } from "./messenger/brand";
 import { TV_NAME } from "./tv/brand";
 import { PADDOCK_NAME } from "./paddock/brand";
@@ -939,6 +940,7 @@ export default function Layout() {
 
       <UpdatesPopup />
       <NotificationToasts />
+      <PaddockAlerts />
       <NotificationPrompt />
       {activeCall && (
         <Suspense fallback={null}>

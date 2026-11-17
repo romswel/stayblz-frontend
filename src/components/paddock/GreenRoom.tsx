@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ApiError } from "../../api";
 import { useAuth } from "../../auth";
+import Brand from "../Brand";
 import BackButton from "../ui/BackButton";
 import { useDraft } from "../ui/useDraft";
-import { MAX_PEOPLE, PADDOCK_NAME } from "./brand";
+import { MAX_PEOPLE, meetingLink, PADDOCK_NAME } from "./brand";
 import { PaddockCall, passKey, peerKey } from "./engine/call";
-import { LocalMedia, problemText } from "./engine/media";
+import { canShareScreen, LocalMedia, problemText } from "./engine/media";
 import { callStore, useActiveCall } from "./engine/store";
-import { PaddockMark, PeopleIcon } from "./icons";
+import { CalendarIcon, CopyIcon, PeopleIcon, ScreenIcon } from "./icons";
 import { guestApi, knockApi, paddockApi, type GuestMeeting, type JoinAnswer, type Meeting } from "./paddockApi";
-import { DevicePickers, SelfPreview } from "./Preview";
+import { DeviceChips, SelfPreview } from "./Preview";
+import { SettingsDialog } from "./SettingsDialog";
 import { meetingTime } from "./time";
 import { newPeerId, useMedia } from "./useCall";
+import WaitingRoom from "./WaitingRoom";
 
 type Info =
   | { kind: "loading" }
@@ -51,9 +54,14 @@ const forget = (key: string) => {
   }
 };
 
+/** /paddock/:code before joining: check camera and mic, see who's here, then join (or ask to). */
 export default function GreenRoom({ code }: { code: string }) {
   const { user } = useAuth();
   const guest = !user;
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Answering a ring ("Join" on the incoming-call card) goes straight in.
+  const answering = !!(location.state as { answer?: boolean } | null)?.answer;
   const active = useActiveCall();
   const otherCall = active && active.code !== code && active.isLive() ? (active as PaddockCall) : null;
   const [info, setInfo] = useState<Info>({ kind: "loading" });
@@ -61,7 +69,10 @@ export default function GreenRoom({ code }: { code: string }) {
   const [media, setMedia] = useState<LocalMedia | null>(null);
   const [guestName, setGuestName] = useDraft("paddock.guest-name", "");
   const [nameError, setNameError] = useState("");
+  const [settings, setSettings] = useState(false);
+  const [copied, setCopied] = useState(false);
   const handed = useRef(false);
+  const autoJoined = useRef(false);
   const knock = useRef<{ id: string; token: string; abort: AbortController } | null>(null);
   const [reload, setReload] = useState(0);
   useMedia(media);
@@ -137,7 +148,7 @@ export default function GreenRoom({ code }: { code: string }) {
     handed.current = true;
     knock.current = null;
     media.resumeAudio();
-    const call = new PaddockCall(code, answer, media, displayName);
+    const call = new PaddockCall(code, answer, media, displayName, !guest);
     call.start();
   }
 
@@ -170,7 +181,7 @@ export default function GreenRoom({ code }: { code: string }) {
       const { status, hostPresent } = answer.data;
       if (status === "admitted") {
         try {
-          const joined = await knockApi.join(id, token, newPeerId(), media ? { mic: media.micOn, cam: media.camOn } : undefined);
+          const joined = await knockApi.join(id, token, newPeerId(), media ? { mic: media.micOn, cam: media.camOn, screen: !!media.screenTrack } : undefined);
           return startCall(joined);
         } catch (error) {
           knock.current = null;
@@ -189,13 +200,18 @@ export default function GreenRoom({ code }: { code: string }) {
     }
   }
 
-  async function join() {
+  async function join(present = false) {
     if (!media || step.kind === "joining" || step.kind === "waiting") return;
     if (guest) {
       const name = guestName.replace(/\s+/g, " ").trim();
       if (name.length < 2) return setNameError("Enter your name (at least 2 letters) so people know who's asking.");
       if (name.length > 40) return setNameError("Use a shorter name (40 characters or fewer).");
       setNameError("");
+    }
+    // Presenting needs the click itself to open the browser's picker, so it starts before joining.
+    if (present && !(await media.startScreen())) {
+      if (media.problems.screen) setStep({ kind: "problem", message: problemText[media.problems.screen]("screen sharing") });
+      return;
     }
     if (otherCall) {
       await otherCall.leave();
@@ -204,7 +220,7 @@ export default function GreenRoom({ code }: { code: string }) {
     setStep({ kind: "joining" });
     media.resumeAudio();
     const replaces = session(peerKey(code)) ?? undefined;
-    const state = { mic: media.micOn, cam: media.camOn };
+    const state = { mic: media.micOn, cam: media.camOn, screen: !!media.screenTrack };
     try {
       // Let in before (a reload): straight back in with the return pass.
       const pass = session(passKey(code));
@@ -220,7 +236,7 @@ export default function GreenRoom({ code }: { code: string }) {
       // Access changed since the page loaded (e.g. now open, or you were invited): look again.
       if (error instanceof ApiError && error.code === "direct") {
         try {
-          return startCall(await paddockApi.join(code, newPeerId(), replaces, { mic: media.micOn, cam: media.camOn }));
+          return startCall(await paddockApi.join(code, newPeerId(), replaces, state));
         } catch (again) {
           return explain(again);
         }
@@ -228,6 +244,14 @@ export default function GreenRoom({ code }: { code: string }) {
       explain(error);
     }
   }
+
+  // Answering a ring: join as soon as the meeting and camera are ready.
+  useEffect(() => {
+    if (!answering || autoJoined.current || !media || info.kind !== "member" || !info.canJoin || step.kind !== "ready") return;
+    autoJoined.current = true;
+    navigate(location.pathname, { replace: true, state: null });
+    void join();
+  });
 
   function cancelWaiting() {
     const k = knock.current;
@@ -242,7 +266,8 @@ export default function GreenRoom({ code }: { code: string }) {
   if (info.kind === "loading" || !media)
     return (
       <div className="pd-green is-loading">
-        <p className="ws-loading" role="status">
+        <span className="pd-spinner is-large" aria-hidden="true" />
+        <p className="pd-small" role="status">
           Opening the meeting…
         </p>
       </div>
@@ -253,24 +278,20 @@ export default function GreenRoom({ code }: { code: string }) {
         <div className="pd-green-top">
           <BackButton signedIn={!guest} fallback={guest ? { to: "/", label: "Home" } : undefined} />
         </div>
-        <section className="pd-notfound panel">
-          <span className="pd-notfound-mark" aria-hidden="true">
-            <PaddockMark size={30} />
+        <section className="pd-notfound gx-glass">
+          <span className="pd-crest is-large" aria-hidden="true">
+            <Brand />
           </span>
           <h1>{info.kind === "missing" ? "We couldn't find that meeting" : "This meeting didn't load"}</h1>
-          <p>
-            {info.kind === "missing"
-              ? "Check the code or link. The host may have deleted the meeting."
-              : info.message}
-          </p>
+          <p>{info.kind === "missing" ? "Check the code or link. The host may have deleted the meeting." : info.message}</p>
           <div className="pd-actions">
             {info.kind === "error" && (
-              <button type="button" className="btn btn-primary" onClick={() => setReload((n) => n + 1)}>
+              <button type="button" className="pd-btn is-primary" onClick={() => setReload((n) => n + 1)}>
                 Try again
               </button>
             )}
             {!guest && (
-              <Link className="btn btn-quiet" to="/paddock">
+              <Link className="pd-btn is-quiet" to="/paddock">
                 Go to {PADDOCK_NAME}
               </Link>
             )}
@@ -285,26 +306,50 @@ export default function GreenRoom({ code }: { code: string }) {
   const direct = info.kind === "member" && info.canJoin;
   const guestsOff = info.kind === "guest" && !info.meeting.guestsAllowed;
   const blocked = removed || guestsOff || (live.full && step.kind === "ready");
-  const names = info.kind === "member" ? info.meeting.live.names ?? [] : [];
+  const names = info.kind === "member" ? (info.meeting.live.names ?? []) : [];
   const when = meetingTime(meeting.scheduledFor, meeting.durationMinutes, live.count > 0);
   const mediaProblem = media.problems.cam === "blocked" || media.problems.mic === "blocked" || media.problems.mic === "insecure";
+
+  if (step.kind === "waiting")
+    return (
+      <div className="pd-green is-waiting">
+        <WaitingRoom
+          title={meeting.title}
+          scheduledFor={meeting.scheduledFor}
+          durationMinutes={meeting.durationMinutes}
+          hostPresent={step.hostPresent}
+          media={media}
+          name={displayName || "Guest"}
+          accountId={user?.id}
+          onCancel={cancelWaiting}
+        />
+      </div>
+    );
 
   return (
     <div className="pd-green">
       <div className="pd-green-top">
         <BackButton signedIn={!guest} fallback={guest ? { to: "/", label: "Home" } : undefined} />
-        <span className="pd-green-brand">
-          <PaddockMark size={18} /> {PADDOCK_NAME}
-        </span>
+        {guest && (
+          <span className="pd-green-brand">
+            <span className="pd-crest is-small" aria-hidden="true">
+              <Brand />
+            </span>
+            {PADDOCK_NAME}
+          </span>
+        )}
       </div>
       <div className="pd-green-grid">
         <section className="pd-green-media" aria-label="Check your camera and microphone">
-          <SelfPreview media={media} name={displayName || "Guest"} />
+          <SelfPreview media={media} name={displayName || "Guest"} accountId={user?.id} onSettings={() => setSettings(true)} />
+          <DeviceChips media={media} />
           {mediaProblem && (
             <div className="pd-callout is-warn" role="status">
-              <strong>Camera or microphone blocked.</strong>{" "}
-              {problemText[media.problems.mic === "insecure" ? "insecure" : "blocked"]("camera and microphone")}
-              <button type="button" className="btn btn-quiet" onClick={() => void media.start({ mic: true, cam: true })}>
+              <span>
+                <strong>Camera or microphone blocked.</strong>{" "}
+                {problemText[media.problems.mic === "insecure" ? "insecure" : "blocked"]("camera and microphone")}
+              </span>
+              <button type="button" className="pd-btn is-quiet is-small" onClick={() => void media.start({ mic: true, cam: true })}>
                 Try again
               </button>
             </div>
@@ -314,39 +359,52 @@ export default function GreenRoom({ code }: { code: string }) {
               {media.problems.cam ? problemText[media.problems.cam]("camera") : problemText[media.problems.mic!]("microphone")}
             </p>
           )}
-          <details className="pd-check" open={window.matchMedia?.("(min-width: 900px)").matches}>
-            <summary>Microphone, camera &amp; speaker</summary>
-            <DevicePickers media={media} />
-          </details>
         </section>
 
-        <section className="pd-green-join panel" aria-labelledby="pd-green-title">
-          <span className="pd-kicker">{step.kind === "waiting" ? "Asking to join" : "Ready to join?"}</span>
+        <section className="pd-green-join" aria-labelledby="pd-green-title">
+          <span className="pd-kicker">Ready to join?</span>
           <h1 id="pd-green-title" className="pd-green-title">
             {meeting.title}
           </h1>
-          <p className="pd-green-meta">
-            Hosted by {meeting.hostName}
-            {when && <> · {when}</>}
-          </p>
+          {meeting.scheduledFor ? (
+            <p className="pd-green-when">
+              <CalendarIcon /> {when}
+            </p>
+          ) : null}
+          <p className="pd-green-meta">Hosted by {meeting.hostName}</p>
           <p className="pd-here">
-            <PeopleIcon size={16} />
-            {live.count === 0
-              ? "No one is in the call yet."
-              : names.length
-                ? `${listNames(names, live.count)} ${live.count === 1 ? "is" : "are"} in the call.`
-                : `${live.count} ${live.count === 1 ? "person is" : "people are"} in the call.`}
-            {live.full && <strong> It's full ({MAX_PEOPLE} people).</strong>}
+            {names.length > 0 ? (
+              <span className="pd-faces" aria-hidden="true">
+                {names.slice(0, 3).map((n) => (
+                  <span key={n} className="pd-faces-one">
+                    {n
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((w) => w[0]?.toUpperCase())
+                      .join("")}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <PeopleIcon size={16} />
+            )}
+            <span>
+              {live.count === 0
+                ? "No one is in the call yet."
+                : names.length
+                  ? `${listNames(names, live.count)} ${live.count === 1 ? "is" : "are"} in the call.`
+                  : `${live.count} ${live.count === 1 ? "person is" : "people are"} in the call.`}
+              {live.full && <strong> It's full ({MAX_PEOPLE} people).</strong>}
+            </span>
           </p>
 
           {otherCall && step.kind === "ready" && (
             <div className="pd-callout" role="status">
-              You're in another call. Joining this one will leave it.{" "}
-              <Link to={`/paddock/${otherCall.code}`}>Go back to that call</Link>
+              You're in another call. Joining this one will leave it. <Link to={`/paddock/${otherCall.code}`}>Go back to that call</Link>
             </div>
           )}
 
-          {guest && step.kind !== "waiting" && !guestsOff && (
+          {guest && !guestsOff && (
             <label className="pd-field">
               <span className="ld-label">Your name</span>
               <input
@@ -365,75 +423,73 @@ export default function GreenRoom({ code }: { code: string }) {
             </label>
           )}
 
-          {step.kind === "waiting" ? (
-            <div className="pd-waiting" role="status" aria-live="polite">
-              <span className="pd-spinner" aria-hidden="true" />
-              <div>
-                <strong>Waiting for someone to let you in…</strong>
-                <p>
-                  {step.hostPresent
-                    ? "The host has been told you're here. Keep this page open."
-                    : "The host isn't in the call yet. You'll be let in once they join and say yes. Keep this page open."}
-                </p>
-              </div>
-              <button type="button" className="btn btn-quiet" onClick={cancelWaiting}>
-                Cancel
-              </button>
+          {step.kind === "denied" && (
+            <p className="pd-error-text" role="alert">
+              The host didn't let you in. You can ask again if you think this was a mistake.
+            </p>
+          )}
+          {step.kind === "problem" && (
+            <p className="pd-error-text" role="alert">
+              {step.message}
+            </p>
+          )}
+          {removed ? (
+            <p className="pd-error-text" role="alert">
+              The host removed you from this meeting, so you can't join again.
+            </p>
+          ) : guestsOff ? (
+            <div className="pd-callout">
+              This meeting is for Stayblz members only.{" "}
+              <Link to="/login" state={{ destination: `/paddock/${code}`, intent: "join this meeting" }}>
+                Sign in
+              </Link>{" "}
+              or create a free account, then open the link again.
             </div>
           ) : (
-            <>
-              {step.kind === "denied" && (
-                <p className="form-error" role="alert">
-                  The host didn't let you in. You can ask again if you think this was a mistake.
-                </p>
-              )}
-              {step.kind === "problem" && (
-                <p className="form-error" role="alert">
-                  {step.message}
-                </p>
-              )}
-              {removed ? (
-                <p className="form-error" role="alert">
-                  The host removed you from this meeting, so you can't join again.
-                </p>
-              ) : guestsOff ? (
-                <div className="pd-callout">
-                  This meeting is for Stayblz members only.{" "}
-                  <Link to="/login" state={{ destination: `/paddock/${code}`, intent: "join this meeting" }}>
-                    Sign in
-                  </Link>{" "}
-                  or create a free account, then open the link again.
-                </div>
-              ) : (
-                <button type="button" className="btn btn-primary pd-join" disabled={blocked || step.kind === "joining"} onClick={() => void join()}>
-                  {step.kind === "joining"
-                    ? "Joining…"
-                    : step.kind === "denied"
-                      ? "Ask again"
-                      : direct
-                        ? otherCall
-                          ? "Leave other call and join"
-                          : "Join now"
-                        : "Ask to join"}
+            <div className="pd-join-actions">
+              <button type="button" className="pd-btn is-primary is-large pd-join" disabled={blocked || step.kind === "joining"} onClick={() => void join()}>
+                {step.kind === "joining"
+                  ? "Joining…"
+                  : step.kind === "denied"
+                    ? "Ask again"
+                    : direct
+                      ? otherCall
+                        ? "Leave other call and join"
+                        : "Join now"
+                      : "Ask to join"}
+              </button>
+              {canShareScreen() && !guest && direct && (
+                <button type="button" className="pd-btn is-quiet" disabled={blocked || step.kind === "joining"} onClick={() => void join(true)}>
+                  <ScreenIcon size={18} /> Join and present
                 </button>
               )}
-              {!direct && !removed && !guestsOff && step.kind !== "denied" && (
-                <p className="pd-small">
-                  {guest
-                    ? "You're joining as a guest."
-                    : "You're not on this meeting's invite list, so the host will be asked to let you in."}
-                </p>
-              )}
-              {guest && !guestsOff && (
-                <p className="pd-small">
-                  Have a Stayblz account?{" "}
-                  <Link to="/login" state={{ destination: `/paddock/${code}`, intent: "join this meeting" }}>
-                    Sign in
-                  </Link>
-                </p>
-              )}
-            </>
+            </div>
           )}
+          {!direct && !removed && !guestsOff && step.kind !== "denied" && (
+            <p className="pd-small">
+              {guest ? "You're joining as a guest." : "You're not on this meeting's invite list, so the host will be asked to let you in."}
+            </p>
+          )}
+          {guest && !guestsOff && (
+            <p className="pd-small">
+              Have a Stayblz account?{" "}
+              <Link to="/login" state={{ destination: `/paddock/${code}`, intent: "join this meeting" }}>
+                Sign in
+              </Link>
+            </p>
+          )}
+          <button
+            type="button"
+            className="pd-link-btn"
+            onClick={() =>
+              void navigator.clipboard?.writeText(meetingLink(code)).then(() => {
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 2000);
+              })
+            }
+          >
+            <CopyIcon /> {copied ? "Link copied" : "Copy meeting link"}
+          </button>
 
           <details className="pd-about">
             <summary>How {PADDOCK_NAME} calls work</summary>
@@ -446,6 +502,7 @@ export default function GreenRoom({ code }: { code: string }) {
           </details>
         </section>
       </div>
+      {settings && <SettingsDialog media={media} onClose={() => setSettings(false)} />}
     </div>
   );
 }

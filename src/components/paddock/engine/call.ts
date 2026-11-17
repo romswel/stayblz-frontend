@@ -4,10 +4,12 @@
  * here depends on which page is open (the call carries on while you browse Stayblz).
  */
 import { ApiError } from "../../../api";
+import { systemAlert } from "../../../notifications/systemAlert";
 import {
   knockApi,
   leaveBeacon,
   must,
+  OPEN_RULES,
   paddockApi,
   type FeedItem,
   type GoneReason,
@@ -15,6 +17,8 @@ import {
   type Knock,
   type PeerRole,
   type PeerState,
+  type RoomRules,
+  type RuleKey,
   type Snapshot,
   type WirePeer,
 } from "../paddockApi";
@@ -31,6 +35,8 @@ export interface Person {
   name: string;
   role: PeerRole;
   guest: boolean;
+  /** Stayblz members (profile picture); null for guests. */
+  accountId: string | null;
   me: boolean;
   /** Saddlecloth number by arrival, 1–8. */
   number: number;
@@ -72,6 +78,14 @@ export interface CallView {
   canManage: boolean;
   locked: boolean;
   guestsAllowed: boolean;
+  /** The host's "let everyone…" switches. */
+  rules: RoomRules;
+  /** What you may do (hosts and co-hosts: everything). */
+  allowed: RoomRules;
+  /** Shown large for everyone by a host. */
+  spotlight: string | null;
+  /** Stayblz members being rung for this call. */
+  ringing: { name: string; until: number }[];
   startedAt: number;
   /** When this browser joined (its own clock). */
   joinedAt: number;
@@ -92,9 +106,13 @@ export interface CallView {
   mic: boolean;
   cam: boolean;
   screen: boolean;
+  /** Your shared tab's sound is going out too. */
+  screenSound: boolean;
   hand: boolean;
   media: LocalMedia;
   speaker: string;
+  /** Signed in (can ring and add people). */
+  member: boolean;
 }
 
 interface Remote {
@@ -102,6 +120,8 @@ interface Remote {
   link: PeerLink;
   audio: HTMLAudioElement | null;
   audioStream: MediaStream | null;
+  screenAudio: HTMLAudioElement | null;
+  screenAudioStream: MediaStream | null;
   analyser: AnalyserNode | null;
   level: number;
   speakingUntil: number;
@@ -110,9 +130,19 @@ interface Remote {
 const camBitrateFor = (people: number) => (people <= 2 ? 1_000_000 : people <= 4 ? 600_000 : people <= 6 ? 400_000 : 280_000);
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 const SPEAKING_LEVEL = 0.05;
+const manages = (p: { role: PeerRole }) => p.role === "host" || p.role === "cohost";
+const RULE_OFF: Record<RuleKey, string> = {
+  mic: "The host turned off microphones for everyone. Raise your hand if you'd like to talk.",
+  cam: "The host turned off cameras for everyone.",
+  present: "The host turned off presenting for everyone.",
+  chat: "The host turned off chat for everyone.",
+  react: "The host turned off reactions for everyone.",
+};
 
 export const peerKey = (code: string) => `stayblz.paddock.peer.${code}`;
 export const passKey = (code: string) => `stayblz.paddock.pass.${code}`;
+/** Set before joining a call started from Stayblz Chat: ring the people in it once you're in. */
+export const ringKey = (code: string) => `stayblz.paddock.ring.${code}`;
 const session = {
   get(key: string) {
     try {
@@ -168,6 +198,12 @@ export class PaddockCall implements ActiveCall {
   private audioBox: HTMLDivElement;
   private unsubscribeMedia: () => void;
   private roomSize = 1;
+  /** The full call page is showing (not the mini window). */
+  private onPage = true;
+  private talkingSince = 0;
+  /** Host switches flip at once; the server's answer confirms (or undoes) them. */
+  private ruleOverrides: Partial<RoomRules> = {};
+  private lockOverride: boolean | null = null;
   /** When the call started, in this device's clock; kept through server restarts. */
   private startedAt = 0;
   private readonly joinedAt = Date.now();
@@ -181,6 +217,8 @@ export class PaddockCall implements ActiveCall {
     answer: JoinAnswer,
     readonly media: LocalMedia,
     private readonly myName: string,
+    /** Signed in to Stayblz (guests can't ring or add people). */
+    readonly member = false,
   ) {
     this.code = code;
     this.seat = answer.seat;
@@ -220,7 +258,14 @@ export class PaddockCall implements ActiveCall {
     document.addEventListener("visibilitychange", this.onVisibility);
     window.addEventListener("pagehide", this.onPageHide);
     void this.keepScreenOn();
+    this.setupMediaSession();
     callStore.set(this);
+    // A call started from Stayblz Chat rings the people in that chat once you're in.
+    const ring = session.get(ringKey(this.code));
+    if (ring !== null && this.member) {
+      session.set(ringKey(this.code), null);
+      window.setTimeout(() => void this.ring(undefined, ring !== "voice", true), 600);
+    }
   }
 
   // ————— Store plumbing —————
@@ -266,6 +311,10 @@ export class PaddockCall implements ActiveCall {
       if (signal.type === "control") this.onControl((signal.data as { action?: string })?.action);
       else this.remotes.get(signal.from)?.link.handle(signal.type, signal.gen, signal.data);
     }
+    this.gateAudio();
+    const rules = s.room.rules ?? OPEN_RULES;
+    for (const key of Object.keys(this.ruleOverrides) as RuleKey[]) if (rules[key] === this.ruleOverrides[key]) delete this.ruleOverrides[key];
+    if (this.lockOverride === s.room.locked) this.lockOverride = null;
     this.onFeed(s.feed, first);
     if (s.you.role === "host" || s.you.role === "cohost")
       for (const k of s.knocks)
@@ -273,8 +322,28 @@ export class PaddockCall implements ActiveCall {
           this.seenKnocks.add(k.id);
           play("knock", this.media.choice.audiooutput);
           this.toast({ kind: "knock", text: `${k.name}${k.guest ? " (guest)" : ""} wants to join`, knockId: k.id }, 20_000);
+          this.outside(`${k.name} wants to join`, `${s.room.title}: let them in from the call.`, `knock-${this.code}`);
         }
     this.emit();
+  }
+
+  /** While the call page is in the background (another tab, or the mini window), a system notification. */
+  private outside(title: string, body: string, tag: string) {
+    if (document.visibilityState === "visible" && document.hasFocus()) return;
+    void systemAlert({ title, body, url: `/paddock/${this.code}`, tag, silent: true });
+  }
+
+  /**
+   * Sound follows what the server says: when a host turned microphones off for everyone, a person who
+   * isn't allowed to talk is silent here even if their browser keeps sending. Shared-tab sound plays
+   * only while they're presenting.
+   */
+  private gateAudio() {
+    const rules = this.snapshot?.room.rules ?? OPEN_RULES;
+    for (const r of this.remotes.values()) {
+      if (r.audio) r.audio.muted = !rules.mic && !manages(r.wire) && !r.wire.state.mic;
+      if (r.screenAudio) r.screenAudio.muted = !r.wire.state.screen;
+    }
   }
 
   private onFeed(feed: FeedItem[], first: boolean) {
@@ -289,6 +358,7 @@ export class PaddockCall implements ActiveCall {
             if (!this.chatOpen) {
               this.unread++;
               this.toast({ kind: "chat", text: `${item.name}: ${item.text}` }, 5_000);
+              this.outside(item.name, item.text.slice(0, 140), `chat-${this.code}`);
             }
             play("message", this.media.choice.audiooutput);
           }
@@ -313,6 +383,10 @@ export class PaddockCall implements ActiveCall {
     } else if (action === "stop-screen" && this.media.screenTrack) {
       this.media.stopScreen();
       this.toast({ kind: "warn", text: "A host stopped your presentation." }, 5_000);
+    } else if (action === "stop-cam" && this.media.camOn) {
+      this.camWanted = false;
+      void this.media.setCam(false);
+      this.toast({ kind: "warn", text: "A host turned off your camera." }, 6_000);
     }
   }
 
@@ -359,6 +433,8 @@ export class PaddockCall implements ActiveCall {
       wire,
       audio: null,
       audioStream: null,
+      screenAudio: null,
+      screenAudioStream: null,
       analyser: null,
       level: 0,
       speakingUntil: 0,
@@ -367,7 +443,12 @@ export class PaddockCall implements ActiveCall {
         remoteId: wire.id,
         iceServers: this.iceServers,
         send: (type, gen, data) => this.channel.signal(wire.id, type, gen, data),
-        local: () => ({ audio: this.media.micTrack, cam: this.media.camTrack, screen: this.media.screenTrack }),
+        local: () => ({
+          audio: this.media.micTrack,
+          cam: this.media.camTrack,
+          screen: this.media.screenTrack,
+          screenAudio: this.media.screenAudioTrack,
+        }),
         onChange: () => {
           this.attachAudio(remote);
           this.emit();
@@ -395,17 +476,30 @@ export class PaddockCall implements ActiveCall {
   private dropRemote(id: string, remote: Remote) {
     remote.link.close();
     remote.audio?.remove();
+    remote.screenAudio?.remove();
     this.remotes.delete(id);
     if (this.activeSpeaker === id) this.activeSpeaker = null;
   }
 
   /** Sound plays from hidden audio elements (videos stay muted, so nothing plays twice). */
   private attachAudio(remote: Remote) {
+    const tab = remote.link.streams.screenAudio;
+    if (tab && tab !== remote.screenAudioStream) {
+      remote.screenAudioStream = tab;
+      remote.screenAudio ??= this.audioBox.appendChild(document.createElement("audio"));
+      remote.screenAudio.className = "is-tab";
+      remote.screenAudio.autoplay = true;
+      remote.screenAudio.srcObject = tab;
+      remote.screenAudio.muted = !remote.wire.state.screen;
+      this.applySpeaker(remote.screenAudio);
+      remote.screenAudio.play().catch(() => undefined);
+    }
     const stream = remote.link.streams.audio;
     if (!stream || stream === remote.audioStream) return;
     remote.audioStream = stream;
     if (!remote.audio) {
       remote.audio = document.createElement("audio");
+      remote.audio.className = "is-voice";
       remote.audio.autoplay = true;
       this.audioBox.appendChild(remote.audio);
     }
@@ -415,6 +509,7 @@ export class PaddockCall implements ActiveCall {
       this.audioBlocked = true;
       this.emit();
     });
+    this.gateAudio();
     try {
       this.audioContext ??= new AudioContext();
       const source = this.audioContext.createMediaStreamSource(stream);
@@ -438,10 +533,12 @@ export class PaddockCall implements ActiveCall {
     this.audioBlocked = false;
     void this.audioContext?.resume().catch(() => undefined);
     this.media.resumeAudio();
-    for (const r of this.remotes.values())
+    for (const r of this.remotes.values()) {
       r.audio?.play().catch(() => {
         this.audioBlocked = true;
       });
+      r.screenAudio?.play().catch(() => undefined);
+    }
     this.emit();
   }
 
@@ -485,6 +582,15 @@ export class PaddockCall implements ActiveCall {
     } else this.mutedTalkSince = 0;
     const meSpeaking = this.media.micOn && myLevel > SPEAKING_LEVEL;
     if (meSpeaking !== this.view.me.speaking) changed = true;
+    // Talking with your hand up: the hand comes down by itself, as your turn has come.
+    if (this.hand && this.media.micOn && myLevel > 0.12) {
+      this.talkingSince ||= now;
+      if (now - this.talkingSince > 1800) {
+        this.talkingSince = 0;
+        this.setHand(false);
+        this.toast({ kind: "info", text: "Your hand went down because you started talking." }, 4_000);
+      }
+    } else if (myLevel < 0.06) this.talkingSince = 0;
     if (changed) this.emit();
   }
 
@@ -498,19 +604,41 @@ export class PaddockCall implements ActiveCall {
     this.channel.state(state);
   }
 
+  /** False (with a note) when a host switched this off for everyone. */
+  private may(rule: RuleKey) {
+    if (this.buildAllowed()[rule]) return true;
+    this.toast({ kind: "warn", text: RULE_OFF[rule] }, 5_000);
+    return false;
+  }
+  private buildAllowed(): RoomRules {
+    const s = this.snapshot;
+    if (!s || s.you.role === "host" || s.you.role === "cohost") return OPEN_RULES;
+    return s.room.rules ?? OPEN_RULES;
+  }
+
   toggleMic = async () => {
+    if (!this.media.micOn && !this.may("mic")) return;
     await this.media.setMic(!this.media.micOn);
     if (this.media.problems.mic) this.toast({ kind: "warn", text: problemMessage(this.media, "mic") }, 7_000);
   };
   toggleCam = async () => {
+    if (!this.media.camOn && !this.may("cam")) return;
     this.camWanted = !this.media.camOn;
     await this.media.setCam(this.camWanted);
     if (this.camWanted && this.media.problems.cam) this.toast({ kind: "warn", text: problemMessage(this.media, "cam") }, 7_000);
   };
   toggleScreen = async () => {
     if (this.media.screenTrack) return this.media.stopScreen();
+    if (!this.may("present")) return;
     const ok = await this.media.startScreen();
     if (!ok && this.media.problems.screen) this.toast({ kind: "warn", text: problemMessage(this.media, "screen") }, 7_000);
+    else if (ok && !this.media.screenAudioTrack && this.view.people.length > 1)
+      this.toast({ kind: "info", text: "You're presenting without sound. To share a race replay with sound, share a browser tab and tick “Also share tab audio”." }, 7_000);
+  };
+  /** Push to talk: hold Space while muted. */
+  talk = (on: boolean) => {
+    if (on && !this.buildAllowed().mic) return;
+    void this.media.setMic(on);
   };
   setHand = (on: boolean) => {
     this.hand = on;
@@ -519,10 +647,12 @@ export class PaddockCall implements ActiveCall {
     this.emit();
   };
   react = (emoji: string) => {
+    if (!this.may("react")) return;
     this.float(emoji, this.myName);
     void this.channel.post("/react", { emoji });
   };
   sendChat = (text: string) => {
+    if (!this.may("chat")) return;
     const line: ChatLine = { id: uid(), from: this.peerId, name: this.myName, text, at: Date.now(), mine: true, status: "sending" };
     this.chat.push(line);
     this.emit();
@@ -577,7 +707,56 @@ export class PaddockCall implements ActiveCall {
   stopScreenOf = (peerId: string) => this.host({ action: "stop-screen", peer: peerId });
   removePerson = (peerId: string) => this.host({ action: "remove", peer: peerId });
   makeCohost = (peerId: string, on: boolean) => this.host({ action: "cohost", peer: peerId, on });
-  lock = (on: boolean) => this.host({ action: "lock", on });
+  lock = async (on: boolean) => {
+    this.lockOverride = on;
+    this.emit();
+    const ok = await this.host({ action: "lock", on });
+    if (!ok) {
+      this.lockOverride = null;
+      this.emit();
+    }
+    return ok;
+  };
+  stopCamOf = (peerId: string) => this.host({ action: "stop-cam", peer: peerId });
+  setRule = async (rule: RuleKey, on: boolean) => {
+    this.ruleOverrides = { ...this.ruleOverrides, [rule]: on };
+    this.emit();
+    const ok = await this.host({ action: "rules", rule, on });
+    if (!ok) {
+      delete this.ruleOverrides[rule];
+      this.emit();
+    }
+    return ok;
+  };
+  spotlight = (peerId: string | null) => this.host({ action: "spotlight", peer: peerId });
+
+  /** Ring the people named on this meeting who aren't here (or just `ids`). Signed-in members only. */
+  ring = async (ids?: string[], video = true, quiet = false) => {
+    if (!this.member) return [];
+    try {
+      const { rang } = await paddockApi.ring(this.code, { ids, video });
+      if (rang.length) this.toast({ kind: "info", text: `Ringing ${listNames(rang.map((p) => p.name))}…` }, 4_000);
+      else if (!quiet) this.toast({ kind: "info", text: "There's nobody to ring right now: everyone invited is here or already being rung." }, 5_000);
+      return rang;
+    } catch (error) {
+      if (!quiet) this.toast({ kind: "warn", text: error instanceof Error ? error.message : "Ringing didn't work. Try again." }, 5_000);
+      return [];
+    }
+  };
+  /** Add Stayblz members to this meeting and ring them (hosts and co-hosts). Throws with a friendly message. */
+  addPeople = async (ids: string[]) => {
+    const answer = await paddockApi.invite(this.code, ids, true);
+    const names = [...answer.rang, ...answer.invited].map((p) => p.name);
+    if (names.length) this.toast({ kind: "info", text: answer.rang.length ? `Ringing ${listNames(names)}…` : `Added ${listNames(names)}.` }, 4_000);
+    return answer;
+  };
+  /** The full call page is (or isn't) on screen; the mini window shows alerts otherwise. */
+  setOnPage = (on: boolean) => {
+    this.onPage = on;
+  };
+  get isOnPage() {
+    return this.onPage;
+  }
   endForAll = async () => {
     if (await this.host({ action: "end" })) this.finish("ended", "You ended the call for everyone.");
   };
@@ -617,6 +796,30 @@ export class PaddockCall implements ActiveCall {
   }
 
   // ————— Page life —————
+  /** The browser's own media controls (and automatic picture-in-picture where the browser offers it). */
+  private setupMediaSession() {
+    const session = navigator.mediaSession as MediaSession & { setMicrophoneActive?: (on: boolean) => void; setCameraActive?: (on: boolean) => void };
+    if (!session?.setActionHandler) return;
+    const handlers: [string, () => void][] = [
+      ["togglemicrophone", () => void this.toggleMic()],
+      ["togglecamera", () => void this.toggleCam()],
+      ["hangup", () => void this.leave()],
+    ];
+    for (const [action, handler] of handlers)
+      try {
+        session.setActionHandler(action as MediaSessionAction, handler);
+      } catch {
+        /* Not every browser knows every action. */
+      }
+  }
+  private clearMediaSession() {
+    for (const action of ["togglemicrophone", "togglecamera", "hangup", "enterpictureinpicture"])
+      try {
+        navigator.mediaSession?.setActionHandler(action as MediaSessionAction, null);
+      } catch {
+        /* ignore */
+      }
+  }
   private onVisibility = () => {
     if (document.visibilityState !== "visible" || this.phase !== "in") return;
     void this.keepScreenOn();
@@ -646,6 +849,7 @@ export class PaddockCall implements ActiveCall {
     document.removeEventListener("visibilitychange", this.onVisibility);
     window.removeEventListener("pagehide", this.onPageHide);
     for (const [id, remote] of this.remotes) this.dropRemote(id, remote);
+    this.clearMediaSession();
     this.unsubscribeMedia();
     this.media.stop();
     this.audioBox.remove();
@@ -674,6 +878,7 @@ export class PaddockCall implements ActiveCall {
         const state: PeerState = { mic: media.micOn, cam: media.camOn, screen: !!media.screenTrack, hand: this.hand ? (wire.state.hand ?? Date.now()) : null };
         return {
           ...wire,
+          accountId: wire.accountId ?? null,
           name: wire.name,
           me: true,
           number: index + 1,
@@ -692,6 +897,7 @@ export class PaddockCall implements ActiveCall {
       };
       return {
         ...wire,
+        accountId: wire.accountId ?? null,
         me: false,
         number: index + 1,
         cam: wire.state.cam ? flowing(r?.link.streams.cam) : null,
@@ -710,8 +916,12 @@ export class PaddockCall implements ActiveCall {
       title: s?.room.title ?? "",
       role,
       canManage: role === "host" || role === "cohost",
-      locked: s?.room.locked ?? false,
+      locked: this.lockOverride ?? s?.room.locked ?? false,
       guestsAllowed: s?.room.guestsAllowed ?? true,
+      rules: { ...(s?.room.rules ?? OPEN_RULES), ...this.ruleOverrides },
+      allowed: this.buildAllowed(),
+      spotlight: s?.room.spotlight && people.some((p) => p.id === s.room.spotlight) ? s.room.spotlight : null,
+      ringing: s?.room.ringing ?? [],
       startedAt: this.startedAt || this.joinedAt,
       joinedAt: this.joinedAt,
       maxPeople: s?.room.maxPeople ?? 8,
@@ -731,11 +941,19 @@ export class PaddockCall implements ActiveCall {
       mic: media.micOn,
       cam: media.camOn,
       screen: !!media.screenTrack,
+      screenSound: !!media.screenAudioTrack,
       hand: this.hand,
       media,
       speaker: media.choice.audiooutput,
+      member: this.member,
     };
   }
+}
+
+export function listNames(names: string[]) {
+  if (names.length <= 1) return names.join("");
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
 function problemMessage(media: LocalMedia, kind: "mic" | "cam" | "screen") {

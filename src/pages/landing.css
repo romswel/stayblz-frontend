@@ -106,7 +106,7 @@
   position: absolute;
   left: 25px;
   top: -5px;
-  color: #ecd09a;
+  color: #5fe3a9;
   font-size: 16px;
   opacity: 0;
   pointer-events: none;
@@ -123,7 +123,7 @@
   transition: letter-spacing 0.35s;
 }
 .ld-brand-toggle:hover strong {
-  color: #e0c794;
+  color: inherit;
 }
 @keyframes ld-horse-nod {
   0%,
@@ -206,8 +206,9 @@
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+/* The Stayblz logo is the plain ink crest (2026-11-17): white on the dark public bars, no gold. */
 .ld-brand-symbol {
-  color: var(--ld-gold);
+  color: currentColor;
   flex-shrink: 0;
 }
 .ld-brand .ld-brand-symbol {
@@ -224,11 +225,11 @@
   font-weight: 750;
 }
 .ld-wordmark-dot {
-  color: var(--ld-gold);
+  display: none;
 }
 .ld-brand small {
   display: block;
-  color: var(--ld-gold);
+  color: var(--ld-muted);
   font-size: 8px;
   letter-spacing: 2px;
   margin-top: 7px;

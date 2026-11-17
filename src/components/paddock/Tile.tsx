@@ -3,10 +3,9 @@ import Menu, { type MenuEntry } from "../messenger/Menu";
 import { useConfirm } from "../ui/Confirm";
 import { saddlecloth } from "./brand";
 import type { CallView, PaddockCall, Person } from "./engine/call";
-import { HandIcon, MicOffIcon, MoreIcon, PinIcon, ScreenOffIcon, SignalIcon } from "./icons";
+import { CamOffIcon, HandIcon, MicOffIcon, MoreIcon, PinIcon, ScreenOffIcon, ShieldIcon, SignalIcon, SpotlightIcon2 } from "./icons";
 import type { TileItem } from "./layout";
-import { StreamVideo } from "./Preview";
-import { initials } from "./useCall";
+import { Face, StreamVideo } from "./Preview";
 
 export const roleTag = (p: Person) => (p.role === "host" ? "Host" : p.role === "cohost" ? "Co-host" : p.guest ? "Guest" : "");
 
@@ -20,18 +19,50 @@ export function Cloth({ n, size = "md" }: { n: number; size?: "sm" | "md" }) {
   );
 }
 
-export function personMenu(person: Person, view: CallView, call: PaddockCall, pinned: string | null, onPin: (key: string | null) => void, confirm: ReturnType<typeof useConfirm>, key = person.id): MenuEntry[] {
+/** Three little bars that move while someone talks. */
+export const Talking = () => (
+  <span className="pd-eq" aria-hidden="true">
+    <i />
+    <i />
+    <i />
+  </span>
+);
+
+/** Raised hands in the order they went up: 1 = first. */
+export const handOrder = (view: CallView, person: Person) => {
+  if (person.state.hand === null) return 0;
+  return view.people.filter((p) => p.state.hand !== null && p.state.hand <= person.state.hand!).length;
+};
+
+export function personMenu(
+  person: Person,
+  view: CallView,
+  call: PaddockCall,
+  pinned: string | null,
+  onPin: (key: string | null) => void,
+  confirm: ReturnType<typeof useConfirm>,
+  key = person.id,
+): MenuEntry[] {
   const items: MenuEntry[] = [
     { label: pinned === key ? "Unpin" : "Pin for me", icon: <PinIcon size={16} />, onSelect: () => onPin(pinned === key ? null : key) },
   ];
-  if (person.me || !view.canManage) return items;
+  if (!view.canManage) return items;
+  if (key === person.id)
+    items.push(
+      view.spotlight === person.id
+        ? { label: "Remove spotlight", icon: <SpotlightIcon2 />, onSelect: () => void call.spotlight(null) }
+        : { label: "Spotlight for everyone", icon: <SpotlightIcon2 />, onSelect: () => void call.spotlight(person.id) },
+    );
+  if (person.me) return items;
   items.push({ section: "Host tools" });
   if (person.state.mic) items.push({ label: "Mute", icon: <MicOffIcon size={16} />, onSelect: () => void call.mute(person.id) });
+  if (person.state.cam) items.push({ label: "Turn off camera", icon: <CamOffIcon size={16} />, onSelect: () => void call.stopCamOf(person.id) });
   if (person.state.hand) items.push({ label: "Lower hand", icon: <HandIcon size={16} />, onSelect: () => void call.lowerHand(person.id) });
   if (person.state.screen) items.push({ label: "Stop their presentation", icon: <ScreenOffIcon size={16} />, onSelect: () => void call.stopScreenOf(person.id) });
   if (view.role === "host" && !person.guest && person.role !== "host")
     items.push({
       label: person.role === "cohost" ? "Remove as co-host" : "Make co-host",
+      icon: <ShieldIcon size={16} />,
       onSelect: () => void call.makeCohost(person.id, person.role !== "cohost"),
     });
   if (person.role !== "host")
@@ -80,6 +111,8 @@ export default function Tile({
   const cloth = saddlecloth(person.number);
   const tag = roleTag(person);
   const status = statusText(person);
+  const hand = handOrder(view, person);
+  const spotlit = !screen && view.spotlight === person.id;
   const label = [
     screen ? `${person.me ? "Your" : `${person.name}'s`} screen` : person.me ? `${person.name} (you)` : person.name,
     !screen && !person.state.mic ? "muted" : "",
@@ -92,7 +125,7 @@ export default function Tile({
 
   return (
     <div
-      className={`pd-tile is-${size}${screen ? " is-screen" : ""}${person.speaking && !screen ? " is-speaking" : ""}${person.me ? " is-me" : ""}`}
+      className={`pd-tile is-${size}${screen ? " is-screen" : ""}${person.speaking && !screen ? " is-speaking" : ""}${person.me ? " is-me" : ""}${stream ? " has-video" : ""}`}
       role="group"
       aria-label={label}
       style={{ ["--cloth" as string]: cloth.bg }}
@@ -100,8 +133,10 @@ export default function Tile({
     >
       {screen && person.me ? (
         <div className="pd-presenting">
+          <ScreenOffIcon size={28} />
           <strong>You're presenting to everyone</strong>
-          <button type="button" className="btn btn-quiet" onClick={() => void call.toggleScreen()}>
+          {view.screenSound && <small>Your tab's sound is shared too.</small>}
+          <button type="button" className="pd-btn is-quiet is-small" onClick={() => void call.toggleScreen()}>
             Stop presenting
           </button>
         </div>
@@ -113,10 +148,13 @@ export default function Tile({
         />
       ) : (
         <div className="pd-tile-off">
-          <span className="pd-avatar" style={{ background: cloth.bg, color: cloth.ink }} aria-hidden="true">
-            {screen ? "…" : initials(person.name)}
-          </span>
-          {screen && <span className="pd-tile-note">Starting presentation…</span>}
+          {screen ? (
+            <span className="pd-tile-note">
+              <span className="pd-spinner is-small" aria-hidden="true" /> Starting presentation…
+            </span>
+          ) : (
+            <Face name={person.name} accountId={person.accountId} className={`pd-face${person.speaking ? " is-speaking" : ""}`} style={{ background: cloth.bg, color: cloth.ink }} />
+          )}
         </div>
       )}
 
@@ -127,7 +165,7 @@ export default function Tile({
           {person.link === "failed" && (
             <>
               <small>Their network or yours may block direct calls.</small>
-              <button type="button" className="btn btn-quiet" onClick={() => call.retryLink(person.id)}>
+              <button type="button" className="pd-btn is-quiet is-small" onClick={() => call.retryLink(person.id)}>
                 Retry
               </button>
             </>
@@ -135,29 +173,42 @@ export default function Tile({
         </div>
       )}
 
-      {!screen && person.state.hand && (
-        <span className="pd-hand" title="Hand raised">
-          <HandIcon size={16} />
-        </span>
-      )}
+      <div className="pd-tile-badges">
+        {hand > 0 && !screen && (
+          <span className="pd-hand" title={`Hand raised${hand > 1 ? ` (${hand} in line)` : ""}`}>
+            <HandIcon size={15} />
+            {view.people.some((p) => p !== person && p.state.hand) && <b>{hand}</b>}
+          </span>
+        )}
+        {spotlit && (
+          <span className="pd-badge-chip" title="Spotlight for everyone">
+            <SpotlightIcon2 size={13} /> Spotlight
+          </span>
+        )}
+        {pinned === item.key && (
+          <span className="pd-badge-chip" title="Pinned for you">
+            <PinIcon size={13} /> Pinned
+          </span>
+        )}
+      </div>
 
       <div className="pd-plate">
         <Cloth n={person.number} size="sm" />
         <span className="pd-plate-name">
           {screen ? `${person.me ? "You" : person.name} · presenting` : person.me ? `${person.name} (You)` : person.name}
         </span>
-        {tag && !screen && size !== "float" && <span className="pd-plate-tag">{tag}</span>}
-        {!screen && !person.state.mic && (
-          <span className="pd-plate-mute" title="Muted">
-            <MicOffIcon size={14} />
-          </span>
-        )}
+        {tag && !screen && size !== "float" && size !== "strip" && <span className="pd-plate-tag">{tag}</span>}
         {person.quality && person.quality !== "good" && (
           <span className={`pd-plate-signal is-${person.quality}`} title={person.quality === "poor" ? "Weak connection" : "Fair connection"}>
             <SignalIcon level={person.quality} />
           </span>
         )}
       </div>
+      {!screen && (
+        <span className={`pd-mic-badge${person.state.mic ? (person.speaking ? " is-talking" : "") : " is-muted"}`} title={person.state.mic ? (person.speaking ? "Talking" : "Mic on") : "Muted"}>
+          {person.state.mic ? <Talking /> : <MicOffIcon size={14} />}
+        </span>
+      )}
 
       {size !== "float" && (
         <button
@@ -171,11 +222,6 @@ export default function Tile({
         >
           <MoreIcon size={18} />
         </button>
-      )}
-      {pinned === item.key && (
-        <span className="pd-pinned" title="Pinned">
-          <PinIcon size={14} />
-        </span>
       )}
       {menu && (
         <Menu

@@ -54,6 +54,8 @@ export class LocalMedia {
   micTrack: MediaStreamTrack | null = null;
   camTrack: MediaStreamTrack | null = null;
   screenTrack: MediaStreamTrack | null = null;
+  /** Sound from a shared tab (a race replay), when the browser offers it. */
+  screenAudioTrack: MediaStreamTrack | null = null;
   /** What the self view shows. Rebuilt when the camera changes. */
   camStream: MediaStream | null = null;
   screenStream: MediaStream | null = null;
@@ -273,21 +275,41 @@ export class LocalMedia {
     return this.serial(async () => {
       if (this.screenTrack) return true;
       try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
+        // Tab sound comes along when the person ticks "Also share tab audio" (Chrome, Edge).
+        // This Paddock tab itself isn't offered: sharing it shows an endless mirror.
+        const options = {
           video: { frameRate: { ideal: 15, max: 30 } },
-          audio: false,
-        });
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+          selfBrowserSurface: "exclude",
+          surfaceSwitching: "include",
+          systemAudio: "exclude",
+        } as DisplayMediaStreamOptions;
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getDisplayMedia(options);
+        } catch (error) {
+          // Some browsers refuse a request that includes sound; ask again for the picture only.
+          // (Cancelling the picker is "NotAllowedError" and is not asked again.)
+          const name = (error as Error)?.name;
+          if (name !== "TypeError" && name !== "NotSupportedError" && name !== "OverconstrainedError") throw error;
+          stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 } }, audio: false });
+        }
         const track = stream.getVideoTracks()[0];
         if (!track) return false;
         track.contentHint = "detail";
         this.screenTrack = track;
         this.screenStream = new MediaStream([track]);
+        const sound = stream.getAudioTracks()[0] ?? null;
+        if (sound) sound.contentHint = "music";
+        this.screenAudioTrack = sound;
         this.problems.screen = null;
         // "Stop sharing" in the browser's own bar.
         track.addEventListener("ended", () => {
           if (this.screenTrack !== track) return;
           this.screenTrack = null;
           this.screenStream = null;
+          this.screenAudioTrack?.stop();
+          this.screenAudioTrack = null;
           this.emit();
           this.onScreenEnded?.();
         });
@@ -306,7 +328,9 @@ export class LocalMedia {
   stopScreen() {
     if (!this.screenTrack) return;
     this.screenTrack.stop();
+    this.screenAudioTrack?.stop();
     this.screenTrack = null;
+    this.screenAudioTrack = null;
     this.screenStream = null;
     this.emit();
   }
@@ -349,8 +373,8 @@ export class LocalMedia {
   stop() {
     this.stopped = true;
     navigator.mediaDevices?.removeEventListener?.("devicechange", this.onDeviceChange);
-    for (const track of [this.micTrack, this.camTrack, this.screenTrack, this.analysedTrack]) track?.stop();
-    this.micTrack = this.camTrack = this.screenTrack = this.analysedTrack = null;
+    for (const track of [this.micTrack, this.camTrack, this.screenTrack, this.screenAudioTrack, this.analysedTrack]) track?.stop();
+    this.micTrack = this.camTrack = this.screenTrack = this.screenAudioTrack = this.analysedTrack = null;
     this.camStream = this.screenStream = null;
     this.micOn = this.camOn = false;
     void this.audio?.close().catch(() => undefined);

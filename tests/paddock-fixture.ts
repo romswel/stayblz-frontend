@@ -76,6 +76,8 @@ interface Room {
   version: number;
   locked: boolean;
   startedAt: number;
+  rules?: { present: boolean; chat: boolean; react: boolean; mic: boolean; cam: boolean };
+  spotlight?: string | null;
 }
 export interface FakeMeeting {
   id: string;
@@ -106,6 +108,48 @@ export function paddockServer() {
   const gone = new Map<string, "left" | "removed" | "ended">();
   const knocks = new Map<string, Knock>();
   const posts: { path: string; body: any }[] = [];
+  // Incoming-call alerts (backend lib/paddockAlerts.ts), per account.
+  type Alert = { id: string; kind: "ring" | "started" | "invited"; status: string; code: string; title: string; fromId: string; fromName: string; video: boolean; scheduledFor: string | null; at: number; expiresAt: number };
+  const inboxes = new Map<string, { version: number; alerts: Alert[]; waiter: (() => void) | null }>();
+  const NAMES = new Map([HANA, IVY, SAM].map((u) => [u.id, u.displayName]));
+  const inboxOf = (id: string) => {
+    let box = inboxes.get(id);
+    if (!box) inboxes.set(id, (box = { version: 1, alerts: [], waiter: null }));
+    return box;
+  };
+  const touch = (id: string) => {
+    const box = inboxOf(id);
+    box.version++;
+    const w = box.waiter;
+    box.waiter = null;
+    w?.();
+  };
+  function ringPeople(m: FakeMeeting, from: FakeUser, ids: string[], video = true) {
+    const here = new Set([...(rooms.get(m.code)?.peers.values() ?? [])].map((p) => p.accountId));
+    const rang: { id: string; name: string }[] = [];
+    for (const id of ids) {
+      if (id === from.id || here.has(id) || !NAMES.has(id)) continue;
+      const box = inboxOf(id);
+      if (box.alerts.some((a) => a.status === "active" && a.code === m.code)) continue;
+      box.alerts.push({ id: randomHex(24), kind: "ring", status: "active", code: m.code, title: m.title, fromId: from.id, fromName: from.displayName, video, scheduledFor: m.scheduledFor, at: Date.now(), expiresAt: Date.now() + 45_000 });
+      touch(id);
+      rang.push({ id, name: NAMES.get(id)! });
+    }
+    return rang;
+  }
+  /** Joining answers your rings for that meeting. */
+  function answered(code: string, accountId: string | null) {
+    if (!accountId) return;
+    const box = inboxes.get(accountId);
+    if (!box) return;
+    let changed = false;
+    for (const a of box.alerts)
+      if (a.status === "active" && a.code === code) {
+        a.status = "answered";
+        changed = true;
+      }
+    if (changed) touch(accountId);
+  }
 
   const roleOf = (m: FakeMeeting, id: string | null) =>
     !id ? "guest" : m.hostId === id ? "host" : m.cohosts.includes(id) ? "cohost" : m.invitees.includes(id) ? "invited" : "none";
@@ -148,7 +192,7 @@ export function paddockServer() {
     role: roleOf(m, id),
     removed: !!id && m.removed.includes(id),
     lastJoinedAt: id && m.attended.includes(id) ? m.createdAt : null,
-    invitees: m.hostId === id ? m.invitees.map((i) => ({ id: i, name: i })) : null,
+    invitees: m.hostId === id ? m.invitees.map((i) => ({ id: i, name: NAMES.get(i) ?? i })) : null,
     live: summary(m.code),
   });
   const direct = (m: FakeMeeting, id: string) =>
@@ -180,6 +224,7 @@ export function paddockServer() {
     seats.set(peer.seat, { code: m.code, peerId });
     if (who.accountId && !m.attended.includes(who.accountId)) m.attended.push(who.accountId);
     notice(r, peer, `${peer.name} joined`);
+    answered(m.code, who.accountId);
     bump(r);
     return { seat: peer.seat, role };
   }
@@ -201,8 +246,18 @@ export function paddockServer() {
     version: r.version,
     now: Date.now(),
     you: { id: p.id, role: p.role, state: p.state, epoch: p.epoch },
-    room: { title: m.title, code: m.code, locked: r.locked, startedAt: r.startedAt, guestsAllowed: m.guestsAllowed, maxPeople: 8 },
-    peers: [...r.peers.values()].map((x) => ({ id: x.id, name: x.name, role: x.role, guest: !x.accountId, state: x.state, joinedAt: x.joinedAt })),
+    room: {
+      title: m.title,
+      code: m.code,
+      locked: r.locked,
+      startedAt: r.startedAt,
+      guestsAllowed: m.guestsAllowed,
+      maxPeople: 8,
+      rules: r.rules ?? { present: true, chat: true, react: true, mic: true, cam: true },
+      spotlight: r.spotlight ?? null,
+      ringing: [],
+    },
+    peers: [...r.peers.values()].map((x) => ({ id: x.id, name: x.name, role: x.role, guest: !x.accountId, accountId: x.accountId, state: x.state, joinedAt: x.joinedAt })),
     signals: p.inbox.slice(0, 200),
     feed: r.feed.filter((f) => f.seq > feedSince && (feedSince > 0 || f.kind === "chat")),
     feedSeq: r.feedSeq,
@@ -348,6 +403,9 @@ export function paddockServer() {
         }
         return json({ delivered });
       }
+      const manager = p.role === "host" || p.role === "cohost";
+      if ((rest === "chat" || rest === "react") && !manager && r.rules && !r.rules[rest])
+        return json({ code: `${rest}_off`, error: rest === "chat" ? "The host turned off chat for everyone." : "The host turned off reactions." }, 403);
       if (rest === "chat") {
         if (!r.feed.some((f) => f.kind === "chat" && f.id === body.id && f.from === p.id))
           r.feed.push({ seq: ++r.feedSeq, kind: "chat", id: body.id, from: p.id, name: p.name, text: String(body.text).trim(), at: Date.now() });
@@ -394,6 +452,18 @@ export function paddockServer() {
             r.locked = !!body.on;
             bump(r);
             return json({ ok: true });
+          case "rules": {
+            r.rules = { ...(r.rules ?? { present: true, chat: true, react: true, mic: true, cam: true }), [body.rule]: !!body.on };
+            if (!body.on && body.rule === "mic")
+              for (const x of r.peers.values()) if (x.role !== "host" && x.role !== "cohost" && x.state.mic) control(x, "mute");
+            r.feed.push({ seq: ++r.feedSeq, kind: "notice", id: `n${r.feedSeq}`, from: p.id, name: p.name, text: `${p.name} turned ${body.on ? "on" : "off"} ${body.rule} for everyone`, at: Date.now() });
+            bump(r);
+            return json({ ok: true });
+          }
+          case "spotlight":
+            r.spotlight = body.peer ?? null;
+            bump(r);
+            return json({ ok: true });
           case "end":
             for (const x of [...r.peers.values()]) drop(r, x, "ended");
             rooms.delete(found.m.code);
@@ -406,6 +476,33 @@ export function paddockServer() {
     }
 
     if (!me) return json({ error: "Sign in to continue." }, 401);
+    if (path === "/api/paddock/alerts" && method === "GET") {
+      const box = inboxOf(me.id);
+      const since = Number(url.searchParams.get("since") ?? 0);
+      const wait = Number(url.searchParams.get("wait") ?? 0);
+      if (wait > 0 && box.version <= since)
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, Math.min(wait, 1500));
+          box.waiter = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+        });
+      return json({ version: box.version, now: Date.now(), alerts: box.alerts });
+    }
+    const decline = path.match(/^\/api\/paddock\/alerts\/([a-f0-9]+)\/decline$/);
+    if (decline) {
+      const a = inboxOf(me.id).alerts.find((x) => x.id === decline[1] && x.status === "active");
+      if (!a) return json({ error: "That call has already ended." }, 404);
+      a.status = "declined";
+      touch(me.id);
+      const r = rooms.get(a.code);
+      if (r) {
+        r.feed.push({ seq: ++r.feedSeq, kind: "notice", id: `n${r.feedSeq}`, from: "stayblz", name: "Stayblz", text: `${me.displayName} can't join right now`, at: Date.now() });
+        bump(r);
+      }
+      return json({ ok: true });
+    }
     if (path === "/api/paddock" && method === "GET")
       return json({ meetings: [...meetings.values()].filter((m) => roleOf(m, me.id) !== "none" || m.attended.includes(me.id)).map((m) => out(m, me.id)), maxPeople: 8 });
     if (path === "/api/paddock" && method === "POST") {
@@ -421,7 +518,7 @@ export function paddockServer() {
       });
       return json({ meeting: out(m, me.id) }, 201);
     }
-    const memberMatch = path.match(/^\/api\/paddock\/([a-z]{4}-[a-z]{4})(\/join|\/knock)?$/);
+    const memberMatch = path.match(/^\/api\/paddock\/([a-z]{4}-[a-z]{4})(\/join|\/knock|\/ring|\/invite)?$/);
     if (memberMatch) {
       const m = meetings.get(memberMatch[1]);
       if (!m) return json({ code: "not_found", error: "There's no meeting with that code. Check the code or link and try again." }, 404);
@@ -441,6 +538,17 @@ export function paddockServer() {
         }
       }
       if (m.removed.includes(me.id)) return json({ code: "removed", error: "The host removed you from this meeting, so you can't join again." }, 403);
+      if (memberMatch[2] === "/ring") {
+        const ids: string[] = body?.ids ?? [...m.invitees, ...m.cohosts, m.hostId];
+        return json({ rang: ringPeople(m, me, ids, body?.video !== false) });
+      }
+      if (memberMatch[2] === "/invite") {
+        if (roleOf(m, me.id) !== "host" && roleOf(m, me.id) !== "cohost") return json({ error: "Only the host and co-hosts can add people." }, 403);
+        const ids: string[] = (body?.ids ?? []).filter((id: string) => NAMES.has(id));
+        if (!ids.length) return json({ error: "Choose people to add." }, 400);
+        m.invitees = [...new Set([...m.invitees, ...ids])];
+        return json({ added: ids.length, rang: ringPeople(m, me, ids), invited: [] });
+      }
       if (memberMatch[2] === "/join") {
         if (!direct(m, me.id)) return json({ code: "ask", error: "Ask to join, and the host will let you in." }, 403);
         const r = roomOf(m.code);

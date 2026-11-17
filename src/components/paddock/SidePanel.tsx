@@ -4,15 +4,15 @@ import { useConfirm } from "../ui/Confirm";
 import ChatTab from "./ChatTab";
 import type { PanelTab } from "./Dock";
 import type { CallView, PaddockCall, Person } from "./engine/call";
-import { CamOffIcon, CloseIcon, HandIcon, LockIcon, MicIcon, MicOffIcon, MoreIcon, ScreenIcon, UnlockIcon } from "./icons";
+import HostTab from "./HostTab";
+import { CamOffIcon, CloseIcon, HandIcon, MicIcon, MicOffIcon, MoreIcon, RingIcon, ScreenIcon, SearchIcon, UserPlusIcon } from "./icons";
 import InfoTab from "./InfoTab";
-import { Cloth, personMenu, roleTag } from "./Tile";
+import { paddockApi } from "./paddockApi";
+import { Face } from "./Preview";
+import { handOrder, personMenu, roleTag, Talking } from "./Tile";
+import { saddlecloth } from "./brand";
 
-const TABS: { value: PanelTab; label: string }[] = [
-  { value: "people", label: "People" },
-  { value: "chat", label: "Chat" },
-  { value: "info", label: "Details" },
-];
+const TITLES: Record<PanelTab, string> = { people: "People", chat: "In-call messages", info: "Meeting details", host: "Host controls" };
 
 export default function SidePanel({
   view,
@@ -22,6 +22,7 @@ export default function SidePanel({
   onClose,
   pinned,
   onPin,
+  onAddPeople,
 }: {
   view: CallView;
   call: PaddockCall;
@@ -30,6 +31,7 @@ export default function SidePanel({
   onClose: () => void;
   pinned: string | null;
   onPin: (key: string | null) => void;
+  onAddPeople: () => void;
 }) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -40,35 +42,38 @@ export default function SidePanel({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+  const tabs: PanelTab[] = view.canManage ? ["people", "chat", "info", "host"] : ["people", "chat", "info"];
   return (
-    <aside ref={ref} className="pd-panel" aria-label="Call panel">
+    <aside ref={ref} className="pd-panel" aria-label={TITLES[tab]}>
       <div className="pd-panel-head">
-        <div className="pd-tabs" role="tablist" aria-label="Call panel">
-          {TABS.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              id={`pd-tab-${t.value}`}
-              aria-selected={tab === t.value}
-              aria-controls={`pd-tabpanel-${t.value}`}
-              className={tab === t.value ? "is-active" : ""}
-              onClick={() => onTab(t.value)}
-            >
-              {t.label}
-              {t.value === "people" && <span className="pd-tab-count">{view.people.length}</span>}
-              {t.value === "chat" && view.unread > 0 && tab !== "chat" && <span className="pd-tab-dot" aria-label={`${view.unread} new`} />}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="dlg-close" aria-label="Close panel" title="Close panel" onClick={onClose}>
-          <CloseIcon size={16} />
+        <h2>{TITLES[tab]}</h2>
+        <button type="button" className="pd-icon-btn" aria-label="Close panel" title="Close panel" onClick={onClose}>
+          <CloseIcon size={18} />
         </button>
       </div>
+      <div className="pd-tabs" role="tablist" aria-label="Call panel">
+        {tabs.map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            id={`pd-tab-${t}`}
+            aria-selected={tab === t}
+            aria-controls={`pd-tabpanel-${t}`}
+            className={tab === t ? "is-active" : ""}
+            onClick={() => onTab(t)}
+          >
+            {t === "people" ? "People" : t === "chat" ? "Chat" : t === "info" ? "Details" : "Host"}
+            {t === "people" && <span className="pd-tab-count">{view.people.length}</span>}
+            {t === "chat" && view.unread > 0 && tab !== "chat" && <span className="pd-tab-dot" aria-label={`${view.unread} new`} />}
+          </button>
+        ))}
+      </div>
       <div className="pd-panel-body" role="tabpanel" id={`pd-tabpanel-${tab}`} aria-labelledby={`pd-tab-${tab}`}>
-        {tab === "people" && <PeopleTab view={view} call={call} pinned={pinned} onPin={onPin} />}
+        {tab === "people" && <PeopleTab view={view} call={call} pinned={pinned} onPin={onPin} onAddPeople={onAddPeople} />}
         {tab === "chat" && <ChatTab view={view} call={call} />}
         {tab === "info" && <InfoTab view={view} call={call} />}
+        {tab === "host" && view.canManage && <HostTab view={view} call={call} />}
       </div>
     </aside>
   );
@@ -79,22 +84,22 @@ function PersonRow({ person, view, call, pinned, onPin }: { person: Person; view
   const button = useRef<HTMLButtonElement>(null);
   const [menu, setMenu] = useState(false);
   const tag = roleTag(person);
+  const cloth = saddlecloth(person.number);
+  const hand = handOrder(view, person);
   return (
     <li className="pd-person">
-      <Cloth n={person.number} />
+      <Face name={person.name} accountId={person.accountId} className={`pd-face is-small${person.speaking ? " is-speaking" : ""}`} style={{ background: cloth.bg, color: cloth.ink }} />
       <span className="pd-person-name">
         <strong>
           {person.name}
           {person.me && " (You)"}
         </strong>
-        {(tag || person.state.screen) && (
-          <small>
-            {[tag, person.state.screen ? "Presenting" : ""].filter(Boolean).join(" · ")}
-          </small>
+        {(tag || person.state.screen || view.spotlight === person.id) && (
+          <small>{[tag, person.state.screen ? "Presenting" : "", view.spotlight === person.id ? "Spotlight" : ""].filter(Boolean).join(" · ")}</small>
         )}
       </span>
       <span className="pd-person-icons">
-        {person.state.hand && (
+        {hand > 0 && (
           <span className="is-hand" title="Hand raised">
             <HandIcon size={15} />
           </span>
@@ -110,25 +115,78 @@ function PersonRow({ person, view, call, pinned, onPin }: { person: Person; view
           </span>
         )}
         <span className={person.state.mic ? (person.speaking ? "is-speaking" : "") : "is-muted"} title={person.state.mic ? "Mic on" : "Muted"}>
-          {person.state.mic ? <MicIcon size={15} /> : <MicOffIcon size={15} />}
+          {person.state.mic ? person.speaking ? <Talking /> : <MicIcon size={15} /> : <MicOffIcon size={15} />}
         </span>
       </span>
       <button ref={button} type="button" className="pd-icon-btn" aria-label={`Options for ${person.name}`} aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>
         <MoreIcon size={16} />
       </button>
-      {menu && (
-        <Menu anchor={button.current} label={`Options for ${person.name}`} items={personMenu(person, view, call, pinned, onPin, confirm)} onClose={() => setMenu(false)} />
-      )}
+      {menu && <Menu anchor={button.current} label={`Options for ${person.name}`} items={personMenu(person, view, call, pinned, onPin, confirm)} onClose={() => setMenu(false)} />}
     </li>
   );
 }
 
-function PeopleTab({ view, call, pinned, onPin }: { view: CallView; call: PaddockCall; pinned: string | null; onPin: (key: string | null) => void }) {
+/** The host sees who was invited but isn't here, to ring them. */
+function useInvitees(view: CallView) {
+  const [invitees, setInvitees] = useState<{ id: string; name: string }[]>([]);
+  const isHost = view.role === "host" && view.member;
+  const count = view.people.length;
+  useEffect(() => {
+    if (!isHost) return;
+    const controller = new AbortController();
+    paddockApi
+      .get(view.code, controller.signal)
+      .then((d) => setInvitees(d.meeting.invitees ?? []))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [isHost, view.code, count]);
+  const here = new Set(view.people.map((p) => p.accountId).filter(Boolean));
+  return invitees.filter((p) => !here.has(p.id));
+}
+
+function PeopleTab({
+  view,
+  call,
+  pinned,
+  onPin,
+  onAddPeople,
+}: {
+  view: CallView;
+  call: PaddockCall;
+  pinned: string | null;
+  onPin: (key: string | null) => void;
+  onAddPeople: () => void;
+}) {
   const confirm = useConfirm();
+  const [query, setQuery] = useState("");
+  const missing = useInvitees(view);
+  const ringingNames = new Set(view.ringing.map((r) => r.name));
   const hands = view.people.filter((p) => p.state.hand !== null).sort((a, b) => (a.state.hand ?? 0) - (b.state.hand ?? 0));
   const anyMic = view.people.some((p) => !p.me && p.state.mic);
+  const q = query.trim().toLowerCase();
+  const shown = q ? view.people.filter((p) => p.name.toLowerCase().includes(q)) : view.people;
   return (
     <div className="pd-people">
+      {view.member && (view.canManage || view.role === "member") && (
+        <div className="pd-people-actions">
+          {view.canManage && (
+            <button type="button" className="pd-btn is-primary is-small" onClick={onAddPeople}>
+              <UserPlusIcon /> Add people
+            </button>
+          )}
+          <button type="button" className="pd-btn is-quiet is-small" onClick={() => void call.ring()}>
+            <RingIcon /> Ring invited
+          </button>
+        </div>
+      )}
+      {view.people.length > 3 && (
+        <label className="pd-search">
+          <SearchIcon />
+          <span className="sr-only">Search people in the call</span>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search for people" />
+        </label>
+      )}
+
       {view.canManage && view.knocks.length > 0 && (
         <section className="pd-section is-waiting" aria-label="Waiting to join">
           <h3>
@@ -141,20 +199,38 @@ function PeopleTab({ view, call, pinned, onPin }: { view: CallView; call: Paddoc
                   <strong>{k.name}</strong>
                   <small>{k.guest ? "Guest (no Stayblz account)" : "Stayblz member"}</small>
                 </span>
-                <button type="button" className="btn btn-quiet" onClick={() => void call.admit(k.id, false)}>
+                <button type="button" className="pd-btn is-quiet is-small" onClick={() => void call.admit(k.id, false)}>
                   Deny
                 </button>
-                <button type="button" className="btn btn-primary" onClick={() => void call.admit(k.id, true)}>
+                <button type="button" className="pd-btn is-primary is-small" onClick={() => void call.admit(k.id, true)}>
                   Admit
                 </button>
               </li>
             ))}
           </ul>
           {view.knocks.length > 1 && (
-            <button type="button" className="btn btn-quiet pd-wide" onClick={() => void call.admitAll()}>
+            <button type="button" className="pd-btn is-quiet is-small pd-wide" onClick={() => void call.admitAll()}>
               Admit all ({view.knocks.length})
             </button>
           )}
+        </section>
+      )}
+
+      {view.ringing.length > 0 && (
+        <section className="pd-section" aria-label="Ringing">
+          <h3>
+            Ringing <span>{view.ringing.length}</span>
+          </h3>
+          <ul className="pd-ringing">
+            {view.ringing.map((r) => (
+              <li key={r.name}>
+                <span className="pd-ring-dot" aria-hidden="true">
+                  <RingIcon size={14} />
+                </span>
+                {r.name}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
@@ -166,7 +242,7 @@ function PeopleTab({ view, call, pinned, onPin }: { view: CallView; call: Paddoc
           <ol className="pd-hands">
             {hands.map((p) => (
               <li key={p.id}>
-                <Cloth n={p.number} size="sm" />
+                <HandIcon size={15} />
                 <span>{p.me ? "You" : p.name}</span>
                 {(view.canManage || p.me) && (
                   <button type="button" className="pd-link" onClick={() => (p.me ? call.setHand(false) : void call.lowerHand(p.id))}>
@@ -190,43 +266,46 @@ function PeopleTab({ view, call, pinned, onPin }: { view: CallView; call: Paddoc
           <span>
             {view.people.length} of {view.maxPeople}
           </span>
-        </h3>
-        <ul>
-          {view.people.map((p) => (
-            <PersonRow key={p.id} person={p} view={view} call={call} pinned={pinned} onPin={onPin} />
-          ))}
-        </ul>
-      </section>
-
-      {view.canManage && (
-        <section className="pd-section pd-host" aria-label="Host tools">
-          <h3>Host tools</h3>
-          <div className="pd-host-row">
+          {view.canManage && anyMic && (
             <button
               type="button"
-              className="btn btn-quiet"
-              disabled={!anyMic}
+              className="pd-link"
               onClick={async () => {
                 if (await confirm({ title: "Mute everyone?", message: "Everyone else's microphone turns off. They can unmute themselves when they need to talk.", confirmLabel: "Mute everyone" }))
                   void call.muteAll();
               }}
             >
-              <MicOffIcon size={16} /> Mute everyone
+              Mute everyone
             </button>
-            <button
-              type="button"
-              className="btn btn-quiet"
-              aria-pressed={view.locked}
-              onClick={async () => {
-                if (view.locked) return void call.lock(false);
-                if (await confirm({ title: "Lock this meeting?", message: "Nobody new can join or ask to join until you unlock it. People already here stay.", confirmLabel: "Lock meeting" }))
-                  void call.lock(true);
-              }}
-            >
-              {view.locked ? <UnlockIcon /> : <LockIcon />} {view.locked ? "Unlock meeting" : "Lock meeting"}
-            </button>
-          </div>
-          {view.locked && <p className="pd-small">Locked: nobody new can join or ask to join.</p>}
+          )}
+        </h3>
+        <ul>
+          {shown.map((p) => (
+            <PersonRow key={p.id} person={p} view={view} call={call} pinned={pinned} onPin={onPin} />
+          ))}
+          {shown.length === 0 && <li className="pd-small">Nobody in the call matches “{query}”.</li>}
+        </ul>
+      </section>
+
+      {missing.length > 0 && (
+        <section className="pd-section" aria-label="Invited, not here yet">
+          <h3>
+            Invited, not here <span>{missing.length}</span>
+          </h3>
+          <ul>
+            {missing.map((p) => (
+              <li key={p.id} className="pd-person is-missing">
+                <Face name={p.name} accountId={p.id} className="pd-face is-small" />
+                <span className="pd-person-name">
+                  <strong>{p.name}</strong>
+                  <small>{ringingNames.has(p.name) ? "Ringing…" : "Not in the call"}</small>
+                </span>
+                <button type="button" className="pd-btn is-quiet is-small" disabled={ringingNames.has(p.name)} onClick={() => void call.ring([p.id])}>
+                  <RingIcon /> Ring
+                </button>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
     </div>

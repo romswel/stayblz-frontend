@@ -225,7 +225,7 @@ export const api = {
   post: <T>(
     path: string,
     body?: unknown,
-    options?: { headers?: Record<string, string> },
+    options?: { signal?: AbortSignal; headers?: Record<string, string> },
   ) =>
     request<T>(path, {
       method: "POST",

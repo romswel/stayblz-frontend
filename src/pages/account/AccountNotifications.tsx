@@ -169,11 +169,27 @@ export default function AccountNotifications() {
               </p>
             </section>
 
+            <section className="panel account-profile acct-section" aria-labelledby="nt-paddock">
+              <h2 id="nt-paddock">Stayblz Paddock</h2>
+              <fieldset className="nt-fieldset" disabled={busy}>
+                <label className="acct-toggle">
+                  <input type="checkbox" checked={settings.paddockCalls} onChange={(e) => void save({ paddockCalls: e.target.checked })} />
+                  <span>
+                    Calls and meetings
+                    <small>
+                      Ring me when someone calls me, and tell me when I'm invited to a meeting or one I'm invited to starts. While
+                      Stayblz is open, calls ring on screen even with notifications off; in the background they need notifications on.
+                    </small>
+                  </span>
+                </label>
+              </fieldset>
+            </section>
+
             <section className="panel account-profile acct-section" aria-labelledby="nt-later">
               <h2 id="nt-later">Coming later</h2>
               <p className="nt-small">
-                Alerts for new Updates posts, horses and races you follow, and Stayblz Paddock invites aren't sent yet. When they
-                arrive, their switches will appear here.
+                Alerts for new Updates posts, and for horses and races you follow, aren't sent yet. When they arrive, their
+                switches will appear here.
               </p>
             </section>
           </>
