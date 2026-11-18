@@ -10,6 +10,9 @@ import {
   money,
   ordinal,
   uploadHorseImage,
+  uploadHorseVideo,
+  horseMediaPicture,
+  MAX_HORSE_VIDEOS,
   type HorseDetail,
   type HorseInput,
   type HorseSex,
@@ -494,28 +497,45 @@ function PhotosPanel({ horse, onChange }: { horse: HorseDetail; onChange: (h: Ho
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const images = horse.images;
-  const room = 12 - images.length;
+  const photoCount = images.filter((i) => i.kind !== "video").length;
+  const videoCount = images.length - photoCount;
+  const room = 12 - photoCount;
+  const videoRoom = MAX_HORSE_VIDEOS - videoCount;
+  const full = room <= 0 && videoRoom <= 0;
 
   async function add(files: FileList | null) {
     if (!files?.length) return;
-    const list = [...files].slice(0, room);
-    setError(files.length > room ? `A horse can have up to 12 photos. ${room} more can be added.` : "");
+    const all = [...files];
+    const isVideo = (f: File) => f.type.startsWith("video/") || /\.(mp4|m4v|mov|webm)$/i.test(f.name);
+    const photos = all.filter((f) => !isVideo(f));
+    const videos = all.filter(isVideo);
+    const notes: string[] = [];
+    if (photos.length > room) notes.push(`A horse can have up to 12 photos. ${Math.max(room, 0)} more can be added.`);
+    if (videos.length > videoRoom) notes.push(`A horse can have up to ${MAX_HORSE_VIDEOS} videos. ${Math.max(videoRoom, 0)} more can be added.`);
+    setError(notes.join(" "));
+    const list = [...photos.slice(0, Math.max(room, 0)), ...videos.slice(0, Math.max(videoRoom, 0))];
     let current = horse;
     for (const file of list) {
       setUploading((n) => n + 1);
       try {
-        const r = await uploadHorseImage(horse.id, file);
-        current = { ...current, images: [...current.images, r.image], coverImageId: r.coverImageId };
+        if (isVideo(file)) {
+          const r = await uploadHorseVideo(horse.id, file);
+          current = { ...current, images: [...current.images, r.image] };
+        } else {
+          const r = await uploadHorseImage(horse.id, file);
+          current = { ...current, images: [...current.images, r.image], coverImageId: r.coverImageId };
+        }
         onChange(current);
       } catch (e) {
-        setError(errorText(e, "A photo couldn't be uploaded."));
+        setError(errorText(e, isVideo(file) ? "A video couldn't be uploaded." : "A photo couldn't be uploaded."));
       } finally {
         setUploading((n) => n - 1);
       }
     }
   }
   async function remove(imageId: string) {
-    const sure = await confirm({ title: "Remove this photo?", message: "It's deleted from this horse's profile.", confirmLabel: "Remove photo", cancelLabel: "Keep", tone: "danger" });
+    const kind = images.find((i) => i.id === imageId)?.kind === "video" ? "video" : "photo";
+    const sure = await confirm({ title: `Remove this ${kind}?`, message: "It's deleted from this horse's profile and from posts that show it.", confirmLabel: `Remove ${kind}`, cancelLabel: "Keep", tone: "danger" });
     if (!sure) return;
     try {
       const r = await community.removeHorseImage(horse.id, imageId);
@@ -551,8 +571,8 @@ function PhotosPanel({ horse, onChange }: { horse: HorseDetail; onChange: (h: Ho
     <div className="cm-ed-panel">
       <button
         type="button"
-        className={`cm-dropzone${dragging ? " is-drag" : ""}${room <= 0 ? " is-full" : ""}`}
-        disabled={room <= 0}
+        className={`cm-dropzone${dragging ? " is-drag" : ""}${full ? " is-full" : ""}`}
+        disabled={full}
         onClick={() => fileRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
@@ -562,31 +582,42 @@ function PhotosPanel({ horse, onChange }: { horse: HorseDetail; onChange: (h: Ho
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          if (room > 0) void add(e.dataTransfer.files);
+          if (!full) void add(e.dataTransfer.files);
         }}
       >
         <span className="cm-dropzone-icon" aria-hidden="true"><Icon.Photo /></span>
-        <strong>{room <= 0 ? "Photo limit reached" : dragging ? "Drop to upload" : "Drop photos here or tap to choose"}</strong>
-        <small>JPG, PNG, WebP or GIF · large photos are resized automatically</small>
+        <strong>{full ? "Photo and video limit reached" : dragging ? "Drop to upload" : "Drop photos or videos here, or tap to choose"}</strong>
+        <small>Photos: JPG, PNG, WebP or GIF, resized automatically · Videos: MP4, MOV or WebM, up to 3 minutes</small>
       </button>
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden onChange={(e) => { void add(e.target.files); e.target.value = ""; }} />
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,.mov,.m4v" multiple hidden onChange={(e) => { void add(e.target.files); e.target.value = ""; }} />
       {error && <p className="cm-error" role="alert">{error}</p>}
 
       {images.length > 0 || uploading > 0 ? (
         <ul className="cm-ed-photos">
           {images.map((img, i) => {
             const isCover = horse.coverImageId === img.id;
+            const video = img.kind === "video";
+            const picture = horseMediaPicture(img);
             return (
-              <li key={img.id} className={isCover ? "is-cover" : undefined}>
-                <img src={horseImageUrl(img.id)} alt={`${horse.name} photo ${i + 1}`} loading="lazy" />
+              <li key={img.id} className={`${isCover ? "is-cover" : ""}${video ? " is-video" : ""}`.trim() || undefined}>
+                {picture ? (
+                  <img src={picture} alt={`${horse.name} ${video ? "video" : "photo"} ${i + 1}`} loading="lazy" />
+                ) : (
+                  <span className="cm-ed-video-blank" aria-label={`${horse.name} video ${i + 1}`} />
+                )}
                 <span className="cm-ed-photo-n">{String(i + 1).padStart(2, "0")}</span>
                 {isCover && <span className="cm-cover-tag">Cover</span>}
+                {video && (
+                  <span className="cm-ed-video-tag">
+                    <Icon.Play /> Video{img.durationSeconds ? ` · ${Math.floor(img.durationSeconds / 60)}:${String(img.durationSeconds % 60).padStart(2, "0")}` : ""}
+                  </span>
+                )}
                 <div className="cm-ed-photo-tools">
                   <button type="button" className="cm-icon-btn" aria-label="Move earlier" disabled={i === 0} onClick={() => move(i, -1)}><Icon.Left /></button>
                   <button type="button" className="cm-icon-btn" aria-label="Move later" disabled={i === images.length - 1} onClick={() => move(i, 1)}><Icon.Right /></button>
                   <span className="cm-grow" />
-                  {!isCover && <button type="button" className="cm-mini" onClick={() => cover(img.id)}>Set cover</button>}
-                  <button type="button" className="cm-icon-btn cm-danger" aria-label="Remove photo" onClick={() => remove(img.id)}><Icon.Trash /></button>
+                  {!isCover && !video && <button type="button" className="cm-mini" onClick={() => cover(img.id)}>Set cover</button>}
+                  <button type="button" className="cm-icon-btn cm-danger" aria-label={video ? "Remove video" : "Remove photo"} onClick={() => remove(img.id)}><Icon.Trash /></button>
                 </div>
               </li>
             );
@@ -598,16 +629,16 @@ function PhotosPanel({ horse, onChange }: { horse: HorseDetail; onChange: (h: Ho
           ))}
         </ul>
       ) : (
-        <p className="cm-ed-empty">No photos yet. The first photo you add becomes the cover.</p>
+        <p className="cm-ed-empty">No photos or videos yet. The first photo you add becomes the cover.</p>
       )}
 
       <div className="cm-sheet-foot">
         <span className="cm-foot-meter">
-          <span className="cm-meter is-thin"><span style={{ width: `${(images.length / 12) * 100}%` }} /></span>
-          <span className="cm-mono">{images.length} / 12 photos</span>
+          <span className="cm-meter is-thin"><span style={{ width: `${(photoCount / 12) * 100}%` }} /></span>
+          <span className="cm-mono">{photoCount} / 12 photos · {videoCount} / {MAX_HORSE_VIDEOS} videos</span>
         </span>
-        <button type="button" className="cm-btn cm-btn-primary" disabled={room <= 0} onClick={() => fileRef.current?.click()}>
-          <Icon.Plus /> Add photos
+        <button type="button" className="cm-btn cm-btn-primary" disabled={full} onClick={() => fileRef.current?.click()}>
+          <Icon.Plus /> Add photos or videos
         </button>
       </div>
     </div>

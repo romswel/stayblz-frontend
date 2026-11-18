@@ -19,6 +19,7 @@ import {
   type Post,
   type Surface,
 } from "./api";
+import { HorseShareBlock } from "./HorseShare";
 import "./community-glass.css";
 
 /* ============================== Icons ============================== */
@@ -56,6 +57,7 @@ export const Icon = {
   Send: () => (<svg {...I}><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" /></svg>),
   Edit: () => (<svg {...I} width={14} height={14}><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>),
   Trash: () => (<svg {...I} width={14} height={14}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>),
+  Play: () => (<svg {...I} width={12} height={12} fill="currentColor" stroke="none"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>),
   Globe: () => (<svg {...I} width={14} height={14}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>),
 };
 
@@ -161,7 +163,17 @@ export function FollowButton({
 
 /* ============================== Horse card ============================== */
 
-export function HorseCard({ horse, showOwnerTools, onEdit }: { horse: Horse; showOwnerTools?: boolean; onEdit?: () => void }) {
+export function HorseCard({
+  horse,
+  showOwnerTools,
+  onEdit,
+  onShare,
+}: {
+  horse: Horse;
+  showOwnerTools?: boolean;
+  onEdit?: () => void;
+  onShare?: () => void;
+}) {
   const age = horse.foaledYear ? `${new Date().getFullYear() - horse.foaledYear} yrs` : null;
   return (
     <article className="cm-horse gx-glass">
@@ -182,10 +194,19 @@ export function HorseCard({ horse, showOwnerTools, onEdit }: { horse: Horse; sho
       <div className="cm-horse-body">
         <div className="cm-horse-title">
           <h3><Link to={`/community/horses/${horse.id}`}>{horse.name}</Link></h3>
-          {showOwnerTools && onEdit && (
-            <button type="button" className="cm-icon-btn" onClick={onEdit} aria-label={`Edit ${horse.name}`} title="Edit">
-              <Icon.Edit />
-            </button>
+          {showOwnerTools && (onEdit || onShare) && (
+            <span className="cm-horse-tools">
+              {onShare && (
+                <button type="button" className="cm-icon-btn" onClick={onShare} aria-label={`Share ${horse.name} to the Feed`} title="Share to Feed">
+                  <Icon.Share />
+                </button>
+              )}
+              {onEdit && (
+                <button type="button" className="cm-icon-btn" onClick={onEdit} aria-label={`Edit ${horse.name}`} title="Edit">
+                  <Icon.Edit />
+                </button>
+              )}
+            </span>
           )}
         </div>
         <p className="cm-horse-meta">{[horse.breed, age, horse.color].filter(Boolean).join(" · ") || "Details not added yet"}</p>
@@ -279,6 +300,7 @@ const KIND_LABEL: Record<Post["kind"], { label: string; icon: ReactNode } | null
   result: { label: "Race result", icon: <Icon.Flag /> },
   achievement: { label: "Winner", icon: <Icon.Trophy /> },
   announcement: { label: "Announcement", icon: <Icon.Mega /> },
+  horse_share: { label: "Shared a horse", icon: <Icon.Horse /> },
 };
 
 const surfaceText = (s: Surface) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
@@ -415,7 +437,13 @@ export function PostCard({ post, onChange, onRemoved }: { post: Post; onChange?:
         </div>
       )}
 
-      {p.horse && (
+      {p.kind === "horse_share" ? (
+        p.horse ? (
+          <HorseShareBlock horse={p.horse} />
+        ) : (
+          <p className="cm-muted">This horse isn't available.</p>
+        )
+      ) : p.horse && (
         <Link to={`/community/horses/${p.horse.id}`} className="cm-horse-chip">
           {p.horse.coverImageId ? <img src={horseImageUrl(p.horse.coverImageId)} alt="" /> : <span className="cm-horse-chip-icon"><Icon.Horse /></span>}
           <span>
