@@ -54,7 +54,7 @@
 /* ————— Shared field look (filters + form) ————— */
 .mk-filters :is(select, input),
 .mk-sort select,
-.mk-form :is(select, input) {
+.mk-form :is(select, input, textarea) {
   width: 100%;
   min-width: 0;
   min-height: 40px;
@@ -69,17 +69,17 @@
   width: auto;
 }
 .mk-filters :is(select, input):hover,
-.mk-form :is(select, input):hover:not(:disabled) {
+.mk-form :is(select, input, textarea):hover:not(:disabled) {
   border-color: var(--ws-gold);
 }
 .mk-filters :is(select, input):focus-visible,
 .mk-sort select:focus-visible,
-.mk-form :is(select, input):focus-visible {
+.mk-form :is(select, input, textarea):focus-visible {
   outline: 2px solid var(--ws-gold);
   outline-offset: 1px;
 }
 .mk-filters input::placeholder,
-.mk-form input::placeholder {
+.mk-form :is(input, textarea)::placeholder {
   color: var(--ws-muted);
   opacity: 0.8;
 }
@@ -307,12 +307,49 @@
 .mk-form .mk-span {
   grid-column: 1 / -1;
 }
-.mk-form :is(select, input) {
+.mk-form :is(select, input, textarea) {
   min-height: 44px;
   font-size: 16px; /* 16px stops iOS zooming into the field */
   background: var(--input-bg, var(--ws-bg));
   color: var(--ink);
   border-color: var(--line);
+}
+/* Light theme: white fields on a white dialog need a visible edge and a little depth. */
+:root[data-theme="light"] .mk-form :is(select, input, textarea) {
+  border-color: #b4c0cf;
+  box-shadow: 0 1px 2px rgba(30, 41, 59, 0.1), inset 0 1px 1px rgba(30, 41, 59, 0.04);
+}
+:root[data-theme="light"] .mk-form :is(select, input, textarea):hover:not(:disabled) {
+  border-color: var(--gold);
+}
+.mk-form :is(select, input, textarea):disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.mk-form textarea {
+  display: block;
+  min-height: 132px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+.mk-form .mk-description {
+  margin-top: 4px;
+}
+.mk-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.mk-label-row small,
+.mk-count {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.mk-count {
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
 }
 .mk-money {
   position: relative;

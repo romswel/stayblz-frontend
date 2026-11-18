@@ -158,6 +158,7 @@ export interface Listing {
   videoCount: number;
   documentCount: number;
   /** Only on a single listing (GET /listings/:id) and after saving. */
+  description?: string;
   media?: ListingMedia[];
   documents?: ListingDocument[];
 }
@@ -184,6 +185,7 @@ export const MAX_PHOTOS = 8;
 export const MAX_VIDEOS = 3;
 export const MAX_VIDEO_SECONDS = 180;
 export const MAX_DOCUMENTS = 5;
+export const DESCRIPTION_MAX = 2000;
 
 /** What the listing form sends (and the server checks again). */
 export type ListingInput = {
@@ -197,6 +199,8 @@ export type ListingInput = {
   age: number;
   heightIn: number;
   location: string;
+  /** Optional free text, up to DESCRIPTION_MAX characters; line breaks are kept. */
+  description: string;
   /** Uploaded photos and videos in display order; item 0 is the cover. */
   mediaIds: string[];
   documentIds: string[];

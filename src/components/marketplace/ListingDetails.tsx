@@ -204,6 +204,15 @@ export default function ListingDetails({
             <p className="mkm-muted">The seller hasn't added any documents.</p>
           )}
 
+          <h3 className="mkm-subhead">Description</h3>
+          {state.error ? null : state.loading && l.description === undefined ? (
+            <p className="mkm-muted">Loading…</p>
+          ) : l.description ? (
+            <p className="mkm-description">{l.description}</p>
+          ) : (
+            <p className="mkm-muted">The seller hasn't added a description.</p>
+          )}
+
           <p className="mkm-seller">
             {l.mine ? "Listed by you" : <>Listed by <b>{l.sellerName}</b></>}
           </p>
