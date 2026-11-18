@@ -1,5 +1,5 @@
 import type { LocalMedia } from "./engine/media";
-import { CamIcon, CamOffIcon, MicIcon, MicOffIcon, PhoneOffIcon } from "./icons";
+import { CamIcon, CamOffIcon, ExitIcon, MicIcon, MicOffIcon } from "./icons";
 import { SelfPreview } from "./Preview";
 import { meetingTime } from "./time";
 import { useMedia } from "./useCall";
@@ -36,7 +36,7 @@ export function PaddockArt() {
   );
 }
 
-/** After "Ask to join": wait for a host, with your own camera in the corner and quick controls. */
+/** After knocking: wait for a host, with your own camera in the corner and quick controls. */
 export default function WaitingRoom({
   title,
   scheduledFor,
@@ -62,12 +62,12 @@ export default function WaitingRoom({
     <section className="pd-waitroom" aria-labelledby="pd-wait-title">
       <div className="pd-waitroom-text">
         {when && <span className="pd-chip">{when}</span>}
-        <span className="pd-kicker">Asking to join</span>
+        <span className="pd-kicker">You knocked</span>
         <h1 id="pd-wait-title">{title}</h1>
         <p className="pd-waitroom-status" role="status" aria-live="polite">
           <span className="pd-spinner" aria-hidden="true" />
           <span>
-            <strong>Waiting for someone to let you in…</strong>
+            <strong>Waiting for the host to let you in…</strong>
             {hostPresent
               ? "The host has been told you're here. Keep this page open."
               : "The host isn't in the call yet. You'll be let in once they join and say yes. Keep this page open."}
@@ -98,7 +98,7 @@ export default function WaitingRoom({
           {media.camOn ? <CamIcon /> : <CamOffIcon />}
         </button>
         <button type="button" className="pd-leave" onClick={onCancel}>
-          <PhoneOffIcon />
+          <ExitIcon />
           <span>Cancel</span>
         </button>
       </div>

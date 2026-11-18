@@ -1,8 +1,9 @@
 import { memo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "react-router-dom";
 import AttachmentView from "./AttachmentView";
+import LinkCards from "./LinkCards";
 import EmojiPicker from "./EmojiPicker";
-import { clock, dayLabel, firstName, fullTime, linkify } from "./format";
+import { clock, dayLabel, firstName, fullTime, linkify, tone } from "./format";
 import {
   Avatar,
   CopyIcon,
@@ -73,13 +74,16 @@ interface Props {
   /** One-to-one chats: the other person (their face shows when they've seen your newest message). */
   other?: Who;
   highlight?: string;
+  /** Groups: "@Name" for the chat's members, and your own name (messages that mention you stand out). */
+  mentions?: RegExp | null;
+  meName?: string;
   h: RowHandlers;
 }
 
 const LONG_PRESS_MS = 430;
 const SWIPE_REPLY_PX = 56;
 
-function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, fresh, delivery, seenBy, other, highlight, h }: Props) {
+function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, fresh, delivery, seenBy, other, highlight, mentions, meName, h }: Props) {
   const [menuAt, setMenuAt] = useState<HTMLElement | null>(null);
   const [moreEmoji, setMoreEmoji] = useState(false);
   const [showTime, setShowTime] = useState(false);
@@ -115,25 +119,24 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
     { label: "Forward", icon: <ForwardIcon />, onSelect: () => h.onForward(m) },
     { label: m.pinned ? "Unpin" : "Pin", icon: <PinIcon />, onSelect: () => h.onPin(m) },
     ...(m.attachment ? [{ label: "Download", icon: <DownloadIcon />, onSelect: () => h.onDownload(m) }] : []),
-    ...(m.mine ? [{ label: "Unsend", icon: <UndoIcon />, danger: true, onSelect: () => h.onUnsend(m) }] : []),
+    ...(m.mine ? [{ label: "Remove for everyone", icon: <UndoIcon />, danger: true, onSelect: () => h.onUnsend(m) }] : []),
   ];
 
-  // Reply label, Messenger style: "You replied to Ann", "Ann replied to you".
+  // Reply label: "In reply to Ann", "In reply to you".
   let replyLabel = "";
   if (m.replyTo) {
     const quotedMine = m.replyTo.senderId ? m.replyTo.senderId === meId : m.replyTo.from === "yourself";
     const quotedSame = m.replyTo.senderId ? m.replyTo.senderId === m.senderId : false;
-    const who = m.mine ? "You" : firstName(m.from);
-    replyLabel = m.mine
-      ? quotedMine
-        ? "You replied to yourself"
-        : `You replied to ${firstName(m.replyTo.from)}`
-      : quotedMine
-        ? `${who} replied to you`
-        : quotedSame
-          ? `${who} replied to an earlier message`
-          : `${who} replied to ${firstName(m.replyTo.from)}`;
+    replyLabel = quotedMine
+      ? m.mine
+        ? "In reply to yourself"
+        : "In reply to you"
+      : quotedSame
+        ? "In reply to an earlier message"
+        : `In reply to ${firstName(m.replyTo.from)}`;
   }
+  const mentionsMe =
+    !!mentions && !!meName && !m.mine && !m.removed && m.body.toLowerCase().includes(`@${meName.toLowerCase()}`);
 
   function quickReact() {
     if (!actionable) return;
@@ -211,7 +214,8 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
       id={`msg-${m.id}`}
       className={`mx-row is-${side}${first ? " is-first" : ""}${last ? " is-last" : ""}${fresh ? " is-new" : ""}${
         m.reactions.length ? " has-reacts" : ""
-      }${menuAt ? " is-menu" : ""}`}
+      }${menuAt ? " is-menu" : ""}${mentionsMe ? " is-mention" : ""}`}
+      data-tone={m.mine ? undefined : tone(m.senderId || m.from)}
     >
       {!m.mine && <span className="mx-row-av">{last && <Avatar name={m.from} id={m.senderId} size="sm" />}</span>}
       <div className="mx-stack">
@@ -227,7 +231,7 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
               <ReplyIcon size={12} /> {replyLabel}
             </div>
             <button type="button" className="mx-quote" onClick={() => h.onJump(m.replyTo!.id)}>
-              {m.replyTo.removed ? <em>Message unsent</em> : m.replyTo.body || (m.replyTo.attachment ? `📎 ${m.replyTo.attachment}` : "")}
+              {m.replyTo.removed ? <em>Message removed</em> : m.replyTo.body || (m.replyTo.attachment ? `📎 ${m.replyTo.attachment}` : "")}
             </button>
           </>
         )}
@@ -264,7 +268,7 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
               }}
             >
               {m.removed ? (
-                <em>{m.mine ? "You unsent a message" : `${firstName(m.from)} unsent a message`}</em>
+                <em>{m.mine ? "You removed a message" : `${firstName(m.from)} removed a message`}</em>
               ) : call ? (
                 <span className="mx-call">
                   <span className="mx-call-icon">{call[2] === "Video" ? <VideoIcon size={20} /> : <PhoneIcon size={18} />}</span>
@@ -289,7 +293,8 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
                       onError={h.onError}
                     />
                   )}
-                  {m.body && <span className="mx-text">{linkify(m.body, highlight)}</span>}
+                  {m.body && <span className="mx-text">{linkify(m.body, highlight, mentions)}</span>}
+                  {m.body && <LinkCards text={m.body} />}
                   {m.edited && <span className="mx-edited">Edited</span>}
                 </>
               )}
@@ -408,11 +413,10 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
           </div>
         )}
         {!!seenBy?.length && (
-          <div className="mx-seen-by" aria-label={`Seen by ${seenBy.map((p) => p.name).join(", ")}`} title={`Seen by ${seenBy.map((p) => p.name).join(", ")}`}>
-            {seenBy.slice(0, 5).map((p) => (
-              <Avatar key={p.id ?? p.name} name={p.name} id={p.id} size="xs" />
-            ))}
-            {seenBy.length > 5 && <span>+{seenBy.length - 5}</span>}
+          <div className="mx-seen-by" title={`Seen by ${seenBy.map((p) => p.name).join(", ")}`}>
+            <StatusMark status="seen" />
+            Seen by {seenBy.slice(0, 3).map((p) => firstName(p.name)).join(", ")}
+            {seenBy.length > 3 ? ` +${seenBy.length - 3}` : ""}
           </div>
         )}
       </div>

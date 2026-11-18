@@ -50,7 +50,7 @@ export default function MeetingRow({
         : `Created ${ago(meeting.createdAt)}`;
   const items: MenuEntry[] = [
     {
-      label: copied ? "Link copied" : "Copy meeting link",
+      label: copied ? "Link copied" : "Copy Paddock link",
       icon: <CopyIcon />,
       onSelect: () => void copy(),
     },

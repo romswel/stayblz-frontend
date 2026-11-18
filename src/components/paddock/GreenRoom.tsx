@@ -11,7 +11,7 @@ import { canShareScreen, LocalMedia, problemText } from "./engine/media";
 import { callStore, useActiveCall } from "./engine/store";
 import { CalendarIcon, CopyIcon, PeopleIcon, ScreenIcon } from "./icons";
 import { guestApi, knockApi, paddockApi, type GuestMeeting, type JoinAnswer, type Meeting } from "./paddockApi";
-import { DeviceChips, SelfPreview } from "./Preview";
+import { CheckIn, DeviceChips, SelfPreview } from "./Preview";
 import { SettingsDialog } from "./SettingsDialog";
 import { meetingTime } from "./time";
 import { newPeerId, useMedia } from "./useCall";
@@ -343,6 +343,7 @@ export default function GreenRoom({ code }: { code: string }) {
         <section className="pd-green-media" aria-label="Check your camera and microphone">
           <SelfPreview media={media} name={displayName || "Guest"} accountId={user?.id} onSettings={() => setSettings(true)} />
           <DeviceChips media={media} />
+          <CheckIn media={media} />
           {mediaProblem && (
             <div className="pd-callout is-warn" role="status">
               <span>
@@ -362,7 +363,7 @@ export default function GreenRoom({ code }: { code: string }) {
         </section>
 
         <section className="pd-green-join" aria-labelledby="pd-green-title">
-          <span className="pd-kicker">Ready to join?</span>
+          <span className="pd-kicker">Before you go in</span>
           <h1 id="pd-green-title" className="pd-green-title">
             {meeting.title}
           </h1>
@@ -400,7 +401,7 @@ export default function GreenRoom({ code }: { code: string }) {
 
           {otherCall && step.kind === "ready" && (
             <div className="pd-callout" role="status">
-              You're in another call. Joining this one will leave it. <Link to={`/paddock/${otherCall.code}`}>Go back to that call</Link>
+              You're in another call. Going into this one will leave it. <Link to={`/paddock/${otherCall.code}`}>Go back to that call</Link>
             </div>
           )}
 
@@ -418,14 +419,14 @@ export default function GreenRoom({ code }: { code: string }) {
                 onKeyDown={(e) => e.key === "Enter" && void join()}
               />
               <small id="pd-name-help" className={nameError ? "pd-error-text" : undefined}>
-                {nameError || "Everyone in the call sees this name. The host decides whether to let you in."}
+                {nameError || "Everyone in the Paddock sees this name. You knock, and the host decides whether to let you in."}
               </small>
             </label>
           )}
 
           {step.kind === "denied" && (
             <p className="pd-error-text" role="alert">
-              The host didn't let you in. You can ask again if you think this was a mistake.
+              The host didn't let you in. You can knock again if you think this was a mistake.
             </p>
           )}
           {step.kind === "problem" && (
@@ -435,11 +436,11 @@ export default function GreenRoom({ code }: { code: string }) {
           )}
           {removed ? (
             <p className="pd-error-text" role="alert">
-              The host removed you from this meeting, so you can't join again.
+              The host removed you from this Paddock, so you can't go back in.
             </p>
           ) : guestsOff ? (
             <div className="pd-callout">
-              This meeting is for Stayblz members only.{" "}
+              This Paddock is for Stayblz members only.{" "}
               <Link to="/login" state={{ destination: `/paddock/${code}`, intent: "join this meeting" }}>
                 Sign in
               </Link>{" "}
@@ -449,25 +450,25 @@ export default function GreenRoom({ code }: { code: string }) {
             <div className="pd-join-actions">
               <button type="button" className="pd-btn is-primary is-large pd-join" disabled={blocked || step.kind === "joining"} onClick={() => void join()}>
                 {step.kind === "joining"
-                  ? "Joining…"
+                  ? "Going in…"
                   : step.kind === "denied"
-                    ? "Ask again"
+                    ? "Knock again"
                     : direct
                       ? otherCall
-                        ? "Leave other call and join"
-                        : "Join now"
-                      : "Ask to join"}
+                        ? "Leave the other call and go in"
+                        : "Go in"
+                      : "Knock to go in"}
               </button>
               {canShareScreen() && !guest && direct && (
                 <button type="button" className="pd-btn is-quiet" disabled={blocked || step.kind === "joining"} onClick={() => void join(true)}>
-                  <ScreenIcon size={18} /> Join and present
+                  <ScreenIcon size={18} /> Go in and share screen
                 </button>
               )}
             </div>
           )}
           {!direct && !removed && !guestsOff && step.kind !== "denied" && (
             <p className="pd-small">
-              {guest ? "You're joining as a guest." : "You're not on this meeting's invite list, so the host will be asked to let you in."}
+              {guest ? "You're going in as a guest." : "You're not on the invite list, so you'll knock and the host lets you in."}
             </p>
           )}
           {guest && !guestsOff && (
@@ -488,7 +489,7 @@ export default function GreenRoom({ code }: { code: string }) {
               })
             }
           >
-            <CopyIcon /> {copied ? "Link copied" : "Copy meeting link"}
+            <CopyIcon /> {copied ? "Link copied" : "Copy Paddock link"}
           </button>
 
           <details className="pd-about">

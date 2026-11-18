@@ -24,8 +24,8 @@ async function expectVideo(page: Page, name: RegExp) {
     .toBeGreaterThan(0);
 }
 async function joinNow(page: Page) {
-  await expect(page.getByText("Ready to join?")).toBeVisible();
-  await page.getByRole("button", { name: "Join now" }).click();
+  await expect(page.getByText("Before you go in")).toBeVisible();
+  await page.getByRole("button", { name: "Go in", exact: true }).click();
   await expect(page.getByRole("region", { name: /^Call:/ })).toBeVisible();
 }
 
@@ -36,21 +36,25 @@ test("start a meeting, check devices, join, browse Stayblz with the mini window,
   await expect(page.getByRole("link", { name: "Stayblz Paddock" })).toBeVisible(); // sidebar
   await expect(page.getByRole("heading", { name: "No meetings yet" })).toBeVisible();
 
-  await page.getByRole("button", { name: "New meeting" }).click();
-  await page.getByRole("menuitem", { name: "Start a meeting now" }).click();
+  await page.getByRole("button", { name: "Start now" }).click();
   await expect(page).toHaveURL(/\/paddock\/[a-z]{4}-[a-z]{4}$/);
   await expect(page.getByRole("heading", { name: "Hana's meeting" })).toBeVisible();
   await expect(page.getByText("No one is in the call yet.")).toBeVisible();
   // The camera preview runs before joining; switching the camera off releases it.
   await expect.poll(() => page.locator(".pd-preview video").evaluate((v: HTMLVideoElement) => v.videoWidth)).toBeGreaterThan(0);
+  const check = page.getByRole("list", { name: "Device check" });
+  await expect(check.getByRole("listitem").filter({ hasText: "Camera" })).toContainText("Ready");
+  await expect(check.getByRole("listitem").filter({ hasText: "Microphone" })).toContainText("Ready");
   await page.getByRole("button", { name: "Turn off camera" }).click();
   await expect(page.getByText("Camera is off")).toBeVisible();
+  await expect(check.getByRole("listitem").filter({ hasText: "Camera" })).toContainText("Off");
   await page.getByRole("button", { name: "Turn on camera" }).click();
   await expect(page.locator(".pd-preview video")).toBeVisible();
+  // The dock is Stayblz's own: one gate of labelled stalls, and Leave has no hang-up phone.
 
   await joinNow(page);
   // Like a meeting app: a "ready" card with the link while you're alone.
-  const ready = page.getByRole("region", { name: "Your meeting's ready" });
+  const ready = page.getByRole("region", { name: "Your Paddock is open" });
   await expect(ready).toBeVisible();
   await expect(ready.getByLabel("Meeting link")).toHaveValue(/paddock\/[a-z]{4}-[a-z]{4}$/);
   await expect(tile(page, /^Hana Host \(you\)/)).toBeVisible();
@@ -67,7 +71,7 @@ test("start a meeting, check devices, join, browse Stayblz with the mini window,
 
   await page.getByRole("button", { name: "Leave or end the call" }).click();
   await page.getByRole("menuitem", { name: "Leave the call" }).click();
-  await expect(page.getByRole("heading", { name: "You left the call" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "You've left the Paddock" })).toBeVisible();
   await page.getByRole("button", { name: "Back to Stayblz Paddock" }).click();
   await expect(page.getByRole("heading", { name: "Recent" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Hana's meeting" })).toBeVisible();
@@ -119,9 +123,9 @@ test("two people: video both ways, mute, chat, hands, reactions and host tools",
 
   // Ivy leaves: the host is told and sees the "alone" card again.
   await ivy.getByRole("button", { name: "Leave call" }).click();
-  await expect(ivy.getByRole("heading", { name: "You left the call" })).toBeVisible();
+  await expect(ivy.getByRole("heading", { name: "You've left the Paddock" })).toBeVisible();
   await expect(hana.getByText("Ivy Invitee left")).toBeVisible();
-  await expect(hana.getByRole("region", { name: "Your meeting's ready" })).toBeVisible();
+  await expect(hana.getByRole("region", { name: "Your Paddock is open" })).toBeVisible();
   await ivy.context().close();
   await hana.context().close();
 });
@@ -135,11 +139,11 @@ test("guests ask to join with a name; the host lets them in, and can remove them
   const guest = await open(browser, server, null, `/paddock/${meeting.code}`);
   await expect(guest.getByRole("heading", { name: "Vet check-in" })).toBeVisible();
   await expect(guest.getByText("1 person is in the call.")).toBeVisible(); // no names for guests
-  await guest.getByRole("button", { name: "Ask to join" }).click();
+  await guest.getByRole("button", { name: "Knock to go in" }).click();
   await expect(guest.getByText(/Enter your name/)).toBeVisible();
   await guest.getByLabel("Your name").fill("Gail Guest");
-  await guest.getByRole("button", { name: "Ask to join" }).click();
-  await expect(guest.getByText("Waiting for someone to let you in…")).toBeVisible();
+  await guest.getByRole("button", { name: "Knock to go in" }).click();
+  await expect(guest.getByText("Waiting for the host to let you in…")).toBeVisible();
 
   const ask = hana.getByRole("alert").filter({ hasText: "Gail Guest (guest) wants to join" });
   await expect(ask).toBeVisible();
@@ -153,7 +157,7 @@ test("guests ask to join with a name; the host lets them in, and can remove them
   await hana.getByRole("menuitem", { name: "Remove from call" }).click();
   await hana.getByRole("alertdialog", { name: "Remove Gail Guest?" }).getByRole("button", { name: "Remove" }).click();
   await expect(guest.getByRole("heading", { name: "You were removed from the call" })).toBeVisible();
-  await expect(guest.getByRole("button", { name: "Rejoin" })).toHaveCount(0);
+  await expect(guest.getByRole("button", { name: "Go back in" })).toHaveCount(0);
   await guest.context().close();
   await hana.context().close();
 });
@@ -161,8 +165,7 @@ test("guests ask to join with a name; the host lets them in, and can remove them
 test("schedule a meeting with a calendar file; wrong codes are explained", async ({ browser }) => {
   const server = paddockServer();
   const page = await open(browser, server, HANA, "/paddock");
-  await page.getByRole("button", { name: "New meeting" }).click();
-  await page.getByRole("menuitem", { name: "Schedule for later" }).click();
+  await page.getByRole("button", { name: "Schedule", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Schedule a meeting" });
   await dialog.getByLabel("Meeting name").fill("Breeze-up review");
   const tomorrow = new Date(Date.now() + 86_400_000);
@@ -172,7 +175,7 @@ test("schedule a meeting with a calendar file; wrong codes are explained", async
   await dialog.getByLabel("Length").selectOption("45");
   await dialog.getByText("Any Stayblz member with the link").click();
   await dialog.getByRole("button", { name: "Schedule meeting" }).click();
-  const ready = page.getByRole("dialog", { name: "Your meeting is ready" });
+  const ready = page.getByRole("dialog", { name: "Your Paddock is ready" });
   await expect(ready.getByLabel("Meeting link")).toHaveValue(/\/paddock\/[a-z]{4}-[a-z]{4}$/);
   const sent = server.posts.find((p) => p.path === "/api/paddock")!.body;
   expect(sent).toMatchObject({ title: "Breeze-up review", durationMinutes: 45, access: "open", guestsAllowed: true, inviteeIds: [] });
@@ -197,11 +200,11 @@ test("schedule a meeting with a calendar file; wrong codes are explained", async
   expect(text).toContain("SUMMARY:Breeze-up review");
   expect(text).toMatch(/URL:http:\/\/127\.0\.0\.1:5178\/paddock\/[a-z]{4}-[a-z]{4}/);
 
-  await page.getByLabel("Meeting code or link").fill("not a code");
-  await page.getByRole("button", { name: "Join", exact: true }).click();
-  await expect(page.getByText(/Enter a meeting code like abcd-efgh/)).toBeVisible();
-  await page.getByLabel("Meeting code or link").fill("https://stayblz-app.com/paddock/zzzz-zzzz");
-  await page.getByRole("button", { name: "Join", exact: true }).click();
+  await page.getByLabel("Paddock code or link").fill("not a code");
+  await page.getByRole("button", { name: "Go", exact: true }).click();
+  await expect(page.getByText(/Enter a Paddock code like abcd-efgh/)).toBeVisible();
+  await page.getByLabel("Paddock code or link").fill("https://stayblz-app.com/paddock/zzzz-zzzz");
+  await page.getByRole("button", { name: "Go", exact: true }).click();
   await expect(page).toHaveURL(/\/paddock\/zzzz-zzzz$/);
   await expect(page.getByRole("heading", { name: "We couldn't find that meeting" })).toBeVisible();
   await page.context().close();
@@ -283,8 +286,8 @@ test("host controls: chat off for everyone, spotlight, and the host admits a gue
   await expect(mini).toBeVisible();
   const guest = await open(browser, server, null, `/paddock/${meeting.code}`);
   await guest.getByLabel("Your name").fill("Gus Guest");
-  await guest.getByRole("button", { name: "Ask to join" }).click();
-  await expect(guest.getByText("Waiting for someone to let you in…")).toBeVisible();
+  await guest.getByRole("button", { name: "Knock to go in" }).click();
+  await expect(guest.getByText("Waiting for the host to let you in…")).toBeVisible();
   await expect(mini.getByText("Gus Guest")).toBeVisible();
   await mini.getByRole("button", { name: "Admit" }).click();
   await expect(guest.getByRole("region", { name: /^Call: Yard meeting/ })).toBeVisible();

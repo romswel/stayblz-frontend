@@ -88,9 +88,12 @@ test("late thread responses cannot replace the latest selected conversation", as
   await page.waitForTimeout(500);
   await expect(page.getByText("Body a", { exact: true })).toHaveCount(0);
   await expect(page.locator(".mx-thread-head")).toContainText("Thread b");
-  // Empty box: no Send button, just the quick thumbs up.
+  // Empty box: no Send button yet, just the voice clip button (Stayblz's own composer, no quick thumbs up).
   await expect(page.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Send a thumbs up" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send a thumbs up" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Record a voice clip" })).toBeVisible();
+  await page.getByRole("textbox", { name: "Write a message" }).fill("On my way");
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
 });
 
 test("watch updates reject duplicate clicks and show failures without losing the list", async ({

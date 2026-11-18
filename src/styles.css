@@ -1,17 +1,19 @@
-/* ————— Stayblz design system: forest, warm gold & cream — dark + light themes —————
-   These shared tokens match the signed-in workspace (workspace.css) so every page, dialog
-   and status screen uses the same brand colours. Never reintroduce a separate palette. */
+/* ————— Stayblz shared tokens (older pages, dialogs, status screens) —————
+   The site look is the glass theme (`--gx-*` in components/layout-glass.css). These older token
+   names are kept so existing pages keep working, but their values now follow the glass palette:
+   light = cool slate + white + emerald; dark = deep forest + mint (2026-11-18). The names say
+   "gold" for history only: they mean "accent". New work uses `--gx-*` directly. */
 
 :root {
   /* shared */
-  --gold: #d9bc79;
-  --gold-bright: #e8d29a;
-  --gold-dim: #9c8150;
-  --on-accent: #10241a;
+  --gold: #5fe3a9;
+  --gold-bright: #8af0c4;
+  --gold-dim: #3fae80;
+  --on-accent: #062016;
   --turf: #2e8560;
   --turf-deep: #1e6b48;
-  --radius: 9px;
-  --radius-sm: 6px;
+  --radius: 12px;
+  --radius-sm: 8px;
   --sidebar-w: 250px;
   --serif: 'Archivo', system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
@@ -19,75 +21,76 @@
   font-family: 'Archivo', system-ui, -apple-system, sans-serif;
 
   /* dark (default) */
-  --bg: #121c18;
-  --bg-glow-a: rgba(217, 188, 121, 0.05);
-  --bg-glow-b: rgba(46, 133, 96, 0.07);
-  --surface: #1a2821;
-  --surface-b: #17241d;
-  --surface-2: #213329;
-  --surface-3: #2a3d31;
-  --line: #35473b;
-  --line-soft: #2b3b31;
-  --ink: #edece1;
-  --ink-soft: #afb9a9;
-  --ink-faint: #7f8a7b;
-  --gold-ink: #e3cb8f;          /* accent used as text */
-  --gold-tint: rgba(217, 188, 121, 0.14);
-  --gold-tint-soft: rgba(217, 188, 121, 0.07);
-  --input-bg: #14201a;
-  --input-placeholder: #6f7a6c;
-  --danger: #d06a6a;
-  --danger-tint: rgba(208, 106, 106, 0.13);
-  --danger-line: rgba(208, 106, 106, 0.45);
-  --danger-ink: #efb1aa;
-  --amber: #d9a441;
-  --green-ink: #7fcfa4;
-  --green-tint: rgba(46, 133, 96, 0.16);
-  --green-line: rgba(127, 207, 164, 0.4);
-  --bar-track: #14201a;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-pop: 0 10px 26px -8px rgba(0, 0, 0, 0.6);
-  --scrim: rgba(4, 10, 7, 0.66);
-  --selection: rgba(217, 188, 121, 0.3);
-  --grid-line: rgba(237, 236, 225, 0.03);
+  --bg: #08170f;
+  --bg-glow-a: rgba(95, 227, 169, 0.05);
+  --bg-glow-b: rgba(67, 198, 192, 0.06);
+  --surface: #0e2418;
+  --surface-b: #0b1f14;
+  --surface-2: #13301f;
+  --surface-3: #193a27;
+  --line: #24453a;
+  --line-soft: #1a3627;
+  --ink: #ecf5ef;
+  --ink-soft: #a9c2b4;
+  --ink-faint: #7a9686;
+  --gold-ink: #7deab9;          /* accent used as text */
+  --gold-tint: rgba(95, 227, 169, 0.14);
+  --gold-tint-soft: rgba(95, 227, 169, 0.07);
+  --input-bg: #0a1d13;
+  --input-placeholder: #6d8a7a;
+  --danger: #fb7185;
+  --danger-tint: rgba(251, 113, 133, 0.12);
+  --danger-line: rgba(251, 113, 133, 0.45);
+  --danger-ink: #fda4af;
+  --amber: #f2c94c;
+  --green-ink: #7deab9;
+  --green-tint: rgba(95, 227, 169, 0.14);
+  --green-line: rgba(95, 227, 169, 0.4);
+  --bar-track: #0a1d13;
+  --shadow: 0 1px 2px rgba(0, 12, 6, 0.4);
+  --shadow-pop: 0 14px 40px -16px rgba(0, 12, 6, 0.75);
+  --scrim: rgba(2, 10, 6, 0.62);
+  --selection: rgba(95, 227, 169, 0.28);
+  --grid-line: rgba(220, 255, 235, 0.035);
 }
 
 :root[data-theme='light'] {
-  --gold: #947030;
-  --gold-bright: #b08a45;
-  --gold-dim: #c5a468;
-  --on-accent: #fffef9;
-  --bg: #f2f0e9;
-  --bg-glow-a: rgba(255, 254, 249, 0.7);
-  --bg-glow-b: rgba(27, 75, 56, 0.06);
-  --surface: #fffef9;
-  --surface-b: #faf8f1;
-  --surface-2: #eae8de;
-  --surface-3: #e0ddd0;
-  --line: #d9d9cc;
-  --line-soft: #e6e4da;
-  --ink: #1e352c;
-  --ink-soft: #646d63;
-  --ink-faint: #8b9387;
-  --gold-ink: #7a5a22;
-  --gold-tint: rgba(148, 112, 48, 0.12);
-  --gold-tint-soft: rgba(148, 112, 48, 0.07);
-  --input-bg: #fffef9;
-  --input-placeholder: #9a9f92;
-  --danger: #a63c3c;
-  --danger-tint: rgba(166, 60, 60, 0.09);
-  --danger-line: rgba(166, 60, 60, 0.4);
-  --danger-ink: #a63c3c;
-  --amber: #8f6a1a;
-  --green-ink: #1e6b48;
-  --green-tint: rgba(46, 133, 96, 0.12);
-  --green-line: rgba(46, 133, 96, 0.4);
-  --bar-track: #e2e0d4;
-  --shadow: 0 1px 2px rgba(30, 53, 44, 0.08);
-  --shadow-pop: 0 10px 24px -8px rgba(30, 53, 44, 0.28);
-  --scrim: rgba(16, 36, 26, 0.45);
-  --selection: rgba(148, 112, 48, 0.25);
-  --grid-line: rgba(30, 53, 44, 0.035);
+  /* Deep enough for white text on it (about 5:1). */
+  --gold: #0a7f5e;
+  --gold-bright: #0d9f74;
+  --gold-dim: #6fcfae;
+  --on-accent: #ffffff;
+  --bg: #eef2f9;
+  --bg-glow-a: rgba(255, 255, 255, 0.7);
+  --bg-glow-b: rgba(13, 159, 116, 0.06);
+  --surface: #ffffff;
+  --surface-b: #f7f9fc;
+  --surface-2: #eef2f7;
+  --surface-3: #e2e8f0;
+  --line: #dbe2ec;
+  --line-soft: #e8edf4;
+  --ink: #0b1324;
+  --ink-soft: #475569;
+  --ink-faint: #8391a7;
+  --gold-ink: #0b7d5c;
+  --gold-tint: rgba(13, 159, 116, 0.12);
+  --gold-tint-soft: rgba(13, 159, 116, 0.06);
+  --input-bg: #ffffff;
+  --input-placeholder: #94a3b8;
+  --danger: #e11d48;
+  --danger-tint: rgba(225, 29, 72, 0.08);
+  --danger-line: rgba(225, 29, 72, 0.35);
+  --danger-ink: #be123c;
+  --amber: #b45309;
+  --green-ink: #0b7d5c;
+  --green-tint: rgba(13, 159, 116, 0.12);
+  --green-line: rgba(13, 159, 116, 0.4);
+  --bar-track: #e2e8f0;
+  --shadow: 0 1px 2px rgba(30, 41, 59, 0.08);
+  --shadow-pop: 0 10px 30px -12px rgba(30, 41, 59, 0.25);
+  --scrim: rgba(15, 23, 42, 0.42);
+  --selection: rgba(13, 159, 116, 0.22);
+  --grid-line: rgba(15, 23, 42, 0.04);
 }
 
 * { box-sizing: border-box; }

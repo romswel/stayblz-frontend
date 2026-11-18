@@ -56,9 +56,42 @@ const cells = (line: string) =>
     .split("|")
     .map((cell) => cell.trim());
 
+/** Plain heading text (no Markdown marks), used for the outline and the heading's anchor. */
+const plainHeading = (raw: string) =>
+  raw
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`~]/g, "")
+    .trim();
+const anchorOf = (raw: string, seen: Map<string, number>) => {
+  const base =
+    "h-" +
+    (plainHeading(raw)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "section");
+  const n = (seen.get(base) ?? 0) + 1;
+  seen.set(base, n);
+  return n === 1 ? base : `${base}-${n}`;
+};
+
+/** The post's headings (#, ##) with the same anchors RichText gives them, for an outline. */
+export function headingsOf(text: string): { id: string; text: string; level: 1 | 2 }[] {
+  const seen = new Map<string, number>();
+  const found: { id: string; text: string; level: 1 | 2 }[] = [];
+  for (const line of text.replace(/\r\n?/g, "\n").split("\n")) {
+    const heading = line.match(/^(#{1,3})\s+(.*)$/);
+    if (!heading) continue;
+    const id = anchorOf(heading[2], seen);
+    if (heading[1].length <= 2) found.push({ id, text: plainHeading(heading[2]), level: heading[1].length as 1 | 2 });
+  }
+  return found;
+}
+
 export default function RichText({ text }: { text: string }) {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const blocks: ReactNode[] = [];
+  const anchors = new Map<string, number>();
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
@@ -71,8 +104,21 @@ export default function RichText({ text }: { text: string }) {
     if (heading) {
       const level = heading[1].length;
       const content = inline(heading[2], key);
+      const id = anchorOf(heading[2], anchors);
       blocks.push(
-        level === 1 ? <h2 key={key}>{content}</h2> : level === 2 ? <h3 key={key}>{content}</h3> : <h4 key={key}>{content}</h4>,
+        level === 1 ? (
+          <h2 key={key} id={id}>
+            {content}
+          </h2>
+        ) : level === 2 ? (
+          <h3 key={key} id={id}>
+            {content}
+          </h3>
+        ) : (
+          <h4 key={key} id={id}>
+            {content}
+          </h4>
+        ),
       );
       i++;
       continue;

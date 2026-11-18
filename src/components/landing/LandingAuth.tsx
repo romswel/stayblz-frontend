@@ -446,24 +446,6 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
       tabIndex={-1}
       aria-label="Your Stayblz account"
     >
-      {user ? (
-        <div className="ld-welcome" ref={bodyRef}>
-          <span className="ld-kicker">SIGNED IN</span>
-          <div className="ld-user-avatar">
-            {(user.displayName || user.username).slice(0, 1).toUpperCase()}
-          </div>
-          <h2>
-            Welcome back,
-            <br />
-            <em>{user.displayName || user.username}.</em>
-          </h2>
-          <p>Continue to your dashboard.</p>
-          <Link className="ld-button ld-button-gold" to="/dashboard">
-            Continue to dashboard <span aria-hidden="true">↗</span>
-          </Link>
-        </div>
-      ) : (
-        <>
           <div className="ld-auth-tabs" aria-label="Account options">
             <button
               type="button"
@@ -909,7 +891,7 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
             <Link to="/legal">Terms &amp; Privacy</Link>
           </div>
           {legalOpen && (
-            <Modal label="Terms of Use and Privacy Notice" className="modal-wide modal-landing" onClose={() => setLegalOpen(false)}>
+            <Modal label="Terms of Use and Privacy Notice" className="modal-wide modal-landing gx-layer" onClose={() => setLegalOpen(false)}>
               <DialogHead
                 kicker={`Updated ${TERMS_UPDATED}`}
                 title="Terms of Use & Privacy Notice"
@@ -946,8 +928,6 @@ const LandingAuth = forwardRef<HTMLElement, Props>(function LandingAuth(
               </div>
             </Modal>
           )}
-        </>
-      )}
     </section>
   );
 });

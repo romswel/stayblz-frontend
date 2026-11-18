@@ -44,10 +44,10 @@ export default function InfoTab({ view, call }: { view: CallView; call: PaddockC
   return (
     <div className="pd-info">
       <section className="pd-section">
-        <h3>Joining info</h3>
+        <h3>Link and code</h3>
         <CopyLink code={view.code} />
         <p className="pd-small">
-          Meeting code <strong className="pd-code">{view.code}</strong>
+          Paddock code <strong className="pd-code">{view.code}</strong>
         </p>
       </section>
 

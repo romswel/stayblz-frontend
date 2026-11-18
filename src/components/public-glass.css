@@ -1,0 +1,443 @@
+/* ==========================================================================
+   Stayblz public pages on the glass theme (home, log in / sign up, FAQ, legal,
+   public Updates, email confirm). Same tokens as the signed-in app (--gx-*,
+   components/layout-glass.css): every public root carries `landing gx-layer gx-public`.
+   The old forest/gold public styles (pages/landing.css) still load for structure; the
+   rules here start with ":root .gx-public" so they win over them in both themes.
+   ========================================================================== */
+
+:root .landing.gx-public {
+  --pg-gutter: clamp(12px, 1.6vw, 20px);
+  /* Old public tokens follow the glass palette, so older rules read correctly too. */
+  --ld-bg: var(--gx-bg);
+  --ld-forest: var(--gx-bg-solid);
+  --ld-paper: var(--gx-text);
+  --ld-muted: var(--gx-muted);
+  --ld-line: var(--gx-border-strong);
+  --ld-gold: var(--gx-accent);
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--gx-bg);
+  color: var(--gx-text);
+  font: 15px/1.55 "Archivo", system-ui, sans-serif;
+}
+:root .gx-public ::selection {
+  background: var(--gx-accent-soft);
+}
+:root .gx-public :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--gx-accent);
+  outline-offset: 3px;
+}
+/* Scroll progress line at the top: the app's gradient. */
+:root .landing.gx-public::before {
+  height: 2px;
+  background: linear-gradient(90deg, var(--gx-accent), var(--gx-accent-2), var(--gx-accent-3));
+}
+:root .gx-public .ld-skip {
+  border-radius: 999px;
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink) !important;
+  font-weight: 700;
+}
+:root .gx-public .ld-kicker {
+  font-family: var(--gx-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--gx-accent);
+}
+
+/* ---------- Header: a floating glass bar ---------- */
+:root .gx-public .ld-header.pg-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding: 12px var(--pg-gutter) 0;
+  background: none;
+  border: 0;
+}
+:root .gx-public .pg-header .ld-header-inner {
+  min-height: 64px;
+  padding: 8px 10px 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: var(--gx-radius);
+  flex-wrap: nowrap;
+}
+:root .gx-public .ld-brand-toggle.gx-brand {
+  position: relative;
+  padding: 4px 6px 4px 0;
+  border-radius: 14px;
+  color: var(--gx-text);
+}
+:root .gx-public .gx-brand .ld-brand-symbol {
+  width: 40px;
+  height: 40px;
+}
+:root .gx-public .ld-brand-spark {
+  color: var(--gx-accent);
+}
+:root .gx-public .pg-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+:root .gx-public .pg-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--gx-text-2);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+:root .gx-public .pg-link:hover,
+:root .gx-public .pg-link[aria-current="page"] {
+  background: var(--gx-hover);
+  color: var(--gx-text);
+}
+:root .gx-public .pg-link[aria-current="page"] {
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1px var(--gx-border-strong);
+}
+:root .gx-public .pg-theme {
+  margin: 0 6px;
+}
+/* The app's light/dark switch, protected from the older public button rules. */
+:root .gx-public .gx-theme {
+  position: relative;
+  flex: none;
+  width: 62px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--gx-border-strong);
+  background: var(--gx-field);
+}
+:root .gx-public .gx-theme > .gx-theme-track {
+  display: flex;
+  transform: none;
+}
+:root .gx-public .gx-theme > .gx-theme-knob {
+  display: grid;
+  transform: none;
+  transition: transform 0.35s var(--gx-ease), background 0.35s ease, box-shadow 0.35s ease;
+}
+:root .gx-public .gx-theme[aria-checked="true"] > .gx-theme-knob {
+  transform: translateX(28px);
+}
+:root .gx-public .gx-brand > span[aria-hidden],
+:root .gx-public .gx-brand:hover > span[aria-hidden] {
+  transform: none;
+}
+
+/* ---------- Buttons ---------- */
+:root .gx-public .ld-button {
+  min-height: 42px;
+  padding: 0 18px;
+  gap: 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  justify-content: center;
+}
+:root .gx-public .ld-button-gold,
+:root .gx-public .pg-primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
+  box-shadow: 0 10px 24px -12px var(--gx-accent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+:root[data-theme="dark"] .gx-public .ld-button-gold,
+:root[data-theme="dark"] .gx-public .pg-primary {
+  color: var(--gx-accent-ink);
+}
+:root .gx-public .ld-button-gold:hover:enabled,
+:root .gx-public a.ld-button-gold:hover {
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2));
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -12px var(--gx-accent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+:root .gx-public .ld-button-quiet,
+:root .gx-public .pg-quiet {
+  color: var(--gx-text);
+  background: var(--gx-surface-strong);
+  border: 1px solid var(--gx-border-strong);
+  box-shadow: none;
+}
+:root .gx-public .ld-button-quiet:hover:enabled,
+:root .gx-public a.pg-quiet:hover {
+  background: var(--gx-hover);
+  border-color: var(--gx-border-strong);
+}
+:root .gx-public .ld-header-account .ld-button {
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 13.5px;
+}
+
+/* ---------- Development notice inside public pages ---------- */
+:root .gx-public .dev-notice.is-public {
+  position: relative;
+  z-index: 31;
+}
+
+/* ---------- Footer: a glass card ---------- */
+:root .gx-public .ld-public-footer.pg-footer {
+  margin: 0;
+  padding: 14px var(--pg-gutter) var(--pg-gutter);
+  background: none;
+  border: 0;
+}
+:root .gx-public .pg-footer-card {
+  padding: 26px clamp(18px, 2.4vw, 32px) 18px;
+  border-radius: var(--gx-radius);
+}
+:root .gx-public .ld-public-footer-top {
+  gap: 28px;
+  padding-bottom: 20px;
+}
+:root .gx-public .ld-public-footer-top > p {
+  font: 800 clamp(20px, 2vw, 26px) / 1.2 "Archivo", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  color: var(--gx-text);
+}
+:root .gx-public .ld-public-footer-top em {
+  font-style: normal;
+  background: linear-gradient(120deg, var(--gx-accent), var(--gx-accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+:root .gx-public .ld-public-footer-top nav {
+  font-size: 13px;
+  color: var(--gx-text-2);
+}
+:root .gx-public .ld-public-footer a:hover {
+  color: var(--gx-accent);
+}
+:root .gx-public .ld-public-footer-bottom {
+  align-items: center;
+  border-top: 1px solid var(--gx-border);
+  color: var(--gx-muted);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+:root .gx-public .pg-preview-pill {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--gx-accent-soft);
+  color: var(--gx-accent);
+  font-family: var(--gx-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---------- Older public content (FAQ, legal, public Updates) on glass ---------- */
+:root .gx-public :is(.ld-paper, .faq-topic, .legal-doc) {
+  background: var(--gx-surface);
+  border-color: var(--gx-border);
+  color: var(--gx-text);
+}
+
+/* ---------- Email confirm / new password page ---------- */
+:root .gx-public.ld-confirm-page {
+  padding: 12px var(--pg-gutter) var(--pg-gutter);
+  gap: 14px;
+}
+:root .gx-public .ld-confirm-header {
+  min-height: 64px;
+  padding: 8px 16px 8px 14px;
+  border: 1px solid var(--gx-border);
+  border-radius: var(--gx-radius);
+}
+:root .gx-public .ld-confirm-home {
+  color: var(--gx-text-2) !important;
+  font-size: 14px;
+  font-weight: 600;
+}
+:root .gx-public .ld-confirm-home:hover {
+  color: var(--gx-accent) !important;
+}
+:root .gx-public .ld-confirm-layout {
+  margin: 0;
+  gap: 14px;
+  border: 0;
+}
+:root .gx-public .ld-confirm-editorial {
+  border-radius: 28px;
+  border: 1px solid var(--gx-border);
+}
+:root .gx-public .ld-confirm-photo-copy > p {
+  font: 800 clamp(34px, 3.8vw, 64px) / 1.04 "Archivo", system-ui, sans-serif;
+  letter-spacing: -0.035em;
+  color: #fff;
+}
+:root .gx-public .ld-confirm-photo-copy em {
+  font-style: normal;
+  color: #7deab9;
+}
+:root .gx-public .ld-confirm-card {
+  border-radius: 28px;
+  color: var(--gx-text);
+}
+:root .gx-public .ld-confirm-meta {
+  border-color: var(--gx-border);
+  color: var(--gx-muted);
+}
+:root .gx-public .ld-confirm-emblem {
+  color: var(--gx-accent);
+}
+:root .gx-public .ld-confirm-emblem-error {
+  color: var(--gx-danger);
+}
+:root .gx-public .ld-confirm-heading h1 {
+  font: 800 clamp(30px, 3vw, 48px) / 1.08 "Archivo", system-ui, sans-serif;
+  letter-spacing: -0.03em;
+  color: var(--gx-text);
+}
+:root .gx-public .ld-confirm-heading p,
+:root .gx-public .ld-confirm-footnote {
+  color: var(--gx-muted);
+}
+:root .gx-public .ld-confirm-card .ld-field {
+  color: var(--gx-text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+:root .gx-public .ld-confirm-card .ld-field input {
+  height: 44px;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
+  background: var(--gx-field-strong);
+  color: var(--gx-text);
+  font-size: 15px;
+}
+:root .gx-public .ld-confirm-card .ld-field input:focus {
+  border-color: var(--gx-accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--gx-accent-soft);
+}
+:root .gx-public .ld-confirm-card .ld-password button {
+  color: var(--gx-accent);
+  font-weight: 700;
+}
+:root .gx-public .ld-confirm-card .ld-auth-error {
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--gx-danger) 45%, transparent);
+  background: color-mix(in srgb, var(--gx-danger) 10%, transparent);
+  color: var(--gx-danger);
+}
+:root .gx-public .ld-confirm-footer {
+  border-color: var(--gx-border);
+  color: var(--gx-muted);
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 720px) {
+  :root .gx-public .pg-hide-sm {
+    display: none;
+  }
+  :root .gx-public .gx-brand .gx-version {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  :root .gx-public .pg-header .ld-header-inner {
+    min-height: 56px;
+    padding: 6px 6px 6px 10px;
+    gap: 6px;
+  }
+  :root .gx-public .gx-brand .ld-brand-symbol {
+    width: 32px;
+    height: 32px;
+  }
+  :root .gx-public .gx-brand-text {
+    font-size: 0.86rem;
+    letter-spacing: 0.14em;
+  }
+  :root .gx-public .gx-brand-text small {
+    display: none;
+  }
+  :root .gx-public .pg-link {
+    padding: 0 9px;
+    font-size: 13px;
+  }
+  :root .gx-public .pg-theme {
+    width: 52px;
+    margin: 0 2px;
+  }
+  :root .gx-public .pg-theme .gx-theme-track {
+    padding: 0 7px;
+  }
+  :root .gx-public .pg-theme[aria-checked="true"] > .gx-theme-knob {
+    transform: translateX(18px);
+  }
+  :root .gx-public .ld-header-account .ld-button {
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  :root .gx-public .ld-header-continue {
+    max-width: none;
+    white-space: nowrap !important;
+  }
+}
+@media (max-width: 560px) {
+  :root .gx-public .pg-footer-card {
+    padding: 20px 16px 14px;
+  }
+  :root .gx-public .ld-public-footer-top {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+  :root .gx-public .ld-public-footer-top > p {
+    grid-column: 1;
+    text-align: left;
+  }
+  :root .gx-public .ld-public-footer-top nav {
+    grid-column: 1;
+    justify-self: stretch;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-auto-flow: row;
+    column-gap: 16px;
+  }
+  :root .gx-public .ld-public-footer-bottom {
+    gap: 10px;
+  }
+}
+@media (max-width: 480px) {
+  :root .gx-public .pg-header .gx-brand-text {
+    display: none;
+  }
+}
+@media (max-width: 360px) {
+  :root .gx-public .pg-hide-xs {
+    display: none;
+  }
+}
+@media (max-width: 380px) {
+  :root .gx-public .gx-brand-text {
+    display: none;
+  }
+  :root .gx-public .ld-public-footer-top .gx-brand-text {
+    display: flex;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root .gx-public .gx-orb {
+    animation: none;
+  }
+}

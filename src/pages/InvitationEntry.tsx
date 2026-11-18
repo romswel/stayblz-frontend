@@ -8,7 +8,7 @@ export default function InvitationEntry({
   kind: "stable" | "conversation";
 }) {
   return (
-    <div className="landing">
+    <div className="landing gx-layer gx-public">
       <PublicHeader />
       <main className="invitation-entry">
         <span className="ov-kicker">YOUR STAYBLZ ACCOUNT</span>

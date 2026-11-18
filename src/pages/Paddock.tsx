@@ -6,6 +6,7 @@ import "../components/messenger/messenger.css";
 import "../components/messenger/panels.css";
 import "../components/paddock/paddock.css";
 import "../components/paddock/room.css";
+import "../components/paddock/paddock-identity.css";
 
 /** Stayblz Paddock: /paddock (home) and /paddock/:code (green room → call). Its own download. */
 export default function Paddock() {

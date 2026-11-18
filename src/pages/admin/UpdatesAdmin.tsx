@@ -18,6 +18,7 @@ import {
   type UpdateTag,
 } from "../../components/updates/types";
 import "../../components/updates/updates.css";
+import "../../components/updates/updates-glass.css";
 
 type Draft = {
   kind: UpdateKind;
@@ -122,7 +123,7 @@ function PostList() {
     return result;
   }, [posts]);
   return (
-    <div className="up-admin">
+    <div className="up-admin up-glass">
       <UpdatesHeader manage />
       <div className="up-toolbar">
         <div className="up-chips" role="group" aria-label="Status">
@@ -384,7 +385,7 @@ function Editor({ id }: { id: string | null }) {
   };
 
   return (
-    <div className="up-admin up-editor-page">
+    <div className="up-admin up-editor-page up-glass">
       <nav className="up-crumbs" aria-label="Breadcrumb">
         <Link to="/updates">Updates</Link>
         <span aria-hidden="true">/</span>

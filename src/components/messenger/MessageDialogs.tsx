@@ -31,7 +31,7 @@ export function MessageSheet({
     { key: "forward", label: "Forward", icon: <ForwardIcon size={18} /> },
     { key: "pin", label: m.pinned ? "Unpin" : "Pin", icon: <PinIcon size={18} /> },
     ...(m.attachment ? [{ key: "download" as const, label: "Download", icon: <DownloadIcon size={18} /> }] : []),
-    ...(m.mine ? [{ key: "unsend" as const, label: "Unsend", icon: <UndoIcon />, danger: true }] : []),
+    ...(m.mine ? [{ key: "unsend" as const, label: "Remove for everyone", icon: <UndoIcon />, danger: true }] : []),
   ];
   return (
     <Modal label="Message actions" onClose={onClose} className="modal-sm mx-dialog mx-sheet mx-layer gx-layer">

@@ -74,6 +74,10 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/public/racing-overview", (route) =>
     route.fulfill({ json: overview() }),
   );
+  // The home page lists the newest Updates; tests never reach a real backend for them.
+  await page.route("**/api/updates?*", (route) =>
+    route.fulfill({ json: { updates: [], pinned: [], hasMore: false } }),
+  );
 });
 
 test("wide layout fills the viewport and every account mode stays within device width", async ({
@@ -86,7 +90,7 @@ test("wide layout fills the viewport and every account mode stays within device 
     await page.setViewportSize({ width, height: 1000 });
     await page.goto("/");
     await expect(
-      page.locator(".ld-hero h1"),
+      page.locator(".lg-hero h1"),
     ).toBeVisible();
     const initial = await page.locator("#account").boundingBox();
     expect(
@@ -135,7 +139,7 @@ test("wide layout fills the viewport and every account mode stays within device 
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/");
   await expect(
-    page.locator(".ld-hero h1"),
+    page.locator(".lg-hero h1"),
   ).toBeVisible();
   await page.screenshot({
     path: "test-results/landing-mobile.png",
@@ -143,7 +147,7 @@ test("wide layout fills the viewport and every account mode stays within device 
   });
 });
 
-test("the account card is hidden on the index and opens over the hero from Log in / Sign up", async ({
+test("the account card is hidden on the index and opens over the photo from Log in / Sign up", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -152,7 +156,7 @@ test("the account card is hidden on the index and opens over the hero from Log i
   const account = page.getByRole("region", { name: "Your Stayblz account" });
   await expect(page.locator(".ld-closing")).toHaveCount(0);
   await expect(account).toBeHidden();
-  const copyBefore = await page.locator(".ld-hero-copy").boundingBox();
+  const copyBefore = await page.locator(".lg-copy").boundingBox();
   await page
     .getByRole("navigation", { name: "Public navigation" })
     .getByRole("button", { name: "Log in", exact: true })
@@ -163,32 +167,22 @@ test("the account card is hidden on the index and opens over the hero from Log i
   await expect(
     page.getByRole("heading", { name: "Log in to Stayblz", exact: true }),
   ).toBeVisible();
-  // No date bar; the hero runs edge to edge with no rounded corners.
-  await expect(page.locator(".ld-edition")).toHaveCount(0);
-  const heroBox = (await page.locator(".ld-hero").boundingBox())!;
-  expect(heroBox.x).toBe(0);
-  expect(heroBox.width).toBe(await page.evaluate(() => document.documentElement.clientWidth));
+  // Glass hero: the words on the left, the account card over the photo on the right.
+  const hero = (await page.locator(".lg-hero").boundingBox())!;
+  const card = (await account.boundingBox())!;
+  const copyAfter = (await page.locator(".lg-copy").boundingBox())!;
+  expect(card.x).toBeGreaterThan(hero.x + hero.width / 2);
+  expect(card.y).toBeGreaterThanOrEqual(hero.y);
+  expect(copyAfter.x + copyAfter.width).toBeLessThanOrEqual(card.x);
+  // The words don't move when the card opens; the photo behind the card blurs.
+  expect(Math.round(copyAfter.x)).toBe(Math.round(copyBefore!.x));
+  expect(await page.locator(".lg-photo img").evaluate((el) => getComputedStyle(el).filter)).toContain("blur");
   // "New here? Sign up" is on the "Forgot password?" line, at the right.
   const forgot = (await account.getByRole("button", { name: "Forgot password?" }).boundingBox())!;
   const newHere = (await account.locator(".ld-auth-switch").boundingBox())!;
   expect(Math.abs(forgot.y + forgot.height / 2 - (newHere.y + newHere.height / 2))).toBeLessThanOrEqual(2);
   expect(newHere.x).toBeGreaterThan(forgot.x + forgot.width);
-  const cardBox = (await account.boundingBox())!;
-  expect(cardBox.x + cardBox.width - (newHere.x + newHere.width)).toBeLessThanOrEqual(24);
-  // Card on the left over the photo, headline moved to the right of it.
-  const hero = (await page.locator(".ld-hero").boundingBox())!;
-  const card = (await account.boundingBox())!;
-  const copyAfter = (await page.locator(".ld-hero-copy").boundingBox())!;
-  expect(card.x).toBeLessThan(hero.x + hero.width / 3);
-  expect(card.y).toBeGreaterThanOrEqual(hero.y);
-  expect(copyAfter.x - (card.x + card.width)).toBeGreaterThanOrEqual(40);
-  expect(
-    await page.locator(".ld-hero-copy").evaluate((el) => getComputedStyle(el).textAlign),
-  ).toBe("right");
-  expect(copyAfter.x).toBeGreaterThan(copyBefore!.x);
-  expect(
-    await page.locator(".ld-hero-blur").evaluate((el) => getComputedStyle(el).opacity),
-  ).toBe("1");
+  expect(card.x + card.width - (newHere.x + newHere.width)).toBeLessThanOrEqual(24);
   await page.getByRole("button", { name: "Close account panel" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(account).toBeHidden();
@@ -239,7 +233,7 @@ test("the account card is hidden on the index and opens over the hero from Log i
   await expect(page).toHaveURL(/\/dashboard$/);
 });
 
-test("returning user keeps index access", async ({ page }) => {
+test("signed-in visitors skip the welcome and log in pages and go straight into Stayblz", async ({ page }) => {
   await page.addInitScript(() =>
     localStorage.setItem("stayblz.token", "test-token"),
   );
@@ -255,20 +249,36 @@ test("returning user keeps index access", async ({ page }) => {
       },
     }),
   );
-  // The home page keeps the account card closed; the header offers the way in.
-  await page.goto("/");
-  await expect(page.getByRole("banner").getByText("Test Rider")).toBeVisible();
-  await expect(page.getByRole("banner").getByRole("link", { name: "Continue to dashboard" })).toBeVisible();
-  // Log in and sign up open the card, which welcomes them back.
-  for (const path of ["/login", "/signup"]) {
+  for (const path of ["/", "/login", "/signup"]) {
     await page.goto(path);
-    await expect(
-      page.getByRole("heading", { name: /Welcome back/ }),
-    ).toContainText("Test Rider");
-    await expect(
-      page.getByRole("link", { name: /Continue to dashboard/ }).first(),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("region", { name: "Your Stayblz account" })).toHaveCount(0);
   }
+  // Public pages still offer the way back in.
+  await page.goto("/faq");
+  await expect(page.getByRole("banner").getByRole("link", { name: /Continue to dashboard/ })).toBeVisible();
+});
+
+test("the home page explains what's inside and shows the newest Updates", async ({ page }) => {
+  await page.route("**/api/updates?limit=3", (route) =>
+    route.fulfill({
+      json: {
+        updates: [
+          { id: "00000000-0000-4000-8000-000000000001", slug: "faster-racecards", kind: "update", title: "Faster racecards", summary: "Racecards open faster.", items: [], version: "0.16", audience: "public", pinned: false, popup: false, status: "published", publishedAt: "2026-11-17T08:00:00Z", authorLabel: "Stayblz team", updatedAt: "2026-11-17T08:00:00Z", readMinutes: 1, hasBody: false },
+        ],
+        pinned: [],
+        hasMore: false,
+      },
+    }),
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const inside = page.getByRole("region", { name: "One account for your racing" });
+  await expect(inside.getByRole("heading", { name: "Stayblz Chat" })).toBeVisible();
+  await expect(inside.getByRole("heading", { name: "Stayblz Paddock" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "What's new on Stayblz" }).getByRole("link", { name: /Faster racecards/ })).toHaveAttribute("href", "/updates/faster-racecards");
+  await inside.getByRole("button", { name: "Create a free account" }).click();
+  await expect(page).toHaveURL(/\/signup$/);
 });
 
 test("motion reveals sections on scroll and reduced-motion disables animation", async ({
@@ -279,13 +289,13 @@ test("motion reveals sections on scroll and reduced-motion disables animation", 
   await expect(page.locator(".ld-public-footer-top")).toHaveClass(/ld-visible/);
   expect(
     await page
-      .locator(".ld-hero > img")
+      .locator(".lg-photo img")
       .evaluate((el) => getComputedStyle(el).animationName),
-  ).toBe("ld-photo-drift");
+  ).toBe("lg-photo-drift");
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(
     await page
-      .locator(".ld-hero > img")
+      .locator(".lg-photo img")
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe("none");
 });
@@ -332,7 +342,7 @@ test("on load the hero fills the screen, so footer text only shows after scrolli
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto("/");
-    await expect(page.locator(".ld-hero h1")).toBeVisible();
+    await expect(page.locator(".lg-hero h1")).toBeVisible();
     const footerText = (await page.locator(".ld-public-footer-top").boundingBox())!;
     expect(footerText.y).toBeGreaterThanOrEqual(height);
   }

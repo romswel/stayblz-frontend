@@ -138,7 +138,7 @@ export default function FAQ() {
     0,
   );
   return (
-    <div className="landing" id="top" ref={pageRef}>
+    <div className="landing gx-layer gx-public" id="top" ref={pageRef}>
       <a className="ld-skip" href="#faq-main">
         Skip to questions
       </a>

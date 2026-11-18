@@ -6,12 +6,28 @@ import UpdatesHeader from "../components/updates/UpdatesHeader";
 import { useUpdates } from "../components/updates/UpdatesContext";
 import { CardSkeleton, UpdateCard } from "../components/updates/UpdateParts";
 import { kindFilters, type UpdateFeed, type UpdateKind, type UpdatePost } from "../components/updates/types";
+import { useReactionCounts } from "../components/updates/reactions";
 import usePublicMotion from "../components/usePublicMotion";
 import PublicHeader from "../components/PublicHeader";
 import PublicFooter from "../components/PublicFooter";
 import "../components/updates/updates.css";
 import "./landing.css";
 import "./faq.css";
+import "../components/updates/updates-glass.css";
+
+/** "November 2026" groups for the timeline, newest first, keeping the feed's order. */
+function byMonth(posts: UpdatePost[]) {
+  const groups: { key: string; label: string; posts: UpdatePost[] }[] = [];
+  for (const post of posts) {
+    const date = post.publishedAt ? new Date(post.publishedAt) : null;
+    const key = date ? `${date.getFullYear()}-${date.getMonth()}` : "draft";
+    const label = date ? date.toLocaleDateString(undefined, { month: "long", year: "numeric" }) : "Not dated";
+    const last = groups[groups.length - 1];
+    if (last?.key === key) last.posts.push(post);
+    else groups.push({ key, label, posts: [post] });
+  }
+  return groups;
+}
 
 type FeedState = {
   posts: UpdatePost[];
@@ -99,6 +115,7 @@ function Feed({ seenAt }: { seenAt: string | null }) {
   const filtering = !!kind || !!query;
   const [lead, ...rest] = feed.posts;
   const pinned = feed.pinned.filter((post) => post.id !== lead?.id);
+  const reactions = useReactionCounts([...feed.posts, ...pinned].map((post) => post.slug));
 
   return (
     <div className="up-feed">
@@ -168,25 +185,34 @@ function Feed({ seenAt }: { seenAt: string | null }) {
           {lead && (
             <div className="up-lead">
               <span className="up-section-label">{filtering ? "Best match" : "Latest"}</span>
-              <UpdateCard post={lead} featured isNew={isNew(lead)} />
+              <UpdateCard post={lead} featured isNew={isNew(lead)} reactions={reactions[lead.slug]} />
             </div>
           )}
           {!filtering && pinned.length > 0 && (
             <aside className="up-pinned" aria-label="Pinned posts">
               <span className="up-section-label">Pinned</span>
               {pinned.map((post) => (
-                <UpdateCard key={post.id} post={post} isNew={isNew(post)} />
+                <UpdateCard key={post.id} post={post} isNew={isNew(post)} reactions={reactions[post.slug]} />
               ))}
             </aside>
           )}
           {rest.length > 0 && (
             <section className="up-rest" aria-label="Earlier posts">
               <span className="up-section-label">Earlier</span>
-              <div className="up-grid">
-                {rest.map((post) => (
-                  <UpdateCard key={post.id} post={post} isNew={isNew(post)} />
+              <ol className="up-timeline">
+                {byMonth(rest).map((group) => (
+                  <li key={group.key} className="up-month">
+                    <h2 className="up-month-label">{group.label}</h2>
+                    <ol className="up-month-posts">
+                      {group.posts.map((post) => (
+                        <li key={post.id} className={`up-stop kind-${post.kind}`}>
+                          <UpdateCard post={post} isNew={isNew(post)} reactions={reactions[post.slug]} />
+                        </li>
+                      ))}
+                    </ol>
+                  </li>
                 ))}
-              </div>
+              </ol>
             </section>
           )}
           {feed.hasMore && (
@@ -206,13 +232,14 @@ function SignedInUpdates() {
   const { seenAt, unread, markSeen } = useUpdates();
   // Badges compare with the read time from when the page opened, then the page counts as read.
   const [openedSeenAt] = useState(seenAt);
+  const [openedNew] = useState(unread.length);
   useEffect(() => {
     if (unread.length) void markSeen();
     // Once on open.
   }, []);
   return (
-    <div className="up-page">
-      <UpdatesHeader />
+    <div className="up-page up-glass">
+      <UpdatesHeader newCount={openedNew} />
       <Feed seenAt={openedSeenAt} />
     </div>
   );
@@ -221,27 +248,29 @@ function SignedInUpdates() {
 function PublicUpdates() {
   const pageRef = usePublicMotion();
   return (
-    <div className="landing" id="top" ref={pageRef}>
+    <div className="landing gx-layer gx-public" id="top" ref={pageRef}>
       <a className="ld-skip" href="#updates-main">
         Skip to updates
       </a>
       <PublicHeader />
       <main className="faq-main up-public" id="updates-main">
-        <div className="faq-intro">
-          <div>
-            <span className="ld-kicker">STAYBLZ / UPDATES</span>
-            <h1>
-              Releases, news
-              <br />
-              <em>&amp; notices.</em>
-            </h1>
-            <p>
-              What's new on Stayblz, newest first. <Link to="/signup">Create an account</Link> to use new features and
-              read members-only posts.
-            </p>
-          </div>
-        </div>
-        <div className="up-public-body">
+        <div className="up-public-body up-glass">
+          <header className="up-hero">
+            <span className="up-hero-mark" aria-hidden="true">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 10v4h3l7 4.5v-13L7 10z" />
+                <path d="M17.5 8.5a5 5 0 0 1 0 7M20 6a8.5 8.5 0 0 1 0 12" />
+              </svg>
+            </span>
+            <div className="up-hero-text">
+              <div className="eyebrow">Releases, news &amp; notices</div>
+              <h1>Updates</h1>
+              <p className="sub">
+                What's new on Stayblz, newest first. <Link to="/signup">Create an account</Link> to use new features,
+                react to posts and read members-only posts.
+              </p>
+            </div>
+          </header>
           <Feed seenAt={null} />
         </div>
       </main>

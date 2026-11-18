@@ -117,9 +117,9 @@ test("react (quick or any emoji), reply, edit, pin, forward and unsend", async (
   await expect(page.getByRole("status").filter({ hasText: "Forwarded." })).toBeVisible();
   expect(server.threads[GRP].messages.at(-1)?.forwarded).toBe(true);
 
-  await more(page, "I'll be there", "Unsend");
-  await page.getByRole("alertdialog").getByRole("button", { name: "Unsend" }).click();
-  await expect(page.getByText("You unsent a message")).toBeVisible();
+  await more(page, "I'll be there", "Remove for everyone");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Remove for everyone" }).click();
+  await expect(page.getByText("You removed a message")).toBeVisible();
 });
 
 test("emoji button, photos and files: send, preview, and open large", async ({ page }) => {
