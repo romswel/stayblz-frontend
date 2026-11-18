@@ -8,6 +8,7 @@ import {
   AGE_MAX,
   BREEDS,
   COLORS,
+  DESCRIPTION_MAX,
   DISCIPLINES,
   GENDERS,
   HEIGHTS,
@@ -25,7 +26,7 @@ import "./marketplace-media.css";
 type Basics = Omit<ListingInput, "mediaIds" | "documentIds">;
 
 type Fields = Record<
-  "name" | "price" | "breed" | "discipline" | "type" | "gender" | "color" | "age" | "heightIn" | "location",
+  "name" | "price" | "breed" | "discipline" | "type" | "gender" | "color" | "age" | "heightIn" | "location" | "description",
   string
 >;
 const EMPTY: Fields = {
@@ -39,6 +40,7 @@ const EMPTY: Fields = {
   age: "",
   heightIn: "",
   location: "",
+  description: "",
 };
 const fromListing = (l: Listing): Fields => ({
   name: l.name,
@@ -51,6 +53,7 @@ const fromListing = (l: Listing): Fields => ({
   age: String(l.age),
   heightIn: String(l.heightIn),
   location: l.location,
+  description: l.description ?? "",
 });
 const digits = (value: string) => value.replace(/[^\d]/g, "");
 
@@ -72,6 +75,8 @@ function check(f: Fields): Basics | string {
     return `Enter the age in whole years (0 to ${AGE_MAX}).`;
   if (!f.heightIn) return "Choose a height.";
   if (f.location.trim().length < 2) return "Enter where the horse is located.";
+  if (f.description.trim().length > DESCRIPTION_MAX)
+    return `Keep the description to ${DESCRIPTION_MAX.toLocaleString("en-US")} characters.`;
   return {
     name: f.name.trim(),
     price,
@@ -83,6 +88,7 @@ function check(f: Fields): Basics | string {
     age,
     heightIn: Number(f.heightIn),
     location: f.location.trim(),
+    description: f.description.trim(),
   };
 }
 
@@ -158,6 +164,8 @@ export default function ListingForm({
         if (c.signal.aborted) return;
         setPhotos((listing.media ?? []).map(savedMedia));
         setDocuments((listing.documents ?? []).map(savedDocument));
+        // Cards don't carry the description: take the saved one from the full listing.
+        setEdit((current) => ({ ...current, description: listing.description ?? "" }));
         setMedia({ loading: false, error: "" });
       })
       .catch((e) => {
@@ -330,6 +338,25 @@ export default function ListingForm({
           </label>
         </div>
         {!media.loading && !media.error && <DocumentManager items={documents} setItems={setDocuments} disabled={busy} />}
+        <label htmlFor="mk-description" className="mk-description">
+          <span className="mk-label-row">
+            Description <small>Optional</small>
+          </span>
+          <textarea
+            id="mk-description"
+            rows={6}
+            maxLength={DESCRIPTION_MAX}
+            placeholder="Temperament, training, race or show record, health, reason for sale…"
+            value={fields.description}
+            // While editing, the saved description arrives with the photos.
+            disabled={busy || media.loading}
+            aria-describedby="mk-description-count"
+            onChange={(e) => set("description")(e.target.value)}
+          />
+          <small id="mk-description-count" className="mk-count" aria-live="polite">
+            {fields.description.length.toLocaleString("en-US")} / {DESCRIPTION_MAX.toLocaleString("en-US")}
+          </small>
+        </label>
         {error && (
           <p className="form-error" role="alert">
             {error}

@@ -222,6 +222,19 @@ test("members list a horse with dropdowns, then edit and remove it", async ({ pa
   await dialog.getByLabel("Age (years)").fill("1");
   await dialog.getByLabel("Height (hands)").selectOption({ label: "15.2 hh" });
   await dialog.getByLabel("Location").fill("Newmarket, England");
+  // Light theme: white fields on the white dialog have a visible border and a shadow.
+  const field = await dialog.getByLabel("Horse name").evaluate((el) => {
+    const css = getComputedStyle(el);
+    return { border: css.borderTopColor, shadow: css.boxShadow };
+  });
+  expect(field.border).toBe("rgb(180, 192, 207)");
+  expect(field.shadow).not.toBe("none");
+  // The description sits below the documents.
+  const documentsBox = await dialog.getByText("Documents", { exact: false }).first().boundingBox();
+  const description = dialog.getByLabel(/^Description/);
+  expect((await description.boundingBox())!.y).toBeGreaterThan(documentsBox!.y);
+  await description.fill("  Big, kind colt.\nBreezed well.  ");
+  await expect(dialog.getByText("33 / 2,000")).toBeVisible();
   await dialog.getByRole("button", { name: "Publish listing" }).click();
   await expect(dialog).toHaveCount(0);
   expect(state.posted[0]).toEqual({
@@ -235,6 +248,7 @@ test("members list a horse with dropdowns, then edit and remove it", async ({ pa
     age: 1,
     heightIn: 62,
     location: "Newmarket, England",
+    description: "Big, kind colt.\nBreezed well.",
     // Photos, videos and documents are optional: a listing can be published with none.
     mediaIds: [],
     documentIds: [],
@@ -248,9 +262,18 @@ test("members list a horse with dropdowns, then edit and remove it", async ({ pa
   await mine.getByRole("button", { name: "Edit Gold Furlong" }).click();
   const editDialog = page.getByRole("dialog", { name: "Edit Gold Furlong" });
   await expect(editDialog.getByLabel("Price (USD)")).toHaveValue("125,000");
+  await expect(editDialog.getByLabel(/^Description/)).toHaveValue("Big, kind colt.\nBreezed well.");
   await editDialog.getByLabel("Price (USD)").fill("99000");
+  await editDialog.getByLabel(/^Description/).fill("Big, kind colt. Ready to race.");
   await editDialog.getByRole("button", { name: "Save changes" }).click();
   await expect(mine).toContainText("$99,000");
+  expect(state.listings.find((l) => l.id === "new-1")!.description).toBe("Big, kind colt. Ready to race.");
+
+  // Buyers see the description in the listing's details.
+  await mine.getByRole("button", { name: /Gold Furlong/ }).first().click();
+  const details = page.getByRole("dialog", { name: /Gold Furlong/ });
+  await expect(details.getByText("Big, kind colt. Ready to race.")).toBeVisible();
+  await details.getByRole("button", { name: /Close/ }).click();
 
   await mine.getByRole("button", { name: "Remove Gold Furlong" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Remove listing" }).click();
