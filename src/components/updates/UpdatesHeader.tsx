@@ -80,13 +80,19 @@ function UpdatesSettings({ admin }: { admin: boolean }) {
  * Header shared by the Updates feed and the admin "Manage posts" view, so both live in one
  * place (one menu entry). Admins get a Feed / Manage posts switch under the title.
  */
-export default function UpdatesHeader({ manage = false }: { manage?: boolean }) {
+export default function UpdatesHeader({ manage = false, newCount = 0 }: { manage?: boolean; newCount?: number }) {
   const { user } = useAuth();
   const admin = canUse(user, "admin");
   return (
     <>
       <header className="up-hero">
-        <div>
+        <span className="up-hero-mark" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 10v4h3l7 4.5v-13L7 10z" />
+            <path d="M17.5 8.5a5 5 0 0 1 0 7M20 6a8.5 8.5 0 0 1 0 12" />
+          </svg>
+        </span>
+        <div className="up-hero-text">
           <div className="eyebrow">{manage ? "Updates · Admin" : "Releases, news & notices"}</div>
           <h1>{manage ? "Manage posts" : "Updates"}</h1>
           <p className="sub">
@@ -94,6 +100,12 @@ export default function UpdatesHeader({ manage = false }: { manage?: boolean }) 
               ? "Write release notes, announcements, news, maintenance notices and events. Published posts appear on the feed and can pop up once for each member."
               : "What's new on Stayblz, what we fixed, and anything you should know, newest first."}
           </p>
+          {!manage && newCount > 0 && (
+            <span className="up-hero-new">
+              <span aria-hidden="true" />
+              {newCount === 1 ? "1 new post" : `${newCount} new posts`} since your last visit
+            </span>
+          )}
         </div>
         <div className="up-hero-actions">
           <UpdatesSettings admin={admin} />

@@ -28,6 +28,7 @@ import { normalizeThread, previewOf, useThread } from "./useThread";
 import "./messenger.css";
 import "./thread.css";
 import "./panels.css";
+import "./chat-identity.css";
 
 /** The app fills the window under the site header, so the message box is always on screen. */
 function useFitToWindow() {

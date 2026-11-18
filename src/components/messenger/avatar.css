@@ -1,10 +1,12 @@
-/* Stayblz Chat avatars (also used by notification toasts and the bell, outside the chat pages). */
+/* Stayblz Chat avatars (also used by notification toasts and the bell, outside the chat pages).
+   Stayblz's own look: rounded-square "saddlecloths" in the eight racing saddlecloth colours (the same
+   palette Paddock numbers its seats with), with a faint diagonal sheen. Photos sit in the same shape. */
 /* ————— Avatars ————— */
 .mx-av {
   position: relative;
   flex: none;
   display: inline-grid;
-  border-radius: 50%;
+  border-radius: 32%;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #fff;
@@ -17,6 +19,10 @@
   height: 100%;
   border-radius: inherit;
   overflow: hidden;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0 38%, transparent 38% 100%);
+}
+.mx-av-face:has(> .avatar-photo, img) {
+  background-image: none;
 }
 .mx-av-xs { width: 16px; height: 16px; font-size: 7px; letter-spacing: 0; }
 .mx-av-sm { width: 28px; height: 28px; font-size: 11px; }
@@ -26,11 +32,12 @@
 .mx-av.is-pair {
   background: transparent;
 }
+/* Groups without a photo: two members' cloths, stacked like cards. */
 .mx-av.is-pair > .mx-av-face {
   position: absolute;
-  width: 68%;
-  height: 68%;
-  border-radius: 50%;
+  width: 70%;
+  height: 70%;
+  border-radius: 30%;
   font-size: 0.72em;
 }
 .mx-av.is-pair > .is-back {
@@ -42,31 +49,32 @@
   bottom: 0;
   box-shadow: 0 0 0 2.5px var(--mx-solid, var(--gx-surface-solid, #fff));
 }
+/* Active now: a small square pip on the corner. */
 .mx-av-dot {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 28%;
-  height: 28%;
+  right: -2px;
+  bottom: -2px;
+  width: 26%;
+  height: 26%;
   min-width: 10px;
   min-height: 10px;
-  border-radius: 50%;
+  border-radius: 30%;
   background: var(--mx-online, #22c55e);
   box-shadow: 0 0 0 2.5px var(--mx-solid, var(--gx-surface-solid, #fff));
   animation: mx-pop 0.3s var(--mx-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
 }
-.mx-tone-0 { background: #0d9f74; }
-.mx-tone-1 { background: #3b6cf6; }
-.mx-tone-2 { background: #8b5cf6; }
-.mx-tone-3 { background: #0e8fa8; }
-.mx-tone-4 { background: #c2630c; }
-.mx-tone-5 { background: #d0335d; }
-html[data-theme="dark"] .mx-tone-0 { background: #128a67; }
-html[data-theme="dark"] .mx-tone-1 { background: #3a63d8; }
-html[data-theme="dark"] .mx-tone-2 { background: #7651d6; }
-html[data-theme="dark"] .mx-tone-3 { background: #137f95; }
-html[data-theme="dark"] .mx-tone-4 { background: #a8580f; }
-html[data-theme="dark"] .mx-tone-5 { background: #b8305a; }
+/* Saddlecloth colours (US convention): 1 red, 2 white, 3 blue, 4 yellow, 5 green, 6 black, 7 orange, 8 pink. */
+.mx-tone-0 { background-color: #c8282e; color: #fff; }
+.mx-tone-1 { background-color: #f4f2ea; color: #111; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.14); }
+.mx-tone-2 { background-color: #1d4fa3; color: #fff; }
+.mx-tone-3 { background-color: #f2cf3b; color: #111; }
+.mx-tone-4 { background-color: #1f8a46; color: #fff; }
+.mx-tone-5 { background-color: #161616; color: #f2cf3b; }
+.mx-tone-6 { background-color: #ee7d22; color: #111; }
+.mx-tone-7 { background-color: #f19bc0; color: #111; }
+.mx-av.mx-tone-1,
+.mx-av-face.mx-tone-1 { box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.14); }
+html[data-theme="dark"] .mx-tone-5 { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); }
 
 @keyframes mx-pop {
   0% { opacity: 0; transform: scale(0.4); }

@@ -6,7 +6,7 @@ import type { CallView } from "./engine/call";
 
 const headings = {
   in: "",
-  left: "You left the call",
+  left: "You've left the Paddock",
   ended: "The call has ended",
   removed: "You were removed from the call",
   failed: "The call was disconnected",
@@ -42,11 +42,11 @@ export default function LeftScreen({ view, guest, onRejoin, onDone }: { view: Ca
         </span>
         <h1 id="pd-left-title">{headings[view.phase]}</h1>
         <p>{view.phase === "left" ? `You were in “${view.title}” for about ${minutes} minute${minutes === 1 ? "" : "s"}.` : view.endMessage}</p>
-        {view.phase === "ended" && <p className="pd-small">The meeting link still works, so the call can start again later.</p>}
+        {view.phase === "ended" && <p className="pd-small">The Paddock link still works, so the call can start again later.</p>}
         <div className="pd-actions">
           {canRejoin && (
             <button type="button" className="pd-btn is-quiet" onClick={onRejoin}>
-              {view.phase === "ended" ? "Join again" : "Rejoin"}
+              {view.phase === "ended" ? "Start it again" : "Go back in"}
             </button>
           )}
           <button type="button" className="pd-btn is-primary" onClick={onDone}>
@@ -55,7 +55,7 @@ export default function LeftScreen({ view, guest, onRejoin, onDone }: { view: Ca
         </div>
         {guest && (
           <p className="pd-small">
-            Want to host your own meetings? <Link to="/signup">Create a free Stayblz account</Link>.
+            Want to open your own Paddock? <Link to="/signup">Create a free Stayblz account</Link>.
           </p>
         )}
       </section>

@@ -4,13 +4,14 @@ import { saddlecloth } from "./brand";
 import CornerFloat from "./CornerFloat";
 import type { PaddockCall, Person } from "./engine/call";
 import { callStore, useActiveCall } from "./engine/store";
-import { CamIcon, CamOffIcon, ChatIcon, ExpandIcon, HandIcon, MicIcon, MicOffIcon, PhoneOffIcon, PipIcon } from "./icons";
+import { CamIcon, CamOffIcon, ChatIcon, ExitIcon, ExpandIcon, HandIcon, MicIcon, MicOffIcon, PipIcon } from "./icons";
 import { canPip, closePip, openPip } from "./pip";
 import { Face, StreamVideo } from "./Preview";
 import { Talking } from "./Tile";
 import { useCallView } from "./useCall";
 import "./paddock.css";
 import "./room.css";
+import "./paddock-identity.css";
 
 /** The call keeps going while you use the rest of Stayblz: this small window shows it. */
 export default function MiniCall() {
@@ -30,7 +31,7 @@ function MiniWindow({ call }: { call: PaddockCall }) {
   if (view.phase !== "in")
     return (
       <div className="pd-mini is-ended gx-layer" role="status">
-        <span>{view.phase === "ended" ? "The call ended." : view.phase === "removed" ? "You were removed from the call." : "You left the call."}</span>
+        <span>{view.phase === "ended" ? "The call ended." : view.phase === "removed" ? "You were removed from the call." : "You've left the Paddock."}</span>
         <button type="button" className="pd-btn is-quiet is-small" onClick={() => callStore.set(null)}>
           Dismiss
         </button>
@@ -111,7 +112,7 @@ export function MiniView({ call, onReturn, inPip = false }: { call: PaddockCall;
           <ExpandIcon size={16} />
         </button>
         <button type="button" className="pd-round is-small is-leave" aria-label="Leave call" title="Leave call" onClick={() => void call.leave()}>
-          <PhoneOffIcon size={16} />
+          <ExitIcon size={16} />
         </button>
       </div>
     </div>

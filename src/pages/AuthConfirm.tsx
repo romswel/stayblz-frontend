@@ -5,9 +5,11 @@ import { api } from "../api";
 import { confirmAccount, isPasswordRecovery } from "../confirmation";
 import usePublicMotion from "../components/usePublicMotion";
 import Brand from "../components/Brand";
+import { PublicAmbient } from "../components/PublicHeader";
 import PasswordField from "../components/PasswordField";
 import "./landing.css";
 import "./AuthConfirm.css";
+import "../components/public-glass.css";
 
 // With 2-step login on, the app shows the 2-step screen and then opens this page again. The link's
 // one-time answer is cached (see confirmation.ts), so it is applied once and never replaces the
@@ -92,13 +94,15 @@ export default function AuthConfirm() {
     error: "Return to login to request a fresh confirmation email.",
   }[step];
   return (
-    <div className="landing ld-confirm-page" ref={pageRef}>
-      <header className="ld-confirm-header">
-        <Link className="ld-brand" to="/" aria-label="Stayblz home">
-          <Brand />
-          <span>
-            <strong>STAYBLZ</strong>
-            <small>THE RACING LEDGER</small>
+    <div className="landing gx-layer gx-public ld-confirm-page" ref={pageRef}>
+      <PublicAmbient />
+      <header className="ld-confirm-header gx-glass">
+        <Link className="ld-brand gx-brand" to="/" aria-label="Stayblz home">
+          <span className="gx-brand-mark">
+            <Brand />
+          </span>
+          <span className="gx-brand-text">
+            STAYBLZ<small>THE RACING LEDGER</small>
           </span>
         </Link>
         <Link className="ld-confirm-home" to="/">
@@ -124,7 +128,7 @@ export default function AuthConfirm() {
           </div>
         </aside>
         <section
-          className="ld-confirm-card"
+          className="ld-confirm-card gx-glass"
           aria-labelledby="confirmation-title"
           aria-busy={step === "working"}
         >

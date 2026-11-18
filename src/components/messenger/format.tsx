@@ -75,11 +75,11 @@ export function initials(name: string): string {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-/** Same name → same avatar colour, from a small brand-friendly set (see messenger.css). */
+/** Same person → same saddlecloth colour (one of the eight racing colours, see avatar.css). */
 export function tone(name: string): number {
   let hash = 0;
   for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
-  return Math.abs(hash) % 6;
+  return Math.abs(hash) % 8;
 }
 
 export type TimelineItem =
@@ -118,9 +118,36 @@ export function buildTimeline(messages: ChatMessage[], now = new Date()): Timeli
 
 const URL_PATTERN = /\bhttps?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]]/gi;
 
-/** Plain text with web links made clickable, and search matches marked. Nothing else is interpreted. */
-export function linkify(text: string, highlight?: string): ReactNode[] {
-  const mark = (part: string, key: string): ReactNode[] => {
+const escapeRe = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** "@Ann Ames" for any of these names (longest first, so "Ann Ames" wins over "Ann"). */
+export function mentionPattern(names: string[]): RegExp | null {
+  const list = [...new Set(names.map((n) => n.trim()).filter(Boolean))].sort((a, b) => b.length - a.length);
+  return list.length ? new RegExp(`@(${list.map(escapeRe).join("|")})(?![\\p{L}\\p{N}])`, "giu") : null;
+}
+
+/**
+ * Plain text with web links made clickable, search matches marked and (in groups) "@Name" mentions of
+ * members shown as mention chips. Nothing else is interpreted.
+ */
+export function linkify(text: string, highlight?: string, mentions?: RegExp | null): ReactNode[] {
+  const withMentions = (part: string, key: string): ReactNode[] => {
+    if (!mentions) return markSearch(part, key);
+    const out: ReactNode[] = [];
+    let i = 0;
+    for (const found of part.matchAll(mentions)) {
+      const at = found.index ?? 0;
+      if (at > i) out.push(...markSearch(part.slice(i, at), `${key}-m${i}`));
+      out.push(
+        <span key={`${key}-@${at}`} className="mx-mention">
+          @{found[1]}
+        </span>,
+      );
+      i = at + found[0].length;
+    }
+    if (i < part.length) out.push(...markSearch(part.slice(i), `${key}-m${i}`));
+    return out;
+  };
+  const markSearch = (part: string, key: string): ReactNode[] => {
     const q = highlight?.trim();
     if (!q) return [part];
     const out: ReactNode[] = [];
@@ -141,7 +168,7 @@ export function linkify(text: string, highlight?: string): ReactNode[] {
   let last = 0;
   for (const match of text.matchAll(URL_PATTERN)) {
     const start = match.index ?? 0;
-    if (start > last) out.push(...mark(text.slice(last, start), `t${last}`));
+    if (start > last) out.push(...withMentions(text.slice(last, start), `t${last}`));
     // Links to Stayblz itself open in the app (no new tab, no reload); everything else opens a new tab.
     let inside: string | null = null;
     try {
@@ -163,14 +190,14 @@ export function linkify(text: string, highlight?: string): ReactNode[] {
     );
     last = start + match[0].length;
   }
-  if (last < text.length) out.push(...mark(text.slice(last), `t${last}`));
+  if (last < text.length) out.push(...withMentions(text.slice(last), `t${last}`));
   return out;
 }
 
 export const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
 
 /**
- * The one-line preview under a chat's name, Messenger style: "You: on my way", "Bo: on my way" (groups),
+ * The one-line preview under a chat's name: "You: on my way", "Bo: on my way" (groups),
  * "Ann sent a photo.", "You sent a voice message."
  */
 export function previewLine(c: {
@@ -187,7 +214,7 @@ export function previewLine(c: {
   if (text === "🎤 Voice message") return sent("a voice message");
   if (text === "🎬 Video") return sent("a video");
   if (text.startsWith("📎 ")) return sent("a file");
-  if (text === "Message unsent") return c.lastMessageMine ? "You unsent a message" : `${who || "Someone"} unsent a message`;
+  if (text === "Message unsent") return c.lastMessageMine ? "You removed a message" : `${who || "Someone"} removed a message`;
   if (c.lastMessageMine) return `You: ${text}`;
   return c.kind === "group" && who ? `${who}: ${text}` : text;
 }

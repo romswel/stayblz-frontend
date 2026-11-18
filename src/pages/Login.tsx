@@ -1,43 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../auth";
 import usePublicMotion from "../components/usePublicMotion";
 import PublicHeader from "../components/PublicHeader";
 import PublicFooter from "../components/PublicFooter";
 import LandingAuth from "../components/landing/LandingAuth";
-import { isPPDestination } from "../components/pps/catalog";
+import LandingSections from "../components/landing/LandingSections";
+import { allowedDestination } from "../authDestination";
 import "./landing.css";
-import "./landing-theme.css";
-const destinations = new Set([
-  "/dashboard",
-  "/account",
-  "/entries",
-  "/results",
-  "/workouts",
-  "/speed-figures",
-  "/statistics",
-  "/stakes",
-  "/virtual-stable",
-  "/tracker",
-  "/stables",
-  "/messages",
-  "/inventory",
-  "/my-racing",
-  "/workspace",
-  "/team-messages",
-  "/paddock",
-]);
-/** Pages we may send people back to after they sign in. */
-const allowedDestination = (value: unknown): value is string =>
-  typeof value === "string" &&
-  (destinations.has(value) ||
-    /^\/updates(\/[a-z0-9-]{1,80})?$/.test(value) ||
-    /^\/racing\/(days|races|horses|people)\/[0-9a-f-]{36}$/.test(value) ||
-    /^\/paddock\/[a-z]{4}-[a-z]{4}$/.test(value) ||
-    isPPDestination(value));
+import "./landing-glass.css";
 
+/** The signed-out home page, with the log in / sign up card. Signed-in visitors never see it (App.tsx). */
 export default function Login() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const routeState = location.state as {
@@ -56,7 +29,7 @@ export default function Login() {
       : "",
   );
   const authRef = useRef<HTMLElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
   // The account card only shows on /login and /signup; the plain index shows the hero alone.
   const open = location.pathname !== "/";
   function closeAuth() {
@@ -132,10 +105,6 @@ export default function Login() {
     path = "/dashboard",
     label = "",
   ) {
-    if (user) {
-      navigate(path);
-      return;
-    }
     setMode(nextMode);
     setDestination(path);
     setIntent(label);
@@ -154,40 +123,73 @@ export default function Login() {
   }
 
   return (
-    <div className="landing ld-home" id="top" ref={pageRef}>
-      <a className="ld-skip" href="#racing-overview">
-        Skip to racing overview
+    <div
+      className={`landing gx-layer gx-public ld-home${open ? " is-auth-open" : ""}`}
+      id="top"
+      ref={pageRef}
+    >
+      <a className="ld-skip" href="#home-main">
+        Skip to main content
       </a>
-      <PublicHeader onAuth={(next) => showAuth(next)} themeButton />
-      <main className="ld-main" id="racing-overview">
+      <PublicHeader onAuth={(next) => showAuth(next)} />
+      <main className="ld-main lg-main" id="home-main">
         <section
-          className={`ld-intro${open ? " ld-intro-open" : ""}`}
+          className={`lg-hero${open ? " is-open" : ""}`}
           aria-label="Welcome to Stayblz"
+          ref={heroRef}
+          tabIndex={-1}
         >
-          <div className="ld-hero" ref={heroRef} tabIndex={-1}>
-            <img
-              src="/images/racing-editorial.jpg"
-              alt="A thoroughbred and jockey on the track in warm afternoon light"
-              fetchPriority="high"
-            />
-            <div className="ld-hero-blur" aria-hidden="true" />
-            <div className="ld-hero-shade" />
-            <div className="ld-hero-shade-open" aria-hidden="true" />
-            <div className="ld-hero-top">
-              <span className="ld-photo-label">STAYBLZ RACING</span>
-              <span className="ld-hero-index">RACES / RESULTS / FORM</span>
+          <div className="lg-copy gx-glass">
+            <span className="lg-eyebrow">
+              <span className="lg-pulse" aria-hidden="true" />
+              Horse racing, organised
+            </span>
+            <h1>
+              Know the horse.
+              <br />
+              <span className="lg-grad">Read the race.</span>
+            </h1>
+            <p className="lg-lede">
+              Racecards, results, workouts and standings, with chat, video meetings and an optional
+              stable workspace for your team.
+            </p>
+            <div className="lg-cta">
+              <button type="button" className="ld-button ld-button-gold" onClick={() => showAuth("signup")}>
+                Create a free account
+              </button>
+              <button type="button" className="ld-button ld-button-quiet" onClick={() => showAuth("login")}>
+                Log in
+              </button>
             </div>
-            <div className="ld-hero-copy">
-              <span className="ld-kicker">HORSE RACING</span>
-              <h1>
-                Know the horse.
-                <br />
-                <em>Read the race.</em>
-              </h1>
-              <p>Racecards, results, workouts, and standings.</p>
+            <ul className="lg-chips" aria-label="Part of every account">
+              <li>Racecards &amp; results</li>
+              <li>Stayblz Chat</li>
+              <li>Stayblz Paddock</li>
+            </ul>
+          </div>
+          <div className="lg-stage">
+            <figure className="lg-photo">
+              <img
+                src="/images/racing-editorial.jpg"
+                alt="A thoroughbred and jockey on the track in warm afternoon light"
+                fetchPriority="high"
+              />
+              <figcaption>Illustrative racing image</figcaption>
+            </figure>
+            <div className="lg-photo-veil" aria-hidden="true" />
+            <div className="lg-ticket gx-glass" aria-hidden="true">
+              <span className="lg-ticket-mark">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 5h16v14H4z" />
+                  <path d="M4 10h16M9 5v14" />
+                </svg>
+              </span>
+              <span>
+                <strong>Race days</strong>
+                <small>Runners, riders, results</small>
+              </span>
             </div>
-            <span className="ld-photo-credit">Illustrative racing image</span>
-            <div className="ld-auth-shell">
+            <div className="ld-auth-shell lg-auth-shell">
               <LandingAuth
                 ref={authRef}
                 mode={mode}
@@ -207,11 +209,14 @@ export default function Login() {
                 aria-label="Close account panel"
                 onClick={closeAuth}
               >
-                <span aria-hidden="true">×</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
               </button>
             </div>
           </div>
         </section>
+        <LandingSections onJoin={() => showAuth("signup")} />
       </main>
       <PublicFooter />
     </div>

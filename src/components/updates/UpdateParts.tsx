@@ -1,8 +1,30 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { kindLabels, relativeDate, tagLabels, tagOrder, type UpdatePost, type UpdateTag } from "./types";
+import { kindLabels, relativeDate, tagLabels, tagOrder, type UpdateKind, type UpdatePost, type UpdateTag } from "./types";
+import { ReactionCounts } from "./ReactionBar";
+import type { ReactionSummary } from "./reactions";
+
+const glyph = (children: ReactNode) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {children}
+  </svg>
+);
+/** A small picture for each kind of post, so the feed reads at a glance. */
+export const kindIcons: Record<UpdateKind, ReactNode> = {
+  update: glyph(<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />),
+  announcement: glyph(<><path d="M4 10v4h3l6 4V6l-6 4z" /><path d="M17 9a4 4 0 0 1 0 6" /></>),
+  news: glyph(<><path d="M5 5h11v14H6a1 1 0 0 1-1-1z" /><path d="M16 9h3v9a1 1 0 0 1-1 1h-2M8 9h5M8 12h5M8 15h3" /></>),
+  maintenance: glyph(<path d="M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z" />),
+  event: glyph(<><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></>),
+};
 
 export function KindBadge({ kind }: { kind: UpdatePost["kind"] }) {
-  return <span className={`up-kind kind-${kind}`}>{kindLabels[kind]}</span>;
+  return (
+    <span className={`up-kind kind-${kind}`}>
+      {kindIcons[kind]}
+      {kindLabels[kind]}
+    </span>
+  );
 }
 
 export function TagLabel({ tag }: { tag: UpdateTag }) {
@@ -63,7 +85,17 @@ export function PostMeta({ post }: { post: UpdatePost }) {
 }
 
 /** One post in the feed. The whole card opens the post. */
-export function UpdateCard({ post, isNew, featured = false }: { post: UpdatePost; isNew?: boolean; featured?: boolean }) {
+export function UpdateCard({
+  post,
+  isNew,
+  featured = false,
+  reactions,
+}: {
+  post: UpdatePost;
+  isNew?: boolean;
+  featured?: boolean;
+  reactions?: ReactionSummary;
+}) {
   return (
     <article className={`up-card kind-${post.kind}${featured ? " is-featured" : ""}${post.pinned ? " is-pinned" : ""}`}>
       <PostMeta post={post} />
@@ -79,9 +111,12 @@ export function UpdateCard({ post, isNew, featured = false }: { post: UpdatePost
       {post.items.length > (featured ? 5 : 3) && (
         <p className="up-more">+{post.items.length - (featured ? 5 : 3)} more changes</p>
       )}
-      <span className="up-read" aria-hidden="true">
-        Read {post.kind === "update" ? "the patch notes" : "more"} →
-      </span>
+      <div className="up-card-foot">
+        <ReactionCounts summary={reactions} />
+        <span className="up-read" aria-hidden="true">
+          Read {post.kind === "update" ? "the notes" : "more"} →
+        </span>
+      </div>
     </article>
   );
 }

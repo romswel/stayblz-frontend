@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth";
 import Brand from "../Brand";
-import Menu from "../messenger/Menu";
 import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import { codeFrom, MAX_PEOPLE, PADDOCK_NAME } from "./brand";
 import { useActiveCall } from "./engine/store";
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, KeyboardIcon, LinkIcon, PlusIcon } from "./icons";
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, KeyboardIcon, LinkIcon, PlusIcon } from "./icons";
 import { CopyLink } from "./InfoTab";
 import MeetingRow from "./MeetingRow";
 import { paddockApi, type Meeting } from "./paddockApi";
@@ -31,8 +30,6 @@ export default function PaddockHome() {
   const [codeError, setCodeError] = useState("");
   const [busy, setBusy] = useState<"" | "now" | "link">("");
   const [actionError, setActionError] = useState("");
-  const [newMenu, setNewMenu] = useState(false);
-  const newButton = useRef<HTMLButtonElement>(null);
   const [schedule, setSchedule] = useState<{ meeting?: Meeting } | null>(null);
   const [made, setMade] = useState<Meeting | null>(null);
   const [refresh, setRefresh] = useState(0);
@@ -80,7 +77,7 @@ export default function PaddockHome() {
 
   function join() {
     const found = codeFrom(code);
-    if (!found) return setCodeError("Enter a meeting code like abcd-efgh, or paste the meeting link.");
+    if (!found) return setCodeError("Enter a Paddock code like abcd-efgh, or paste the Paddock link.");
     setCodeError("");
     navigate(`/paddock/${found}`);
   }
@@ -143,45 +140,54 @@ export default function PaddockHome() {
             <p>Video meetings for owners, trainers and their teams. Free, right in your browser, for up to {MAX_PEOPLE} people.</p>
           </div>
         </div>
-        <div className="pd-hero-actions">
-          <button
-            ref={newButton}
-            type="button"
-            className="pd-btn is-primary pd-new"
-            aria-haspopup="menu"
-            aria-expanded={newMenu}
-            onClick={() => setNewMenu((v) => !v)}
-            disabled={!!busy}
-          >
-            <PlusIcon /> {busy === "now" ? "Starting…" : busy === "link" ? "Creating…" : "New meeting"}
-          </button>
+        {/* Two plain choices: open a Paddock yourself, or go to one with its code. */}
+        <div className="pd-hero-actions pd-starts">
+          <div className="pd-start" role="group" aria-labelledby="pd-start-open">
+            <span className="pd-start-kicker" id="pd-start-open">
+              Open a Paddock
+            </span>
+            <div className="pd-start-buttons">
+              <button type="button" className="pd-btn is-primary pd-new" onClick={() => void create("now")} disabled={!!busy}>
+                <PlusIcon /> {busy === "now" ? "Starting..." : "Start now"}
+              </button>
+              <button type="button" className="pd-btn is-quiet" onClick={() => setSchedule({})} disabled={!!busy}>
+                <CalendarIcon /> Schedule
+              </button>
+              <button type="button" className="pd-btn is-quiet" onClick={() => void create("link")} disabled={!!busy}>
+                <LinkIcon size={16} /> {busy === "link" ? "Creating..." : "Get a link"}
+              </button>
+            </div>
+          </div>
           <form
-            className={`pd-joinbox${codeError ? " is-invalid" : ""}`}
+            className={`pd-start pd-joinbox-wrap${codeError ? " is-invalid" : ""}`}
             onSubmit={(e) => {
               e.preventDefault();
               join();
             }}
           >
-            <KeyboardIcon size={18} />
-            <label className="sr-only" htmlFor="pd-code">
-              Meeting code or link
+            <label className="pd-start-kicker" htmlFor="pd-code">
+              Have a code?
             </label>
-            <input
-              id="pd-code"
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value);
-                setCodeError("");
-              }}
-              placeholder="Enter a code or link"
-              autoComplete="off"
-              spellCheck={false}
-              aria-invalid={!!codeError}
-              aria-describedby={codeError ? "pd-code-error" : undefined}
-            />
-            <button type="submit" className="pd-joinbox-go" disabled={!code.trim()}>
-              Join
-            </button>
+            <div className={`pd-joinbox${codeError ? " is-invalid" : ""}`}>
+              <KeyboardIcon size={18} />
+              <input
+                id="pd-code"
+                aria-label="Paddock code or link"
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value);
+                  setCodeError("");
+                }}
+                placeholder="abcd-efgh or a Paddock link"
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={!!codeError}
+                aria-describedby={codeError ? "pd-code-error" : undefined}
+              />
+              <button type="submit" className="pd-joinbox-go" disabled={!code.trim()}>
+                Go
+              </button>
+            </div>
           </form>
         </div>
         {codeError && (
@@ -196,7 +202,7 @@ export default function PaddockHome() {
         )}
         <ul className="pd-hero-facts" aria-label="About Paddock calls">
           <li>Direct and private: nothing is recorded</li>
-          <li>Guests ask to join, you let them in</li>
+          <li>Guests knock, you let them in</li>
           <li>Share a race replay with its sound</li>
           <li>Works on phones and computers</li>
         </ul>
@@ -314,19 +320,6 @@ export default function PaddockHome() {
         </div>
       )}
 
-      {newMenu && (
-        <Menu
-          anchor={newButton.current}
-          label="New meeting"
-          align="start"
-          items={[
-            { label: "Start a meeting now", icon: <ClockIcon />, onSelect: () => void create("now") },
-            { label: "Get a link to share", icon: <LinkIcon size={16} />, onSelect: () => void create("link") },
-            { label: "Schedule for later", icon: <CalendarIcon />, onSelect: () => setSchedule({}) },
-          ]}
-          onClose={() => setNewMenu(false)}
-        />
-      )}
       {schedule && (
         <ScheduleDialog
           meeting={schedule.meeting}
@@ -340,17 +333,17 @@ export default function PaddockHome() {
         />
       )}
       {made && (
-        <Modal label="Your meeting is ready" className="modal-sm gx-layer" onClose={() => setMade(null)}>
-          <DialogHead kicker={PADDOCK_NAME} title="Your meeting is ready" onClose={() => setMade(null)} />
+        <Modal label="Your Paddock is ready" className="modal-sm gx-layer" onClose={() => setMade(null)}>
+          <DialogHead kicker={PADDOCK_NAME} title="Your Paddock is ready" onClose={() => setMade(null)} />
           <div className="dlg pd-dlg">
-            <p className="pd-small">Send this link to the people you want to meet. It works until you delete the meeting.</p>
+            <p className="pd-small">Send this link to the people you want in. It works until you delete this Paddock.</p>
             <CopyLink code={made.code} />
             <div className="dlg-actions">
               <button type="button" className="btn btn-quiet" onClick={() => setMade(null)}>
                 Close
               </button>
               <Link className="btn btn-primary" to={`/paddock/${made.code}`}>
-                Join now
+                Go in
               </Link>
             </div>
           </div>

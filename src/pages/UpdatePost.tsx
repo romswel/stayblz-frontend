@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import { canUse } from "../components/account/roles";
-import RichText from "../components/updates/RichText";
+import RichText, { headingsOf } from "../components/updates/RichText";
+import ReactionBar from "../components/updates/ReactionBar";
+import { PostOutline, ReadingProgress } from "../components/updates/PostOutline";
 import { PostMeta, UpdateItems } from "../components/updates/UpdateParts";
 import { formatDate, kindLabels, type UpdatePost as Post } from "../components/updates/types";
 import StatusPage from "../components/status/StatusPage";
@@ -14,6 +16,7 @@ import BackButton from "../components/ui/BackButton";
 import "../components/updates/updates.css";
 import "./landing.css";
 import "./faq.css";
+import "../components/updates/updates-glass.css";
 
 type Neighbour = { slug: string; title: string } | null;
 type Loaded = { update: Post; newer: Neighbour; older: Neighbour };
@@ -73,6 +76,8 @@ function ShareButton({ post }: { post: Post }) {
 function PostBody({ slug, signedIn }: { slug: string; signedIn: boolean }) {
   const { user } = useAuth();
   const { data, loading, error, missing, retry } = usePost(slug);
+  const articleRef = useRef<HTMLElement>(null);
+  const headings = useMemo(() => headingsOf(data?.update.body ?? ""), [data]);
   if (loading)
     return (
       <div className="up-post up-skeleton-post" aria-busy="true">
@@ -119,7 +124,9 @@ function PostBody({ slug, signedIn }: { slug: string; signedIn: boolean }) {
     );
   const post = data.update;
   return (
-    <article className={`up-post kind-${post.kind}`} aria-labelledby="up-post-title">
+    <div className={`up-post-layout${headings.length >= 2 ? " has-outline" : ""}`}>
+    <ReadingProgress target={articleRef} />
+    <article ref={articleRef} className={`up-post kind-${post.kind}`} aria-labelledby="up-post-title">
       <nav className="up-crumbs" aria-label="Breadcrumb">
         <Link to="/updates">Updates</Link>
         <span aria-hidden="true">/</span>
@@ -138,7 +145,7 @@ function PostBody({ slug, signedIn }: { slug: string; signedIn: boolean }) {
           <span className="up-post-tools">
             <ShareButton post={post} />
             {canUse(user, "admin") && (
-              <Link className="btn btn-quiet" to={`/admin/updates/${post.id}`}>
+              <Link className="btn btn-quiet" to={`/updates/manage/${post.id}`}>
                 Edit
               </Link>
             )}
@@ -151,6 +158,7 @@ function PostBody({ slug, signedIn }: { slug: string; signedIn: boolean }) {
         </section>
       )}
       {post.body && <RichText text={post.body} />}
+      <ReactionBar slug={post.slug} signedIn={signedIn} />
       <nav className="up-neighbours" aria-label="More updates">
         {data.newer ? (
           <Link to={`/updates/${data.newer.slug}`} className="up-neighbour">
@@ -170,6 +178,12 @@ function PostBody({ slug, signedIn }: { slug: string; signedIn: boolean }) {
         )}
       </nav>
     </article>
+    {headings.length >= 2 && (
+      <aside className="up-post-aside">
+        <PostOutline headings={headings} />
+      </aside>
+    )}
+    </div>
   );
 }
 
@@ -180,15 +194,15 @@ export default function UpdatePost() {
   const pageRef = usePublicMotion();
   if (user)
     return (
-      <div className="up-page up-page-post" key={slug}>
+      <div className="up-page up-page-post up-glass" key={slug}>
         <PostBody slug={slug} signedIn />
       </div>
     );
   return (
-    <div className="landing" id="top" ref={pageRef}>
+    <div className="landing gx-layer gx-public" id="top" ref={pageRef}>
       <PublicHeader />
       <main className="faq-main up-public" id="updates-main">
-        <div className="up-public-body up-public-post" key={slug}>
+        <div className="up-public-body up-public-post up-glass" key={slug}>
           <BackButton className="public-back" signedIn={false} />
           <PostBody slug={slug} signedIn={false} />
         </div>

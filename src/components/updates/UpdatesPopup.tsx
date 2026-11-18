@@ -21,7 +21,7 @@ export default function UpdatesPopup() {
     void markSeen();
   };
   return (
-    <Modal label="Stayblz Updates" onClose={dismiss} className="modal-up">
+    <Modal label="Stayblz Updates" onClose={dismiss} className="modal-up gx-layer">
       <div className={`up-pop kind-${post.kind}`}>
         <DialogHead
           kicker={

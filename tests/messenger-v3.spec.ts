@@ -1,10 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
 import { ANN, GRP, fakeServer, me, msg } from "./messenger-fixture";
 
-// Stayblz Chat v3 (Messenger-style details) and notifications, against the in-memory fake API.
+// Stayblz Chat v3 details and notifications, against the in-memory fake API.
 const row = (page: Page, text: string) => page.locator(".mx-row", { hasText: text }).first();
 
-test("reply labels, double-click ❤️, who reacted, and the pinned list", async ({ page }) => {
+test("reply labels, double-click 👍, who reacted, and the pinned list", async ({ page }) => {
   const server = await fakeServer(page);
   const gallops = server.threads[ANN].messages[0];
   server.threads[ANN].messages.push(
@@ -16,13 +16,13 @@ test("reply labels, double-click ❤️, who reacted, and the pinned list", asyn
   server.threads[ANN].pinnedMessages = [{ id: gallops.id, from: "Ann Ames", body: "Gallops at six?", attachment: null, pinnedAt: new Date().toISOString() }];
   await page.goto(`/messages/${ANN}`);
 
-  // "Ann replied to you" above the quoted message.
-  await expect(row(page, "Bring the blue saddle cloth")).toContainText("Ann replied to you");
+  // "In reply to you" above the quoted message.
+  await expect(row(page, "Bring the blue saddle cloth")).toContainText("In reply to you");
 
-  // Double-click a message: a quick ❤️, with the who-reacted list behind the pill.
+  // Double-click a message: a quick 👍, with the who-reacted list behind the tag.
   await row(page, "Gallops at six?").locator(".mx-bubble").dblclick();
-  await expect.poll(() => server.posts.filter((p) => p.path.endsWith("/react")).map((p) => p.body.emoji)).toEqual(["❤️"]);
-  await row(page, "Gallops at six?").getByRole("button", { name: /Reactions: ❤️ 1/ }).click();
+  await expect.poll(() => server.posts.filter((p) => p.path.endsWith("/react")).map((p) => p.body.emoji)).toEqual(["👍"]);
+  await row(page, "Gallops at six?").getByRole("button", { name: /Reactions: 👍 1/ }).click();
   const who = page.getByRole("dialog", { name: "Reactions" });
   await expect(who.getByRole("listitem")).toContainText("You");
   await who.getByRole("button", { name: "Tap to remove" }).click();
@@ -166,4 +166,37 @@ test("notification settings page: account switch, chat choices, honest push stat
   await expect(page.getByLabel(/New messages/)).toBeDisabled();
   // No pop-up when you've already been asked.
   await expect(page.getByRole("dialog", { name: "Turn on notifications" })).toHaveCount(0);
+});
+
+test("group chats: @mentions suggest members and stand out; Stayblz links get a card", async ({ page }) => {
+  const server = await fakeServer(page);
+  server.threads[GRP].messages.push(
+    msg("Cy Cole", "Can you drive, @Rae Rider?", false, 6, { senderId: "cy" }),
+    msg("Bo Burke", "The race: http://127.0.0.1:5178/racing/races/11111111-2222-4333-8444-555555555555 and https://example.com/x", false, 4, { senderId: "bo" }),
+  );
+  await page.goto(`/messages/${GRP}`);
+  // A message that mentions you is marked, and the mention is a chip.
+  const mention = row(page, "Can you drive");
+  await expect(mention).toHaveClass(/is-mention/);
+  await expect(mention.locator(".mx-mention")).toHaveText("@Rae Rider");
+  // Only Stayblz's own links get a card; it opens inside Stayblz.
+  const card = row(page, "The race:").locator(".mx-linkcard");
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("Race");
+  await expect(card).toHaveAttribute("href", "/racing/races/11111111-2222-4333-8444-555555555555");
+  // Typing "@b" suggests Bo; Enter picks him.
+  const box = page.getByRole("textbox", { name: "Write a message" });
+  await box.fill("Thanks @b");
+  const list = page.getByRole("listbox", { name: "Mention someone" });
+  await expect(list.getByRole("option")).toHaveCount(1);
+  await expect(list.getByRole("option")).toContainText("Bo Burke");
+  await box.press("Enter");
+  await expect(box).toHaveValue("Thanks @Bo Burke ");
+  await expect(list).toHaveCount(0);
+  await box.press("Enter");
+  await expect.poll(() => server.posts.filter((p) => p.path.endsWith("/messages")).map((p) => p.body.body)).toEqual(["Thanks @Bo Burke"]);
+  // Direct chats don't suggest anyone.
+  await page.goto(`/messages/${ANN}`);
+  await page.getByRole("textbox", { name: "Write a message" }).fill("@a");
+  await expect(page.getByRole("listbox", { name: "Mention someone" })).toHaveCount(0);
 });

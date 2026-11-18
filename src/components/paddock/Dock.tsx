@@ -11,6 +11,7 @@ import {
   ChatIcon,
   ChevronUpIcon,
   CopyIcon,
+  ExitIcon,
   ExpandIcon,
   GearIcon,
   GridIcon,
@@ -22,7 +23,6 @@ import {
   MicOffIcon,
   MoreIcon,
   PeopleIcon,
-  PhoneOffIcon,
   PipIcon,
   RingIcon,
   ScreenIcon,
@@ -31,8 +31,7 @@ import {
   SwitchCamIcon,
 } from "./icons";
 import { canPip } from "./pip";
-import { clockTime } from "./time";
-import { modKey, useNow } from "./useCall";
+import { modKey } from "./useCall";
 
 export type PanelTab = "people" | "chat" | "info" | "host";
 export const REACTIONS = ["👍", "👏", "❤️", "😂", "🎉", "😮", "🐎", "🏆"];
@@ -112,7 +111,6 @@ export default function Dock({
   narrow: boolean;
 }) {
   const confirm = useConfirm();
-  const now = useNow(15_000);
   const [open, setOpen] = useState<null | "mic" | "cam" | "more" | "react" | "leave">(null);
   const refs = {
     mic: useRef<HTMLButtonElement>(null),
@@ -158,10 +156,10 @@ export default function Dock({
       ? ([
           { label: `People (${people})`, icon: <PeopleIcon size={16} />, onSelect: () => onPanel("people") },
           { label: view.unread ? `Chat (${view.unread} new)` : "Chat", icon: <ChatIcon size={16} />, onSelect: () => onPanel("chat") },
-          { label: "Meeting details", icon: <InfoIcon size={16} />, onSelect: () => onPanel("info") },
+          { label: "Paddock info", icon: <InfoIcon size={16} />, onSelect: () => onPanel("info") },
           ...(view.canManage ? [{ label: "Host controls", icon: <ShieldIcon size={16} />, onSelect: () => onPanel("host") }] : []),
           ...(screenOk
-            ? [{ label: view.screen ? "Stop presenting" : "Present your screen", icon: <ScreenIcon size={16} />, onSelect: () => void call.toggleScreen() }]
+            ? [{ label: view.screen ? "Stop sharing" : "Share your screen", icon: <ScreenIcon size={16} />, onSelect: () => void call.toggleScreen() }]
             : []),
         ] as MenuEntry[])
       : []),
@@ -181,7 +179,7 @@ export default function Dock({
         else void document.documentElement.requestFullscreen?.().catch(() => undefined);
       },
     },
-    { label: "Copy meeting link", icon: <CopyIcon size={16} />, onSelect: () => void navigator.clipboard?.writeText(meetingLink(view.code)).catch(() => undefined) },
+    { label: "Copy Paddock link", icon: <CopyIcon size={16} />, onSelect: () => void navigator.clipboard?.writeText(meetingLink(view.code)).catch(() => undefined) },
     { label: "Settings", icon: <GearIcon size={16} />, onSelect: onSettings },
     ...(!narrow ? [{ label: "Keyboard shortcuts", icon: <KeyboardIcon size={16} />, onSelect: onShortcuts }] : []),
   ];
@@ -189,7 +187,7 @@ export default function Dock({
   async function endForAll() {
     const sure = await confirm({
       title: "End the call for everyone?",
-      message: "Everyone leaves now. The meeting link keeps working, so you can start again later.",
+      message: "Everyone leaves now. The Paddock link keeps working, so you can start again later.",
       confirmLabel: "End for everyone",
       tone: "danger",
     });
@@ -198,123 +196,123 @@ export default function Dock({
 
   const micLocked = !allowed.mic && !view.mic;
   const camLocked = !allowed.cam && !view.cam;
+  // One dock in four groups, like a starting gate: you, share, the room, leave.
   return (
-    <footer className="pd-dock" aria-label="Call controls">
-      {!narrow && (
-        <div className="pd-dock-info" aria-label="Time and meeting code">
-          <span>{clockTime(now)}</span>
-          <i aria-hidden="true" />
-          <span className="pd-code">{view.code}</span>
-        </div>
-      )}
+    <footer className="pd-dock pd-gate" aria-label="Call controls">
       <div className="pd-dock-main">
-        <div className={`pd-split${view.mic ? "" : " is-off"}`}>
-          {!narrow && (
-            <button ref={refs.mic} type="button" className="pd-caret" aria-label="Microphone options" aria-haspopup="menu" aria-expanded={open === "mic"} onClick={() => toggle("mic")}>
-              <ChevronUpIcon />
-            </button>
-          )}
-          <DockButton
-            label="Mic"
-            hint={micLocked ? "The host turned off microphones" : `${view.mic ? "Turn off microphone" : "Turn on microphone"} (${mod}+D)`}
-            off={!view.mic}
-            locked={micLocked}
-            pressed={view.mic}
-            onClick={() => void call.toggleMic()}
-          >
-            {view.mic ? <MicIcon /> : <MicOffIcon />}
-          </DockButton>
+        <div className="pd-gate-group" role="group" aria-label="Your microphone and camera">
+          <div className={`pd-split${view.mic ? "" : " is-off"}`}>
+            <DockButton
+              label="Mic"
+              hint={micLocked ? "The host turned off microphones" : `${view.mic ? "Turn off microphone" : "Turn on microphone"} (${mod}+D)`}
+              off={!view.mic}
+              locked={micLocked}
+              pressed={view.mic}
+              onClick={() => void call.toggleMic()}
+            >
+              {view.mic ? <MicIcon /> : <MicOffIcon />}
+            </DockButton>
+            {!narrow && (
+              <button ref={refs.mic} type="button" className="pd-caret" aria-label="Microphone options" aria-haspopup="menu" aria-expanded={open === "mic"} onClick={() => toggle("mic")}>
+                <ChevronUpIcon />
+              </button>
+            )}
+          </div>
+          <div className={`pd-split${view.cam ? "" : " is-off"}`}>
+            <DockButton
+              label="Camera"
+              hint={camLocked ? "The host turned off cameras" : `${view.cam ? "Turn off camera" : "Turn on camera"} (${mod}+E)`}
+              off={!view.cam}
+              locked={camLocked}
+              pressed={view.cam}
+              onClick={() => void call.toggleCam()}
+            >
+              {view.cam ? <CamIcon /> : <CamOffIcon />}
+            </DockButton>
+            {!narrow && (
+              <button ref={refs.cam} type="button" className="pd-caret" aria-label="Camera options" aria-haspopup="menu" aria-expanded={open === "cam"} onClick={() => toggle("cam")}>
+                <ChevronUpIcon />
+              </button>
+            )}
+          </div>
         </div>
-        <div className={`pd-split${view.cam ? "" : " is-off"}`}>
-          {!narrow && (
-            <button ref={refs.cam} type="button" className="pd-caret" aria-label="Camera options" aria-haspopup="menu" aria-expanded={open === "cam"} onClick={() => toggle("cam")}>
-              <ChevronUpIcon />
-            </button>
-          )}
-          <DockButton
-            label="Camera"
-            hint={camLocked ? "The host turned off cameras" : `${view.cam ? "Turn off camera" : "Turn on camera"} (${mod}+E)`}
-            off={!view.cam}
-            locked={camLocked}
-            pressed={view.cam}
-            onClick={() => void call.toggleCam()}
-          >
-            {view.cam ? <CamIcon /> : <CamOffIcon />}
-          </DockButton>
-        </div>
-        {!narrow && screenOk && (
-          <DockButton
-            label={view.screen ? "Stop" : "Present"}
-            hint={view.screen ? "Stop presenting" : allowed.present ? "Present your screen or a tab (with its sound)" : "The host turned off presenting"}
-            active={view.screen}
-            locked={!allowed.present && !view.screen}
-            pressed={view.screen}
-            onClick={() => void call.toggleScreen()}
-          >
-            <ScreenIcon />
-          </DockButton>
-        )}
-        <DockButton
-          label="React"
-          hint={allowed.react ? "Send a reaction" : "The host turned off reactions"}
-          locked={!allowed.react}
-          buttonRef={refs.react}
-          expanded={open === "react"}
-          active={open === "react"}
-          onClick={() => (allowed.react ? toggle("react") : call.react("👍"))}
-        >
-          <SmileIcon />
-        </DockButton>
-        <DockButton
-          label={view.hand ? "Lower" : "Hand"}
-          hint={`${view.hand ? "Lower your hand" : "Raise your hand"} (${mod}+Alt+H)`}
-          active={view.hand}
-          pressed={view.hand}
-          onClick={() => call.setHand(!view.hand)}
-        >
-          <HandIcon />
-        </DockButton>
-        <DockButton label="More" hint="More options" buttonRef={refs.more} expanded={open === "more"} onClick={() => toggle("more")} badge={narrow && (view.unread || view.knocks.length) ? view.unread + view.knocks.length : undefined}>
-          <MoreIcon />
-        </DockButton>
-        <button
-          ref={refs.leave}
-          type="button"
-          className="pd-leave"
-          aria-label={view.canManage ? "Leave or end the call" : "Leave call"}
-          title={view.canManage ? "Leave or end the call" : "Leave call"}
-          aria-haspopup={view.canManage ? "menu" : undefined}
-          onClick={() => (view.canManage ? toggle("leave") : void call.leave())}
-        >
-          <PhoneOffIcon />
-          <span>Leave</span>
-        </button>
-      </div>
-      {!narrow && (
-        <div className="pd-dock-side">
-          <DockButton label="Details" hint="Meeting details" active={panel === "info"} onClick={() => panelButton("info")}>
-            <InfoIcon />
-          </DockButton>
-          <DockButton
-            label="People"
-            hint={view.knocks.length ? `People (${people}, ${view.knocks.length} waiting to join)` : `People (${people})`}
-            active={panel === "people"}
-            onClick={() => panelButton("people")}
-            badge={view.knocks.length ? `+${view.knocks.length}` : people}
-            className={view.knocks.length ? "has-waiting" : ""}
-          >
-            <PeopleIcon />
-          </DockButton>
-          <DockButton label="Chat" hint={view.unread ? `Chat (${view.unread} new)` : "Chat"} active={panel === "chat"} onClick={() => panelButton("chat")} badge={view.unread || undefined}>
-            <ChatIcon />
-          </DockButton>
-          {view.canManage && (
-            <DockButton label="Host" hint="Host controls" active={panel === "host"} onClick={() => panelButton("host")}>
-              <ShieldIcon />
+        <div className="pd-gate-group" role="group" aria-label="Share and react">
+          {!narrow && screenOk && (
+            <DockButton
+              label={view.screen ? "Stop" : "Share"}
+              hint={view.screen ? "Stop sharing your screen" : allowed.present ? "Share your screen or a tab (with its sound)" : "The host turned off screen sharing"}
+              active={view.screen}
+              locked={!allowed.present && !view.screen}
+              pressed={view.screen}
+              onClick={() => void call.toggleScreen()}
+            >
+              <ScreenIcon />
             </DockButton>
           )}
+          <DockButton
+            label="React"
+            hint={allowed.react ? "Send a reaction" : "The host turned off reactions"}
+            locked={!allowed.react}
+            buttonRef={refs.react}
+            expanded={open === "react"}
+            active={open === "react"}
+            onClick={() => (allowed.react ? toggle("react") : call.react("\u{1F44D}"))}
+          >
+            <SmileIcon />
+          </DockButton>
+          <DockButton
+            label={view.hand ? "Lower" : "Hand"}
+            hint={`${view.hand ? "Lower your hand" : "Raise your hand"} (${mod}+Alt+H)`}
+            active={view.hand}
+            pressed={view.hand}
+            onClick={() => call.setHand(!view.hand)}
+          >
+            <HandIcon />
+          </DockButton>
         </div>
-      )}
+        {!narrow && (
+          <div className="pd-gate-group" role="group" aria-label="The room">
+            <DockButton
+              label="People"
+              hint={view.knocks.length ? `People (${people}, ${view.knocks.length} waiting to join)` : `People (${people})`}
+              active={panel === "people"}
+              onClick={() => panelButton("people")}
+              badge={view.knocks.length ? `+${view.knocks.length}` : people}
+              className={view.knocks.length ? "has-waiting" : ""}
+            >
+              <PeopleIcon />
+            </DockButton>
+            <DockButton label="Chat" hint={view.unread ? `Chat (${view.unread} new)` : "Chat"} active={panel === "chat"} onClick={() => panelButton("chat")} badge={view.unread || undefined}>
+              <ChatIcon />
+            </DockButton>
+            <DockButton label="Info" hint="Paddock info" active={panel === "info"} onClick={() => panelButton("info")}>
+              <InfoIcon />
+            </DockButton>
+            {view.canManage && (
+              <DockButton label="Host" hint="Host controls" active={panel === "host"} onClick={() => panelButton("host")}>
+                <ShieldIcon />
+              </DockButton>
+            )}
+          </div>
+        )}
+        <div className="pd-gate-group is-end" role="group" aria-label="More and leave">
+          <DockButton label="More" hint="More options" buttonRef={refs.more} expanded={open === "more"} onClick={() => toggle("more")} badge={narrow && (view.unread || view.knocks.length) ? view.unread + view.knocks.length : undefined}>
+            <MoreIcon />
+          </DockButton>
+          <button
+            ref={refs.leave}
+            type="button"
+            className="pd-leave"
+            aria-label={view.canManage ? "Leave or end the call" : "Leave call"}
+            title={view.canManage ? "Leave or end the call" : "Leave call"}
+            aria-haspopup={view.canManage ? "menu" : undefined}
+            onClick={() => (view.canManage ? toggle("leave") : void call.leave())}
+          >
+            <ExitIcon />
+            <span>Leave</span>
+          </button>
+        </div>
+      </div>
 
       {open === "mic" && <Menu anchor={refs.mic.current} label="Microphone options" items={deviceItems("audioinput")} onClose={() => setOpen(null)} align="start" />}
       {open === "cam" && <Menu anchor={refs.cam.current} label="Camera options" items={deviceItems("videoinput")} onClose={() => setOpen(null)} align="start" />}
@@ -324,7 +322,7 @@ export default function Dock({
           anchor={refs.leave.current}
           label="Leave options"
           items={[
-            { label: "Leave the call", icon: <PhoneOffIcon size={16} />, onSelect: () => void call.leave() },
+            { label: "Leave the call", icon: <ExitIcon size={16} />, onSelect: () => void call.leave() },
             { label: "End the call for everyone", danger: true, onSelect: () => void endForAll() },
           ]}
           onClose={() => setOpen(null)}

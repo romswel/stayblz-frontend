@@ -136,45 +136,59 @@
   50% { opacity: 0.35; }
 }
 
-/* Development preview notice. */
+/* Development preview notice: a slim glass strip with a "Preview" pill (glass tokens, old ones as fallback). */
 .dev-notice {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 12px;
-  padding: 8px 16px;
+  padding: 8px 10px 8px 12px;
   font-size: 12.5px;
   line-height: 1.5;
-  background: var(--gold-tint);
-  border-bottom: 1px solid var(--gold-dim);
-  color: var(--ink);
+  background: var(--gx-surface, var(--surface));
+  border: 1px solid var(--gx-border, var(--line));
+  border-radius: 14px;
+  -webkit-backdrop-filter: var(--gx-blur, none);
+  backdrop-filter: var(--gx-blur, none);
+  color: var(--gx-text-2, var(--ink));
 }
 .dev-notice strong {
-  letter-spacing: 0.06em;
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--gx-accent-soft, var(--gold-tint));
+  color: var(--gx-accent, var(--gold-ink));
+  font-family: var(--gx-mono, var(--mono));
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.dev-notice span {
+  flex: 1 1 260px;
+  min-width: 0;
 }
 .dev-notice a {
-  color: inherit;
+  color: var(--gx-text, inherit);
   font-weight: 700;
 }
 .dev-notice button {
   margin-left: auto;
   min-height: 32px;
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  padding: 4px 12px;
+  border: 1px solid var(--gx-border-strong, var(--line));
+  border-radius: 999px;
   background: transparent;
   color: inherit;
+  font: inherit;
   font-weight: 650;
+  cursor: pointer;
+}
+.dev-notice button:hover {
+  background: var(--gx-hover, var(--surface-2));
 }
 .dev-notice.is-public {
-  background: #c5a468;
-  border-bottom-color: #9c8150;
-  color: #0f1e19;
-}
-.dev-notice.is-public button {
-  border-color: rgba(15, 30, 25, 0.35);
+  margin: 12px var(--pg-gutter, 14px) 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -184,7 +198,5 @@
   }
 }
 .ws-main > .dev-notice {
-  margin-bottom: 18px;
-  border-radius: 6px;
-  border: 1px solid var(--gold-dim);
+  margin-bottom: 14px;
 }

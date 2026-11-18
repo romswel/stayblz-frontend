@@ -301,3 +301,45 @@ export function DevicePickers({ media, onSpeaker }: { media: LocalMedia; onSpeak
     </div>
   );
 }
+
+/**
+ * Check-in before going in: camera, microphone and speaker, each with a plain status, so problems show
+ * up here rather than in the call. Updates as devices change.
+ */
+export function CheckIn({ media }: { media: LocalMedia }) {
+  useMedia(media);
+  const speaker = media.devices.audiooutput.find((d) => d.deviceId === media.choice.audiooutput);
+  const rows: { key: string; label: string; state: "ok" | "off" | "bad"; text: string }[] = [
+    {
+      key: "cam",
+      label: "Camera",
+      state: media.camTrack ? "ok" : media.problems.cam ? "bad" : "off",
+      text: media.camTrack ? "Ready" : media.problems.cam ? "Not working" : "Off (others see your initials)",
+    },
+    {
+      key: "mic",
+      label: "Microphone",
+      state: media.micTrack ? "ok" : media.problems.mic ? "bad" : "off",
+      text: media.micTrack ? "Ready" : media.problems.mic ? "Not working" : "Off (you go in muted)",
+    },
+    {
+      key: "speaker",
+      label: "Speaker",
+      state: "ok",
+      text: speaker?.label || "System default",
+    },
+  ];
+  return (
+    <ul className="pd-checkin" aria-label="Device check">
+      {rows.map((row) => (
+        <li key={row.key} className={`is-${row.state}`}>
+          <span className="pd-checkin-mark" aria-hidden="true">
+            {row.state === "ok" ? "\u2713" : row.state === "bad" ? "!" : "\u2013"}
+          </span>
+          <span className="pd-checkin-label">{row.label}</span>
+          <span className="pd-checkin-text">{row.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}

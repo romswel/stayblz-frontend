@@ -28,27 +28,27 @@ function useMatch(query: string) {
 const typingIn = (target: EventTarget | null) =>
   target instanceof HTMLElement && !!target.closest("input, textarea, select, [contenteditable='true']");
 
-/** "Your meeting's ready": shown while you're the only one here, until closed. */
+/** "Your Paddock is open": shown while you're the only one here, until closed. */
 function ReadyCard({ view, onAdd, onClose }: { view: CallView; onAdd: () => void; onClose: () => void }) {
   return (
     <section className="pd-ready gx-glass" aria-labelledby="pd-ready-title">
       <header>
-        <h2 id="pd-ready-title">{view.canManage ? "Your meeting's ready" : "You're the only one here"}</h2>
+        <h2 id="pd-ready-title">{view.canManage ? "Your Paddock is open" : "You're the only one here"}</h2>
         <button type="button" className="pd-icon-btn" aria-label="Close" onClick={onClose}>
           <CloseIcon size={18} />
         </button>
       </header>
       {view.canManage && view.member && (
         <button type="button" className="pd-btn is-primary is-small" onClick={onAdd}>
-          <UserPlusIcon /> Add others
+          <UserPlusIcon /> Invite people
         </button>
       )}
-      <p className="pd-small">{view.canManage && view.member ? "Or share this meeting link with others you want in the meeting." : "Share this link to bring more people in."}</p>
-      <CopyLink code={view.code} label="Copy meeting link" />
+      <p className="pd-small">{view.canManage && view.member ? "Or send this link to anyone you want in the Paddock." : "Send this link to bring more people in."}</p>
+      <CopyLink code={view.code} label="Copy Paddock link" />
       <p className="pd-ready-note">
-        <InfoIcon size={16} /> People without an invitation ask to join, and a host lets them in.
+        <InfoIcon size={16} /> People without an invitation knock, and a host lets them in.
       </p>
-      <small className="pd-ready-me">Joined as {view.me.name}</small>
+      <small className="pd-ready-me">You're in as {view.me.name}</small>
     </section>
   );
 }

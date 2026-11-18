@@ -2,9 +2,9 @@
 export type ChatMode = "personal" | "team";
 
 /** Quick reactions (any emoji works through "+"; the backend accepts any single emoji). */
-export const REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🐎"] as const;
+export const REACTIONS = ["👍", "❤️", "😂", "🎉", "😮", "🐎"] as const;
 /** Double-tap / double-click a message to send this one. */
-export const QUICK_REACTION = "❤️";
+export const QUICK_REACTION = "👍";
 export const MAX_MESSAGE = 4000;
 export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 export const EDIT_WINDOW_MS = 15 * 60_000;

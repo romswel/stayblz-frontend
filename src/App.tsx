@@ -58,6 +58,7 @@ import HorseProfile from "./pages/HorseProfile";
 import CommunityPost from "./pages/CommunityPost";
 import MyHorses from "./pages/MyHorses";
 import { isAppPath } from "./appPaths";
+import { signedInDestination } from "./authDestination";
 import { Link } from "react-router-dom";
 
 function PPLoginRedirect() {
@@ -81,6 +82,12 @@ function PPLoginRedirect() {
 function OldUpdatesAdminLink() {
   const { id = "" } = useParams();
   return <Navigate to={`/updates/manage/${id}`} replace />;
+}
+
+/** Signed in: skip the welcome page and go to the dashboard (or the page that asked for a log in). */
+function SignedInHome() {
+  const { state } = useLocation();
+  return <Navigate to={signedInDestination(state)} replace />;
 }
 
 /** Signed out: known app pages go to log in; anything else is a real "not found". */
@@ -141,9 +148,10 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<Login />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Login />} />
+      {/* Already signed in: the home, log in and sign up addresses go straight into Stayblz. */}
+      <Route path="/" element={<SignedInHome />} />
+      <Route path="/login" element={<SignedInHome />} />
+      <Route path="/signup" element={<SignedInHome />} />
       <Route path="/faq" element={<FAQ />} />
       <Route path="/terms" element={<Legal kind="terms" />} />
       <Route path="/privacy" element={<Legal kind="privacy" />} />

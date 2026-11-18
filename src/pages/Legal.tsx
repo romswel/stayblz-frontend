@@ -23,7 +23,7 @@ export default function Legal({ kind }: { kind: LegalKind }) {
   const docs = legalDocs(kind);
   const title = titles[kind];
   return (
-    <div className="landing" id="top" ref={pageRef}>
+    <div className="landing gx-layer gx-public" id="top" ref={pageRef}>
       <a className="ld-skip" href="#legal-main">
         Skip to {title.toLowerCase()}
       </a>

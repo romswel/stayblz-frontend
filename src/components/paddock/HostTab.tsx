@@ -130,7 +130,7 @@ export default function HostTab({ view, call }: { view: CallView; call: PaddockC
             type="button"
             className="pd-btn is-danger is-small"
             onClick={async () => {
-              if (await confirm({ title: "End the call for everyone?", message: "Everyone leaves now. The meeting link keeps working, so you can start again later.", confirmLabel: "End for everyone", tone: "danger" }))
+              if (await confirm({ title: "End the call for everyone?", message: "Everyone leaves now. The Paddock link keeps working, so you can start again later.", confirmLabel: "End for everyone", tone: "danger" }))
                 void call.endForAll();
             }}
           >

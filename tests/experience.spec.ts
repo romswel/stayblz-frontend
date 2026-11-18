@@ -146,9 +146,9 @@ test.describe("Updates", () => {
       saved = route.request().postDataJSON();
       return route.fulfill({ json: { user: { ...unseen, preferences: { ...unseen.preferences, updatesSeenAt: "2026-11-11T00:00:00Z" } } } });
     });
+    // Signed in, the home address goes straight to the dashboard, where the pop-up shows once.
     await page.goto("/");
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await page.goto("/dashboard");
+    await expect(page).toHaveURL(/\/dashboard$/);
     const dialog = page.getByRole("dialog", { name: "Stayblz Updates" });
     await expect(dialog.getByRole("heading", { name: "Faster racecards" })).toBeVisible();
     await expect(dialog.getByText("1 more new post")).toBeVisible();

@@ -12,7 +12,7 @@ import { Face } from "./Preview";
 import { handOrder, personMenu, roleTag, Talking } from "./Tile";
 import { saddlecloth } from "./brand";
 
-const TITLES: Record<PanelTab, string> = { people: "People", chat: "In-call messages", info: "Meeting details", host: "Host controls" };
+const TITLES: Record<PanelTab, string> = { people: "People", chat: "In-call messages", info: "Paddock info", host: "Host controls" };
 
 export default function SidePanel({
   view,

@@ -5,7 +5,7 @@ import { useConfirm } from "../ui/Confirm";
 import { downloadFile, Lightbox } from "./AttachmentView";
 import ChatAvatar from "./ChatAvatar";
 import Composer from "./Composer";
-import { activeLabel, buildTimeline, muteLabel, toMs } from "./format";
+import { activeLabel, buildTimeline, mentionPattern, muteLabel, toMs } from "./format";
 import { ArrowLeftIcon, Avatar, ChevronIcon, CloseIcon, DownIcon, InfoIcon, MuteIcon, PhoneIcon, PinIcon, VideoIcon } from "./icons";
 import { MessageSheet, PinnedDialog, ReactionsDialog, type SheetAction } from "./MessageDialogs";
 import MessageRow, { type RowHandlers, type Who } from "./MessageRow";
@@ -91,6 +91,14 @@ export default function ChatThread({
   const group = head?.kind === "group";
   const canAct = !!thread && !thread.request;
   const timeline = useMemo(() => buildTimeline(messages), [messages]);
+  // Groups: @mentions of members (shown as chips), and the people you can mention.
+  const members = thread?.members;
+  const meName = members?.find((p) => p.me)?.name ?? "";
+  const mentions = useMemo(() => (group && members ? mentionPattern(members.map((p) => p.name)) : null), [group, members]);
+  const mentionable = useMemo(
+    () => (group && members ? members.filter((p) => !p.me && !p.pending).map((p) => ({ id: p.id, name: p.name })) : undefined),
+    [group, members],
+  );
   const other = thread?.members.find((m) => !m.me);
   if (thread && !known.current) {
     known.current = new Set(thread.messages.map((m) => m.id));
@@ -215,9 +223,9 @@ export default function ChatThread({
   const askUnsend = useCallback(
     async (m: ChatMessage) => {
       const ok = await confirm({
-        title: "Unsend this message?",
+        title: "Remove this message for everyone?",
         message: "It's removed for everyone in this chat, including any photo, video or file. People who already saw it may remember it.",
-        confirmLabel: "Unsend",
+        confirmLabel: "Remove for everyone",
         tone: "danger",
       });
       if (ok) void unsend(m.id);
@@ -336,7 +344,7 @@ export default function ChatThread({
 
   return (
     <section
-      className={`mx-thread mx-card${dragging ? " is-dragging" : ""}`}
+      className={`mx-thread mx-card${group ? " is-group" : ""}${dragging ? " is-dragging" : ""}`}
       aria-label={head ? `Chat with ${head.title}` : "Chat"}
       onDragOver={(e) => {
         if (canAct && e.dataTransfer.types.includes("Files")) {
@@ -385,16 +393,19 @@ export default function ChatThread({
           <div className="mx-thread-actions">
             {canAct && !thread.direct?.blockedByMe && !thread.direct?.blockedMe && (
               <>
-                <button type="button" className="mx-icon-btn is-accent" aria-label="Start a voice call" title="Voice call (Stayblz Paddock)" disabled={calling} onClick={() => onCall(false)}>
-                  <PhoneIcon />
+                <button type="button" className="mx-head-btn" aria-label="Start a voice call" title="Voice call (Stayblz Paddock)" disabled={calling} onClick={() => onCall(false)}>
+                  <PhoneIcon size={16} />
+                  <span>Call</span>
                 </button>
-                <button type="button" className="mx-icon-btn is-accent" aria-label="Start a video call" title="Video call (Stayblz Paddock)" disabled={calling} onClick={() => onCall(true)}>
-                  <VideoIcon />
+                <button type="button" className="mx-head-btn" aria-label="Start a video call" title="Video call (Stayblz Paddock)" disabled={calling} onClick={() => onCall(true)}>
+                  <VideoIcon size={17} />
+                  <span>Video</span>
                 </button>
               </>
             )}
-            <button type="button" className="mx-icon-btn is-accent" aria-label="Chat info" aria-pressed={infoOpen} title="Chat info" onClick={onInfo}>
-              <InfoIcon />
+            <button type="button" className="mx-head-btn is-info" aria-label="Chat info" aria-pressed={infoOpen} title="Chat info" onClick={onInfo}>
+              <InfoIcon size={17} />
+              <span>Details</span>
             </button>
           </div>
         )}
@@ -485,17 +496,20 @@ export default function ChatThread({
                   </button>
                 ) : (
                   <div className="mx-intro">
-                    <ChatAvatar c={thread} size="xl" active={false} />
-                    <p className="mx-intro-name">{thread.title}</p>
-                    <p>
-                      {group
-                        ? `${thread.members.length} ${thread.members.length === 1 ? "member" : "members"} · This is the start of the group.`
-                        : friends
-                          ? "You're friends on Stayblz. Only the two of you can open this chat."
-                          : mode === "team"
-                            ? "Your teammate. Only the two of you can open this chat."
-                            : "Only the two of you can open this chat on Stayblz."}
-                    </p>
+                    <ChatAvatar c={thread} size="lg" active={false} />
+                    <div className="mx-intro-text">
+                      <span className="mx-intro-kicker">{group ? "Group chat" : mode === "team" ? "Team chat" : "Private chat"}</span>
+                      <p className="mx-intro-name">{thread.title}</p>
+                      <p>
+                        {group
+                          ? `${thread.members.length} ${thread.members.length === 1 ? "member" : "members"} · This is the start of the group.`
+                          : friends
+                            ? "You're friends on Stayblz. Only the two of you can open this chat."
+                            : mode === "team"
+                              ? "Your teammate. Only the two of you can open this chat."
+                              : "Only the two of you can open this chat on Stayblz."}
+                      </p>
+                    </div>
                     {!group && mode === "personal" && other && (
                       <Link className="mx-pill" to={`/community/people/${other.id}`}>
                         View profile
@@ -536,6 +550,8 @@ export default function ChatThread({
                       seenBy={receipts.seenAt.get(item.message.id)}
                       other={otherWho}
                       highlight={highlight}
+                      mentions={mentions}
+                      meName={meName}
                       h={handlers}
                     />
                   ),
@@ -633,6 +649,7 @@ export default function ChatThread({
             }}
             onCancelEdit={() => setEditing(null)}
             onEditLast={editLast}
+            mentionable={mentionable}
             inputRef={input}
           />
         )

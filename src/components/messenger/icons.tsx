@@ -95,13 +95,7 @@ export const StopIcon = ({ size = 14 }: Sized) => (
 );
 export const TrashIcon = ({ size = 18 }: Sized) => <Svg size={size}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" /></Svg>;
 export const LinkIcon = ({ size = 16 }: Sized) => <Svg size={size}><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /></Svg>;
-export const ThumbIcon = ({ size = 24 }: Sized) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-    <path fill="currentColor" d="M2 10.5h3.5V21H2zM7.5 21h9.3a2.5 2.5 0 0 0 2.4-1.8l1.7-6A2.5 2.5 0 0 0 18.5 10H14l.8-3.6A2.2 2.2 0 0 0 12.6 3.7L7.5 10.2z" />
-  </svg>
-);
-
-/** A person's picture in a circle (their profile photo, or initials), with an optional green "active now" dot. */
+/** A person's picture as a saddlecloth (rounded square: their profile photo, or initials), with an optional "active now" pip. */
 export function Avatar({
   name,
   id,
@@ -115,7 +109,7 @@ export function Avatar({
   /** Account id: shows their profile picture when they have one. */
   id?: string | null;
   group?: boolean;
-  /** Groups: two members for a Messenger-style pair of faces (photos or initials). */
+  /** Groups without a photo: two members' cloths, stacked (photos or initials). */
   people?: { id?: string | null; name: string }[];
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   active?: boolean;
@@ -154,34 +148,38 @@ export function Avatar({
   );
 }
 
-/** Messenger-style marks for your own messages: ○ sending, ✓ sent, ● delivered, (their face) seen. */
-export function StatusMark({ status, seenBy, seenById }: { status: "sending" | "failed" | DeliveryStatus; seenBy?: string; seenById?: string | null }) {
+/**
+ * Stayblz's own delivery mark for your messages: a three-step bar that fills as the message goes
+ * sent → delivered → seen (seen turns the accent colour). A clock while sending, "!" when it failed.
+ */
+export function StatusMark({ status, seenBy }: { status: "sending" | "failed" | DeliveryStatus; seenBy?: string; seenById?: string | null }) {
   const label =
     status === "sending" ? "Sending" : status === "failed" ? "Not sent" : status === "sent" ? "Sent" : status === "delivered" ? "Delivered" : `Seen${seenBy ? ` by ${seenBy}` : ""}`;
-  if (status === "seen" && seenBy) {
+  if (status === "sending" || status === "failed") {
     return (
-      <span className="mx-mark is-seen" title={label} role="img" aria-label={label}>
-        <Avatar name={seenBy} id={seenById} size="xs" />
+      <span className={`mx-mark is-${status}`} title={label} role="img" aria-label={label}>
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+          {status === "failed" ? (
+            <>
+              <rect x="1.5" y="1.5" width="13" height="13" rx="4" fill="currentColor" />
+              <path d="M8 4.5v4.2M8 11.2h.01" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+            </>
+          ) : (
+            <>
+              <circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M8 4.8V8l2.2 1.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </>
+          )}
+        </svg>
       </span>
     );
   }
+  const steps = status === "sent" ? 1 : status === "delivered" ? 2 : 3;
   return (
-    <span className={`mx-mark is-${status}`} title={label} role="img" aria-label={label}>
-      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
-        {status === "failed" ? (
-          <>
-            <circle cx="8" cy="8" r="7" fill="currentColor" />
-            <path d="M8 4.5v4.2M8 11.2h.01" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
-          </>
-        ) : (
-          <>
-            <circle cx="8" cy="8" r="6.6" fill={status === "delivered" || status === "seen" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" />
-            {status !== "sending" && (
-              <path d="m5 8.2 2 2 4-4.2" fill="none" stroke={status === "delivered" || status === "seen" ? "var(--mx-icon-ink, #fff)" : "currentColor"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            )}
-          </>
-        )}
-      </svg>
+    <span className={`mx-mark mx-steps is-${status}`} title={label} role="img" aria-label={label}>
+      {[1, 2, 3].map((n) => (
+        <i key={n} className={n <= steps ? "is-on" : undefined} />
+      ))}
     </span>
   );
 }

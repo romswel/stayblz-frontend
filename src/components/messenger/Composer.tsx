@@ -3,18 +3,16 @@ import EmojiPicker from "./EmojiPicker";
 import { ACCEPT_ATTR, MEDIA_ATTR } from "./files";
 import { seconds } from "./format";
 import {
-  ChevronRightIcon,
+  Avatar,
   CloseIcon,
   EditIcon,
   FileIcon,
   ImageIcon,
   MicIcon,
   PhoneIcon,
-  PlusCircleIcon,
   ReplyIcon,
   SendIcon,
   SmileIcon,
-  ThumbIcon,
   TrashIcon,
   VideoIcon,
 } from "./icons";
@@ -25,8 +23,8 @@ import { canRecord, useVoiceRecorder } from "./useVoiceRecorder";
 const coarse = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
 /**
- * Message box, Messenger style. Left: (+) more, photo/video, voice clip — they fold into one arrow while
- * you type. Middle: "Aa" with emoji. Right: 👍 when empty, send when there's text.
+ * Message box (Stayblz's own layout). Left: one Attach button (photos, files, voice clip, calls). Middle:
+ * "Write a message…" with emoji. Right: the mic for a voice clip while the box is empty, Send once you type.
  * Enter sends on a keyboard (Shift+Enter = new line); on phones Enter adds a line. Paste or drop files to send
  * them; ↑ edits your last message; Escape cancels a reply or edit.
  */
@@ -46,6 +44,7 @@ export default function Composer({
   onCancelEdit,
   onEditLast,
   inputRef,
+  mentionable,
 }: {
   value: string;
   onChange: (text: string) => void;
@@ -63,6 +62,8 @@ export default function Composer({
   onCancelEdit: () => void;
   onEditLast: () => void;
   inputRef: MutableRefObject<HTMLTextAreaElement | null>;
+  /** Group chats: people you can @mention (everyone but you). */
+  mentionable?: { id: string; name: string }[];
 }) {
   const local = useRef<HTMLTextAreaElement | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -71,13 +72,18 @@ export default function Composer({
   const [emoji, setEmoji] = useState(false);
   const [plus, setPlus] = useState(false);
   const [editText, setEditText] = useState("");
-  const [toolsOpen, setToolsOpen] = useState(false);
   const shown = editing ? editText : value;
   const text = shown.trim();
   const recorder = useVoiceRecorder(() => void finishVoice(true));
   const recording = recorder.state !== "idle";
-  // While typing, the left buttons fold into one arrow (tap it to get them back).
-  const folded = !!text && !toolsOpen;
+  // "@ann" just before the caret in a group: suggest members to mention.
+  const [mention, setMention] = useState<{ query: string; start: number; end: number } | null>(null);
+  const [mentionAt, setMentionAt] = useState(0);
+  const suggestions = mention
+    ? (mentionable ?? [])
+        .filter((p) => p.name.toLowerCase().split(/\s+/).some((part) => part.startsWith(mention.query.toLowerCase())) || p.name.toLowerCase().startsWith(mention.query.toLowerCase()))
+        .slice(0, 6)
+    : [];
 
   useEffect(() => {
     if (editing) {
@@ -91,9 +97,6 @@ export default function Composer({
       });
     }
   }, [editing]);
-  useEffect(() => {
-    if (!text) setToolsOpen(false);
-  }, [text]);
 
   // Grow with the text, up to about six lines.
   useEffect(() => {
@@ -114,7 +117,44 @@ export default function Composer({
     onTyping(false);
     onSend(text);
   }
+  function findMention(next: string, caret: number | null | undefined) {
+    if (!mentionable?.length || editing) return setMention(null);
+    const upTo = next.slice(0, caret ?? next.length);
+    const found = /(?:^|\s)@([^\s@]{0,24})$/u.exec(upTo);
+    if (!found) return setMention(null);
+    setMention({ query: found[1], start: upTo.length - found[1].length - 1, end: upTo.length });
+    setMentionAt(0);
+  }
+  function pickMention(person: { name: string }) {
+    if (!mention) return;
+    const insertText = `@${person.name} `;
+    const next = shown.slice(0, mention.start) + insertText + shown.slice(mention.end);
+    const caret = mention.start + insertText.length;
+    setMention(null);
+    change(next);
+    requestAnimationFrame(() => {
+      local.current?.focus();
+      local.current?.setSelectionRange(caret, caret);
+    });
+  }
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (suggestions.length) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionAt((i) => (i + (e.key === "ArrowDown" ? 1 : suggestions.length - 1)) % suggestions.length);
+        return;
+      }
+      if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+        e.preventDefault();
+        pickMention(suggestions[Math.min(mentionAt, suggestions.length - 1)]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMention(null);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && !coarse()) {
       e.preventDefault();
       submit();
@@ -170,7 +210,7 @@ export default function Composer({
   }
 
   const plusItems: MenuEntry[] = [
-    { label: "Photo or video", icon: <ImageIcon size={18} />, onSelect: () => mediaInput.current?.click() },
+    { label: "Photos or videos", icon: <ImageIcon size={18} />, onSelect: () => mediaInput.current?.click() },
     { label: "File", icon: <FileIcon size={18} />, onSelect: () => fileInput.current?.click() },
     ...(canRecord() ? [{ label: "Voice clip", icon: <MicIcon size={18} />, onSelect: () => void startVoice() }] : []),
     ...(onCall
@@ -244,41 +284,20 @@ export default function Composer({
       ) : (
         <div className="mx-compose-row">
           {!editing && (
-            <div className={`mx-compose-tools${folded ? " is-folded" : ""}`}>
-              {folded ? (
-                <button type="button" className="mx-compose-btn" aria-label="Show more options" title="More" onClick={() => setToolsOpen(true)}>
-                  <ChevronRightIcon size={22} />
-                </button>
-              ) : (
-                <>
-                  <button
-                    ref={plusRef}
-                    type="button"
-                    className="mx-compose-btn"
-                    aria-label="More: files, voice clip, calls"
-                    title="More"
-                    aria-haspopup="menu"
-                    aria-expanded={plus}
-                    onClick={() => setPlus((v) => !v)}
-                  >
-                    <PlusCircleIcon />
-                  </button>
-                  <button type="button" className="mx-compose-btn" aria-label="Attach photos or videos" title="Photos & videos" onClick={() => mediaInput.current?.click()}>
-                    <ImageIcon />
-                  </button>
-                  <button type="button" className="mx-compose-btn" aria-label="Attach a file" title="Attach a file" onClick={() => fileInput.current?.click()}>
-                    <PaperclipSmall />
-                  </button>
-                  {canRecord() && (
-                    <button type="button" className="mx-compose-btn" aria-label="Record a voice clip" title="Voice clip" onClick={() => void startVoice()}>
-                      <MicIcon />
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
+            <button
+              ref={plusRef}
+              type="button"
+              className="mx-compose-btn mx-attach-btn"
+              aria-label="Attach: photos, files, voice clip, calls"
+              title="Attach"
+              aria-haspopup="menu"
+              aria-expanded={plus}
+              onClick={() => setPlus((v) => !v)}
+            >
+              <PaperclipSmall />
+            </button>
           )}
-          {plus && <Menu anchor={plusRef.current} items={plusItems} onClose={() => setPlus(false)} label="More" align="start" />}
+          {plus && <Menu anchor={plusRef.current} items={plusItems} onClose={() => setPlus(false)} label="Attach" align="start" />}
           <div className="mx-compose-field">
             <textarea
               ref={(el) => {
@@ -287,16 +306,44 @@ export default function Composer({
               }}
               rows={1}
               aria-label={editing ? "Edit message" : "Write a message"}
-              placeholder={editing ? "Edit your message" : "Aa"}
+              placeholder={editing ? "Edit your message" : "Write a message…"}
               value={shown}
               maxLength={MAX_MESSAGE}
-              onChange={(e) => change(e.target.value)}
+              onChange={(e) => {
+                change(e.target.value);
+                findMention(e.target.value, e.target.selectionStart);
+              }}
               onKeyDown={onKeyDown}
               onPaste={onPaste}
-              onBlur={() => onTyping(false)}
-              onFocus={() => setToolsOpen(false)}
+              onBlur={() => {
+                onTyping(false);
+                // Let a click on a suggestion land first.
+                window.setTimeout(() => setMention(null), 150);
+              }}
               enterKeyHint="send"
+              aria-autocomplete={mentionable?.length ? "list" : undefined}
+              aria-controls={suggestions.length ? "mx-mentions" : undefined}
+              aria-activedescendant={suggestions.length ? `mx-mention-${Math.min(mentionAt, suggestions.length - 1)}` : undefined}
             />
+            {suggestions.length > 0 && (
+              <ul className="mx-mentions" id="mx-mentions" role="listbox" aria-label="Mention someone">
+                {suggestions.map((person, i) => (
+                  <li
+                    key={person.id}
+                    id={`mx-mention-${i}`}
+                    role="option"
+                    aria-selected={i === Math.min(mentionAt, suggestions.length - 1)}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      pickMention(person);
+                    }}
+                  >
+                    <Avatar name={person.name} id={person.id} size="sm" />
+                    <span>{person.name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <button
               type="button"
               className="mx-compose-emoji"
@@ -306,7 +353,7 @@ export default function Composer({
               data-emoji-toggle
               onClick={() => setEmoji((v) => !v)}
             >
-              <SmileIcon size={22} />
+              <SmileIcon size={20} />
             </button>
             {emoji && (
               <div className="mx-compose-picker">
@@ -314,7 +361,12 @@ export default function Composer({
               </div>
             )}
           </div>
-          {text || editing ? (
+          {/* Empty box: the mic records a voice clip. Typing turns it into Send. */}
+          {!text && !editing && canRecord() ? (
+            <button type="button" className="mx-send is-mic" aria-label="Record a voice clip" title="Voice clip" onClick={() => void startVoice()}>
+              <MicIcon />
+            </button>
+          ) : (
             <button
               type="submit"
               className="mx-send is-go"
@@ -323,10 +375,6 @@ export default function Composer({
               disabled={!text}
             >
               {editing ? <span className="mx-send-check">✓</span> : <SendIcon />}
-            </button>
-          ) : (
-            <button type="button" className="mx-send is-like" aria-label="Send a thumbs up" title="Send 👍" onClick={() => onSend("👍")}>
-              <ThumbIcon />
             </button>
           )}
         </div>
