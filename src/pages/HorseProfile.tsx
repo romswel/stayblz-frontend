@@ -7,12 +7,14 @@ import {
   community,
   errorText,
   horseImageUrl,
+  horseMediaPicture,
   money,
   ordinal,
   type HorseDetail,
   type Post,
 } from "../components/community/api";
-import { Avatar, Composer, Empty, FollowButton, Icon, Lightbox, PostCard, Skeletons, StatusBadge } from "../components/community/ui";
+import { Avatar, Composer, Empty, FollowButton, Icon, PostCard, Skeletons, StatusBadge } from "../components/community/ui";
+import { HorseViewer } from "../components/community/HorseShare";
 
 /** /community/horses/:id — one horse's profile: photos, details, race history and posts. */
 export default function HorseProfile() {
@@ -21,7 +23,7 @@ export default function HorseProfile() {
   const [horse, setHorse] = useState<HorseDetail | null>(null);
   const [error, setError] = useState("");
   const [active, setActive] = useState(0);
-  const [viewer, setViewer] = useState<number | null>(null);
+  const [viewer, setViewer] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -83,6 +85,7 @@ export default function HorseProfile() {
     );
 
   const urls = horse.images.map((i) => horseImageUrl(i.id));
+  const current = horse.images[active];
   const age = horse.foaledYear ? new Date().getFullYear() - horse.foaledYear : null;
   const winRate = horse.stats.starts ? Math.round((horse.stats.wins / horse.stats.starts) * 100) : 0;
   const itm = horse.stats.starts ? Math.round(((horse.stats.wins + horse.stats.places + horse.stats.shows) / horse.stats.starts) * 100) : 0;
@@ -102,15 +105,23 @@ export default function HorseProfile() {
       {/* ---------- Hero: gallery + identity ---------- */}
       <section className="cm-horse-hero gx-glass">
         <div className="cm-gallery">
-          <button type="button" className="cm-gallery-main" onClick={() => urls.length && setViewer(active)} disabled={!urls.length} aria-label="Open photo viewer">
-            {urls.length ? <img src={urls[active]} alt={`${horse.name}`} /> : <span className="cm-horse-placeholder is-large"><Icon.Horse /></span>}
-            {urls.length > 1 && <span className="cm-photo-count"><Icon.Photo /> {active + 1} / {urls.length}</span>}
-          </button>
+          {current?.kind === "video" ? (
+            <div className="cm-gallery-main is-video">
+              <video key={current.id} src={urls[active]} poster={horseMediaPicture(current) ?? undefined} controls playsInline preload="metadata" />
+              {urls.length > 1 && <span className="cm-photo-count"><Icon.Photo /> {active + 1} / {urls.length}</span>}
+            </div>
+          ) : (
+            <button type="button" className="cm-gallery-main" onClick={() => current && setViewer(current.id)} disabled={!current} aria-label="Open photo viewer">
+              {current ? <img src={urls[active]} alt={`${horse.name}`} /> : <span className="cm-horse-placeholder is-large"><Icon.Horse /></span>}
+              {urls.length > 1 && <span className="cm-photo-count"><Icon.Photo /> {active + 1} / {urls.length}</span>}
+            </button>
+          )}
           {urls.length > 1 && (
             <div className="cm-thumbs" role="list">
               {horse.images.map((img, i) => (
-                <button key={img.id} type="button" role="listitem" className={i === active ? "is-active" : undefined} onClick={() => setActive(i)} aria-label={`Show photo ${i + 1}`}>
-                  <img src={urls[i]} alt="" loading="lazy" />
+                <button key={img.id} type="button" role="listitem" className={`${i === active ? "is-active" : ""}${img.kind === "video" ? " is-video" : ""}`.trim() || undefined} onClick={() => setActive(i)} aria-label={`Show ${img.kind === "video" ? "video" : "photo"} ${i + 1}`}>
+                  {horseMediaPicture(img) ? <img src={horseMediaPicture(img)!} alt="" loading="lazy" /> : <span className="cm-hshare-blank" />}
+                  {img.kind === "video" && <span className="cm-hv-thumb-play" aria-hidden="true"><Icon.Play /></span>}
                 </button>
               ))}
             </div>
@@ -246,7 +257,7 @@ export default function HorseProfile() {
         </aside>
       </div>
 
-      {viewer !== null && <Lightbox urls={urls} start={viewer} onClose={() => setViewer(null)} />}
+      {viewer !== null && <HorseViewer horseId={horse.id} name={horse.name} initial={[]} startId={viewer} onClose={() => setViewer(null)} />}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AccountHeader from "./account/AccountNav";
 import HorseEditor from "../components/community/HorseEditor";
+import ShareHorseDialog from "../components/community/ShareHorseDialog";
 import { HorseCard, Icon, Skeletons, Empty } from "../components/community/ui";
 import {
   community,
@@ -31,6 +32,7 @@ export default function MyHorses() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState("");
   const [filter, setFilter] = useState("");
+  const [sharing, setSharing] = useState<Horse | null>(null);
   const editing = params.get("edit");
   const editTab = (params.get("tab") as "details" | "photos" | "records" | null) ?? "details";
 
@@ -141,7 +143,7 @@ export default function MyHorses() {
           ) : (
             <div className="cm-grid">
               {shown.map((h) => (
-                <HorseCard key={h.id} horse={h} showOwnerTools onEdit={() => openEditor(h.id)} />
+                <HorseCard key={h.id} horse={h} showOwnerTools onEdit={() => openEditor(h.id)} onShare={() => setSharing(h)} />
               ))}
             </div>
           )}
@@ -191,6 +193,17 @@ export default function MyHorses() {
           </section>
         </aside>
       </div>
+
+      {sharing && (
+        <ShareHorseDialog
+          horse={sharing}
+          inventoryVisibility={settings?.inventoryVisibility ?? "members"}
+          onClose={() => setSharing(null)}
+          onShared={(madeVisible) => {
+            if (madeVisible) setHorses((list) => (list ?? []).map((x) => (x.id === sharing.id ? { ...x, visibility: "members" } : x)));
+          }}
+        />
+      )}
 
       {editing && (
         <HorseEditor
