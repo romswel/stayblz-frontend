@@ -38,36 +38,16 @@ test.beforeEach(async ({ page }) => {
     return route.fulfill({ status: 401, json: { error: "Not signed in." } });
   });
 });
-/** Sign-up page 1: name, email and password. */
-async function fillSignupStep1(
-  page: import("@playwright/test").Page,
-  confirm = "TestOnlyPassword123",
-) {
+/** The one sign-up page: name, email, password and the one agreement, ready for "Create account". */
+async function fillSignup(page: import("@playwright/test").Page, confirm = "TestOnlyPassword123") {
   await page.getByLabel("First name", { exact: true }).fill("Member");
   await page.getByLabel("Last name", { exact: true }).fill("User");
-  await page
-    .getByLabel("Email address", { exact: true })
-    .fill("member@example.test");
-  await page
-    .getByLabel("Password", { exact: true })
-    .fill("TestOnlyPassword123");
+  await page.getByLabel("Email address", { exact: true }).fill("member@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("TestOnlyPassword123");
   await page.getByLabel("Confirm password", { exact: true }).fill(confirm);
-}
-/** Both pages of sign-up, ready for "Create account". */
-async function fillSignup(page: import("@playwright/test").Page) {
-  await fillSignupStep1(page);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByText("Step 2 of 2", { exact: false })).toBeVisible();
-  await page
-    .getByRole("combobox", { name: "Country", exact: true })
-    .selectOption("PH");
-  await page
-    .getByRole("combobox", { name: "Your main role in racing", exact: true })
-    .selectOption("fan");
   await page.getByRole("checkbox", { name: /I agree to the Terms of Use/ }).check();
-  await page.getByRole("checkbox", { name: "I'm 18 or older." }).check();
 }
-test("signup validates profile, sends it once, and waits for email confirmation", async ({
+test("sign-up asks only for name, email, password and one agreement, then says to open the emailed link", async ({
   page,
 }) => {
   let calls = 0;
@@ -76,62 +56,41 @@ test("signup validates profile, sends it once, and waits for email confirmation"
     calls++;
     saved = route.request().postDataJSON();
     await new Promise((resolve) => setTimeout(resolve, 150));
-    await route.fulfill({
-      status: 202,
-      json: {
-        requiresVerification: true,
-        message: "Check your email for a confirmation link.",
-      },
-    });
+    await route.fulfill({ status: 202, json: { requiresVerification: true, message: "We sent a verification link." } });
   });
   await page.goto("/signup");
+  // No racing details on sign-up any more: they come after verifying ("Finish your profile").
+  await expect(page.getByRole("combobox", { name: "Country", exact: true })).toHaveCount(0);
   await fillSignup(page);
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Check your email", exact: true }),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Check your inbox", exact: true })).toBeVisible();
+  await expect(page.locator(".au-inbox")).toContainText("member@example.test");
+  // Link only: no box for a code.
+  await expect(page.getByLabel(/code/i)).toHaveCount(0);
   expect(calls).toBe(1);
-  expect(saved).toMatchObject({
-    firstName: "Member",
-    lastName: "User",
-    country: "PH",
-    racingRole: "fan",
-    email: "member@example.test",
-  });
+  expect(saved).toMatchObject({ firstName: "Member", lastName: "User", email: "member@example.test" });
+  expect(saved).not.toHaveProperty("country");
   expect(saved).not.toHaveProperty("role");
   expect(saved).toMatchObject({ acceptTerms: true, ageConfirmed: true, termsVersion: "2026-11-10" });
-  await expect(
-    page.getByRole("link", { name: "Continue to dashboard" }),
-  ).toHaveCount(0);
-  expect(await page.evaluate(() => localStorage.getItem("stayblz.token"))).toBe(
-    null,
-  );
+  expect(await page.evaluate(() => localStorage.getItem("stayblz.token"))).toBe(null);
 });
-test("password mismatch stays in the form without a signup request", async ({
-  page,
-}) => {
+test("password mismatch stays in the form without a signup request", async ({ page }) => {
   let posts = 0;
   page.on("request", (r) => {
     if (r.url().includes("/api/auth/signup")) posts++;
   });
   await page.goto("/signup");
-  await fillSignupStep1(page, "DifferentPassword123");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await fillSignup(page, "DifferentPassword123");
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
   await expect(page.getByRole("alert")).toHaveText("Passwords do not match.");
-  // Still on page 1.
-  await expect(page.getByText("Step 1 of 2", { exact: false })).toBeVisible();
-  await expect(
-    page.getByRole("combobox", { name: "Country", exact: true }),
-  ).toHaveCount(0);
   expect(posts).toBe(0);
   await expect(page.getByLabel("First name")).toHaveValue("Member");
 });
 test("logo Easter egg toggles a persistent shared dark theme with keyboard support", async ({
   page,
 }) => {
-  await page.goto("/");
+  // The logo switch lives in the header of the other public pages (the log in page has its own small bar).
+  await page.goto("/faq");
   const logo = page.getByRole("button", {
     name: /Stayblz logo: switch to dark mode/,
   });
@@ -168,7 +127,7 @@ test("confirmation removes tokens from the URL and consumes them only once under
     "/#access_token=fixture-access&refresh_token=fixture-refresh&type=signup",
   );
   await expect(
-    page.getByRole("heading", { name: "Email verified", exact: true }),
+    page.getByRole("heading", { name: "You're verified", exact: true }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/auth\/confirm$/);
   expect(confirmations).toBe(1);
@@ -203,9 +162,7 @@ test("password recovery uses a confirmed session and returns to login after savi
     page.getByRole("heading", { name: "Password saved", exact: true }),
   ).toBeVisible();
   expect(passwordChanges).toBe(1);
-  await expect(
-    page.getByRole("link", { name: "Back to login", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Log in", exact: true })).toBeVisible();
 });
 test("token-hash recovery opens the password form and strips query credentials", async ({
   page,
@@ -221,7 +178,7 @@ test("token-hash recovery opens the password form and strips query credentials",
     "/auth/confirm?token_hash=fixture-recovery-token-hash&type=recovery",
   );
   await expect(
-    page.getByRole("heading", { name: "Set your password", exact: true }),
+    page.getByRole("heading", { name: "Choose a new password", exact: true }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/auth\/confirm$/);
 });
@@ -243,7 +200,7 @@ test("a reset link with 2-step login on asks for the code once, then opens the p
   await page.getByLabel("6-digit code").fill("123456");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Set your password", exact: true }),
+    page.getByRole("heading", { name: "Choose a new password", exact: true }),
   ).toBeVisible();
   // The cached link answer must not send the person back to the 2-step screen.
   await page.waitForTimeout(300);
@@ -252,47 +209,49 @@ test("a reset link with 2-step login on asks for the code once, then opens the p
   expect(challenges).toBe(1);
 });
 
-test("confirmation layout stays readable across phone, tablet and wide desktop", async ({
-  page,
-}) => {
-  await page.route("**/api/auth/confirm", (route) =>
-    route.fulfill({ json: { user } }),
-  );
-  await page.goto(
-    "/auth/confirm#access_token=fixture-access&refresh_token=fixture-refresh&type=signup",
-  );
-  await expect(
-    page.getByRole("heading", { name: "Email verified", exact: true }),
-  ).toBeVisible();
+test("confirmation layout stays readable across phone, tablet and wide desktop", async ({ page }) => {
+  await page.route("**/api/auth/confirm", (route) => route.fulfill({ json: { user } }));
+  await page.goto("/auth/confirm#access_token=fixture-access&refresh_token=fixture-refresh&type=signup");
+  await expect(page.getByRole("heading", { name: "You're verified", exact: true })).toBeVisible();
   for (const width of [320, 375, 768, 1024, 1440, 2560]) {
     await page.setViewportSize({ width, height: 900 });
-    await expect(
-      page.getByRole("link", { name: "Continue to dashboard" }),
-    ).toBeVisible();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-    const card = await page.locator(".ld-confirm-card").boundingBox();
+    await expect(page.getByRole("link", { name: "Continue to Stayblz" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const card = await page.locator(".au-solo").boundingBox();
     if (width >= 1024) expect(card!.width).toBeGreaterThan(400);
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.screenshot({
-    path: "test-results/confirmation-desktop.png",
-    fullPage: true,
-  });
+  await page.screenshot({ path: "test-results/confirmation-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 375, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  expect(
-    await page
-      .locator(".ld-confirm-check")
-      .evaluate((el) => getComputedStyle(el).animationName),
-  ).toBe("none");
-  await page.screenshot({
-    path: "test-results/confirmation-mobile.png",
-    fullPage: true,
+  expect(await page.locator(".au-emblem").evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+  await page.screenshot({ path: "test-results/confirmation-mobile.png", fullPage: true });
+});
+test("a new account's verified page leads to Finish your profile, which saves country and role", async ({ page }) => {
+  const fresh = { ...user, profile: { firstName: "Member", lastName: "User", country: "", racingRole: "" } };
+  await page.route("**/api/auth/confirm", (route) => route.fulfill({ json: { user: fresh } }));
+  let saved: Record<string, unknown> | null = null;
+  await page.route("**/api/auth/profile", (route) => {
+    saved = route.request().postDataJSON();
+    return route.fulfill({ json: { user: { ...fresh, profile: { ...fresh.profile, country: "PH", racingRole: "trainer" } } } });
   });
+  await page.goto("/auth/confirm?token_hash=fixture-signup-token-hash&type=email");
+  await expect(page.getByRole("heading", { name: "You're verified", exact: true })).toBeVisible();
+  await expect(page.getByText("Welcome to Stayblz, Member.")).toBeVisible();
+  await page.getByRole("link", { name: "Finish your profile" }).click();
+  await expect(page).toHaveURL(/\/welcome$/);
+  await expect(page.getByRole("heading", { name: "Finish your profile, Member" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Country", exact: true }).selectOption("PH");
+  await page.getByRole("combobox", { name: "Your main role in racing", exact: true }).selectOption("trainer");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await expect(page.getByRole("heading", { name: "Get Stayblz on this device" })).toBeVisible();
+  expect(saved).toMatchObject({ firstName: "Member", lastName: "User", country: "PH", racingRole: "trainer" });
+  for (const width of [320, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.getByRole("button", { name: "Go to Stayblz" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
 });
 test("member profile persists through the API with shared stable navigation", async ({
   page,
@@ -397,144 +356,72 @@ test("failed logout reports the error and does not pretend the cookie session en
   await page.getByRole("button", { name: "Log out", exact: true }).first().click();
   await sure.getByRole("button", { name: "Log out", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Sign in", exact: true }),
+    page.getByRole("button", { name: "Log in", exact: true }),
   ).toBeVisible();
 });
 
-test("unauthorized email keeps the signup draft and never shows a sent-email screen", async ({
-  page,
-}) => {
+test("unauthorized email keeps the signup draft and never shows a sent-email screen", async ({ page }) => {
   await page.route("**/api/auth/signup", (route) =>
     route.fulfill({
       status: 403,
-      json: {
-        code: "email_address_not_authorized",
-        error: "Use an authorized organization email address for this test.",
-      },
+      json: { code: "email_address_not_authorized", error: "Use an authorized organization email address for this test." },
     }),
   );
   await page.goto("/signup");
   await fillSignup(page);
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
-  await expect(page.getByRole("alert")).toContainText(
-    "authorized organization email",
-  );
-  await expect(
-    page.getByRole("heading", { name: "Check your email", exact: true }),
-  ).toHaveCount(0);
-  // A refused email brings people back to page 1, where that field is.
-  await expect(page.getByText("Step 1 of 2", { exact: false })).toBeVisible();
-  await expect(page.getByLabel("Email address", { exact: true })).toHaveValue(
-    "member@example.test",
-  );
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("authorized organization email");
+  await expect(page.getByRole("heading", { name: "Check your inbox", exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Email address", { exact: true })).toHaveValue("member@example.test");
 });
-test("resend uses Retry-After, clears old success text and leaves password login available", async ({
-  page,
-}) => {
+test("sending the link again uses Retry-After, clears old success text and leaves log in available", async ({ page }) => {
   await page.clock.install();
   let resendCalls = 0;
   await page.route("**/api/auth/signup", (route) =>
-    route.fulfill({
-      status: 202,
-      json: {
-        requiresVerification: true,
-        message: "Check your email for a confirmation link.",
-      },
-    }),
+    route.fulfill({ status: 202, json: { requiresVerification: true, message: "We sent a verification link." } }),
   );
   await page.route("**/api/auth/resend", (route) => {
     resendCalls++;
     return route.fulfill({
       status: 429,
       headers: { "Retry-After": "120" },
-      json: {
-        code: "over_email_send_rate_limit",
-        retryAfterSeconds: 60,
-        error: "The email sending limit was reached. Please wait.",
-      },
+      json: { code: "over_email_send_rate_limit", retryAfterSeconds: 60, error: "The email sending limit was reached. Please wait." },
     });
   });
   await page.goto("/signup");
   await fillSignup(page);
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Send a new code", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await page.getByRole("button", { name: "Send a new link", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("email sending limit");
-  await expect(page.locator(".ld-auth-success")).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: /Try again in 1[12][0-9]s/ }),
-  ).toBeDisabled();
+  await expect(page.locator(".au-msg.is-ok")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Send again in 1[12][0-9]s/ })).toBeDisabled();
   expect(resendCalls).toBe(1);
-  await page
-    .getByRole("button", { name: "Back to login", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Sign in", exact: true }),
-  ).toBeEnabled();
-  await page
-    .getByLabel("Email", { exact: true })
-    .fill("member@example.test");
-  await expect(
-    page.getByRole("button", {
-      name: "Resend verification email",
-      exact: true,
-    }),
-  ).toBeDisabled();
+  await page.getByRole("button", { name: "Back to log in" }).click();
+  await expect(page.getByRole("button", { name: "Log in", exact: true })).toBeEnabled();
   await page.clock.fastForward(121000);
-  await expect(
-    page.getByRole("button", {
-      name: "Resend verification email",
-      exact: true,
-    }),
-  ).toBeEnabled();
   expect(resendCalls).toBe(1);
 });
-test("resend after switching to login uses the current email instead of the signup email", async ({
-  page,
-}) => {
+test("logging in before verifying shows Check your inbox for that email, and sends a new link to it", async ({ page }) => {
   let recipient = "";
-  await page.route("**/api/auth/signup", (route) =>
+  await page.route("**/api/auth/login", (route) =>
     route.fulfill({
-      status: 202,
-      json: { requiresVerification: true, message: "Check your email." },
+      status: 403,
+      json: { code: "email_not_confirmed", error: "Verify your email before logging in. Open the link in the email we sent you, or send a new one." },
     }),
   );
   await page.route("**/api/auth/resend", (route) => {
     recipient = route.request().postDataJSON().email;
-    return route.fulfill({
-      status: 202,
-      json: {
-        message:
-          "If the address can receive this request, an email will arrive shortly.",
-      },
-    });
+    return route.fulfill({ status: 202, json: { message: "If the address can receive this request, an email will arrive shortly." } });
   });
-  await page.goto("/signup");
-  await fillSignup(page);
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Back to login", exact: true })
-    .click();
-  await page
-    .getByLabel("Email", { exact: true })
-    .fill("other@example.test");
-  await page
-    .getByRole("button", { name: "Resend verification email", exact: true })
-    .click();
+  await page.goto("/login");
+  await page.getByLabel("Email", { exact: true }).fill("other@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("TestOnlyPassword123");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Verify your email first", exact: true })).toBeVisible();
+  await expect(page.locator(".au-inbox")).toContainText("other@example.test");
+  await page.getByRole("button", { name: "Send a new link", exact: true }).click();
   await expect.poll(() => recipient).toBe("other@example.test");
-  // The new email holds a code, so the code screen opens for that address.
-  await expect(
-    page.getByRole("heading", { name: "Check your email", exact: true }),
-  ).toBeVisible();
-  await expect(page.locator(".ld-verification")).toContainText("other@example.test");
-  await expect(page.getByLabel("6-digit code from the email")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Sent." })).toBeVisible();
 });
 test("reset email delivery errors are shown without a false success message", async ({
   page,
@@ -556,12 +443,12 @@ test("reset email delivery errors are shown without a false success message", as
     .getByLabel("Email address", { exact: true })
     .fill("member@example.test");
   await page
-    .getByRole("button", { name: "Send reset email", exact: true })
+    .getByRole("button", { name: "Send reset link", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText(
     "authorized organization email",
   );
-  await expect(page.locator(".ld-auth-success")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Check your inbox" })).toHaveCount(0);
 });
 test("expired provider redirects show a safe error and strip URL details without a confirmation request", async ({
   page,
@@ -619,59 +506,46 @@ test("email cooldown honors an HTTP-date Retry-After header", async ({
     .getByLabel("Email address", { exact: true })
     .fill("member@example.test");
   await page
-    .getByRole("button", { name: "Send reset email", exact: true })
+    .getByRole("button", { name: "Send reset link", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: /Try again in 1[78][0-9]s/ }),
   ).toBeDisabled();
   await page.clock.fastForward(181000);
   await expect(
-    page.getByRole("button", { name: "Send reset email", exact: true }),
+    page.getByRole("button", { name: "Send reset link", exact: true }),
   ).toBeEnabled();
 });
 
-test("header login exits verification and password recovery panels", async ({
-  page,
-}) => {
+test("Back to log in leaves the inbox and password reset screens; a reset sends a link", async ({ page }) => {
+  let resetFor = "";
   await page.route("**/api/auth/signup", (route) =>
-    route.fulfill({
-      status: 202,
-      json: { requiresVerification: true, message: "Check your email." },
-    }),
+    route.fulfill({ status: 202, json: { requiresVerification: true, message: "Check your email." } }),
   );
+  await page.route("**/api/auth/forgot-password", (route) => {
+    resetFor = route.request().postDataJSON().email;
+    return route.fulfill({ status: 202, json: { message: "If the address can receive this request, an email will arrive shortly." } });
+  });
   await page.goto("/signup");
   await fillSignup(page);
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Check your email", exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole("navigation", { name: "Public navigation" })
-    .getByRole("button", { name: "Log in", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Log in to Stayblz", exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Forgot password?", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Reset your password" }),
-  ).toBeVisible();
-  await page
-    .getByRole("navigation", { name: "Public navigation" })
-    .getByRole("button", { name: "Log in", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Log in to Stayblz", exact: true }),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Check your inbox", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Back to log in" }).click();
+  await expect(page.getByRole("heading", { name: "Welcome back", exact: true })).toBeVisible();
+  await page.getByLabel("Email", { exact: true }).fill("member@example.test");
+  await page.getByRole("button", { name: "Forgot password?", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+  // The email typed on log in is carried over.
+  await expect(page.getByLabel("Email address", { exact: true })).toHaveValue("member@example.test");
+  await page.getByRole("button", { name: "Send reset link", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Check your inbox", exact: true })).toBeVisible();
+  await expect(page.locator(".au-inbox")).toContainText("a link to choose a new password");
+  expect(resetFor).toBe("member@example.test");
+  await page.getByRole("button", { name: "Back to log in" }).click();
+  await expect(page.getByRole("heading", { name: "Welcome back", exact: true })).toBeVisible();
 });
 
-test("late signup response cannot replace login after header navigation", async ({
-  page,
-}) => {
+test("late signup response cannot replace log in after switching tabs", async ({ page }) => {
   let release!: () => void;
   const waiting = new Promise<void>((resolve) => {
     release = resolve;
@@ -680,33 +554,19 @@ test("late signup response cannot replace login after header navigation", async 
   await page.route("**/api/auth/signup", async (route) => {
     started = true;
     await waiting;
-    await route.fulfill({
-      status: 202,
-      json: { requiresVerification: true, message: "Check your email." },
-    });
+    await route.fulfill({ status: 202, json: { requiresVerification: true, message: "Check your email." } });
   });
   await page.goto("/signup");
   await fillSignup(page);
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
   await expect.poll(() => started).toBe(true);
-  await page
-    .getByRole("navigation", { name: "Public navigation" })
-    .getByRole("button", { name: "Log in", exact: true })
-    .click();
+  await page.getByRole("tab", { name: "Log in" }).click();
   const response = page.waitForResponse("**/api/auth/signup");
   release();
   await response;
-  await expect(
-    page.getByRole("heading", { name: "Log in to Stayblz", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Sign in", exact: true }),
-  ).toBeEnabled();
-  await expect(
-    page.getByRole("heading", { name: "Check your email", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Welcome back", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Log in", exact: true })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: "Check your inbox", exact: true })).toHaveCount(0);
 });
 
 test.beforeEach(async ({ page }) => {
@@ -714,7 +574,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 
-test("signup has clear racing choices and separate Show controls for both passwords", async ({ page }) => {
+test("sign-up has separate Show controls for both passwords and a live password checklist", async ({ page }) => {
   await page.goto("/signup");
   const password = page.getByLabel("Password", { exact: true });
   const confirmation = page.getByLabel("Confirm password", { exact: true });
@@ -729,17 +589,9 @@ test("signup has clear racing choices and separate Show controls for both passwo
   await expect(password).toHaveAttribute("type", "password");
   await expect(password).toHaveValue("VisibleTestPassword123");
   await expect(confirmation).toHaveValue("VisibleTestPassword123");
-  // Racing choices are on page 2.
-  await page.getByLabel("First name", { exact: true }).fill("Member");
-  await page.getByLabel("Last name", { exact: true }).fill("User");
-  await page.getByLabel("Email address", { exact: true }).fill("member@example.test");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  const connection = page.getByRole("combobox", { name: "Your main role in racing", exact: true });
-  await expect(connection.locator("optgroup")).toHaveCount(7);
-  await expect(connection.locator("option")).toHaveCount(22);
-  await connection.selectOption({ label: "Racing fan" });
-  await expect(connection).toHaveValue("fan");
-  await expect(page.getByText("Follows horses, jockeys and big races.")).toBeVisible();
+  await expect(page.locator(".au-rules li.is-ok")).toHaveCount(4);
+  await password.fill("short");
+  await expect(page.locator(".au-rules li.is-ok")).toHaveCount(1);
 });
 
 test("password setup and recovery reveal each field without submitting the form", async ({ page }) => {

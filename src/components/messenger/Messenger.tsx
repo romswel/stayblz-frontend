@@ -382,6 +382,41 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
     el.classList.add("is-flash");
   };
 
+  // Links from notifications: ?m=<message> shows that message (a mention, reply or reaction);
+  // ?people=1 opens People (friend requests).
+  const messageParam = search.get("m");
+  const loadedId = thread.thread?.id;
+  useEffect(() => {
+    if (!messageParam || !chatId || loadedId !== chatId) return;
+    const timer = window.setTimeout(() => {
+      jumpTo(messageParam);
+      setSearch(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.delete("m");
+          return next;
+        },
+        { replace: true },
+      );
+    }, 250);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messageParam, chatId, loadedId]);
+  const [peopleSignal, setPeopleSignal] = useState(0);
+  const peopleParam = search.get("people");
+  useEffect(() => {
+    if (!peopleParam) return;
+    if (mode === "personal") setPeopleSignal((n) => n + 1);
+    setSearch(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("people");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [peopleParam, mode, setSearch]);
+
   const team = mode === "team";
   const preview = chatId ? list.items.find((c) => c.id === chatId) : undefined;
   const showInfo = infoOpen && !!chatId && !!thread.thread;
@@ -415,6 +450,7 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
           onSettings={() => setDialog({ kind: "settings" })}
           onNewFolder={(assignTo) => setDialog({ kind: "folder", assignTo })}
           onAction={onAction}
+          openPeople={peopleSignal}
           people={team ? undefined : <PeoplePanel onOpen={(data) => opened(data, { invite: false })} />}
           notice={
             <>

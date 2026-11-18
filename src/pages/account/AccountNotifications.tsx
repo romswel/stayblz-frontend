@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { isInstalledApp } from "../../pwa";
+import { InstallButton } from "../../install/InstallGuide";
 import { useNotifications } from "../../notifications/NotificationsContext";
 import type { SettingsChange } from "../../notifications/notifyApi";
 import "../../notifications/notifications.css";
@@ -38,22 +39,26 @@ export default function AccountNotifications() {
       : permission === "denied"
         ? "Blocked in this browser. To allow: open the site settings (lock or tune icon by the address) → Notifications → Allow, then come back."
         : permission === "unsupported"
-          ? isInstalledApp()
-            ? "This device can't show system notifications. Alerts show inside Stayblz while it's open."
-            : "This browser can't show system notifications here. On iPhone, add Stayblz to your Home Screen first. Alerts still show inside Stayblz while it's open."
+          ? pushState === "needs-install"
+            ? "On iPhone and iPad, notifications only work in the Stayblz app from your Home Screen. Use “Set up this device” below."
+            : isInstalledApp()
+              ? "This device can't show system notifications. Alerts show inside Stayblz while it's open."
+              : "This browser can't show system notifications here. Alerts still show inside Stayblz while it's open."
           : "Not asked yet.";
   const pushText =
     pushState === "on"
       ? "On for this device. You'll get alerts even when Stayblz is closed."
       : pushState === "unavailable"
         ? "Not switched on for Stayblz yet. Until then you get alerts while Stayblz is open in a tab."
-        : pushState === "unsupported"
-          ? "This browser or device can't get alerts while Stayblz is closed."
-          : "Off for this device.";
+        : pushState === "needs-install"
+          ? "Add Stayblz to your Home Screen, open it from there, and turn this on."
+          : pushState === "unsupported"
+            ? "This browser or device can't get alerts while Stayblz is closed."
+            : "Off for this device.";
 
   return (
     <>
-      <AccountHeader title="Notifications" intro="What Stayblz tells you about, and how. Stayblz Chat is first; more alerts will join here." />
+      <AccountHeader title="Notifications" intro="What Stayblz tells you about, and how: Stayblz Chat and Stayblz Paddock today; more will join here." />
       <div className="acct-sections nt-settings">
         {n.loadError && (
           <p className="form-error" role="alert">
@@ -116,6 +121,9 @@ export default function AccountNotifications() {
                 </span>
               </label>
               <div className="nt-actions">
+                <button type="button" className="btn btn-primary" disabled={busy} onClick={n.openSetup}>
+                  {n.deviceReady ? "Check this device" : "Set up this device"}
+                </button>
                 <button
                   type="button"
                   className="btn btn-quiet"
@@ -139,14 +147,28 @@ export default function AccountNotifications() {
                   <input type="checkbox" checked={settings.chatMessages} onChange={(e) => void save({ chatMessages: e.target.checked })} />
                   <span>
                     New messages
-                    <small>From your chats and groups. Muted chats never alert.</small>
+                    <small>From your chats and groups, and when someone adds you to a group. Muted chats stay quiet.</small>
+                  </span>
+                </label>
+                <label className="acct-toggle">
+                  <input type="checkbox" checked={settings.chatMentions !== false} onChange={(e) => void save({ chatMentions: e.target.checked })} />
+                  <span>
+                    Mentions and replies
+                    <small>When someone writes @your name in a group, or replies to your message. These reach you even in muted chats.</small>
+                  </span>
+                </label>
+                <label className="acct-toggle">
+                  <input type="checkbox" checked={settings.chatReactions !== false} onChange={(e) => void save({ chatReactions: e.target.checked })} />
+                  <span>
+                    Reactions
+                    <small>When someone reacts to one of your messages.</small>
                   </span>
                 </label>
                 <label className="acct-toggle">
                   <input type="checkbox" checked={settings.chatRequests} onChange={(e) => void save({ chatRequests: e.target.checked })} />
                   <span>
-                    Message requests
-                    <small>When someone you aren't friends with writes to you.</small>
+                    Requests and friends
+                    <small>Message requests from people you aren't friends with, friend requests, and when someone accepts yours.</small>
                   </span>
                 </label>
                 <label className="acct-toggle">
@@ -160,7 +182,7 @@ export default function AccountNotifications() {
                   <input type="checkbox" checked={settings.sound} onChange={(e) => void save({ sound: e.target.checked })} />
                   <span>
                     Play a sound
-                    <small>A soft chime when Stayblz is in front; your device's own sound otherwise.</small>
+                    <small>Your device's notification sound (a soft chime inside Stayblz where the browser can't show notifications).</small>
                   </span>
                 </label>
               </fieldset>
@@ -184,6 +206,19 @@ export default function AccountNotifications() {
                 </label>
               </fieldset>
             </section>
+
+            {!isInstalledApp() && (
+              <section className="panel account-profile acct-section" aria-labelledby="nt-app">
+                <h2 id="nt-app">Stayblz app</h2>
+                <p className="nt-small">
+                  Install Stayblz on this phone or computer: it opens in one tap, in its own window, and on iPhone it's the only
+                  way to get notifications.
+                </p>
+                <div className="nt-actions">
+                  <InstallButton label="Install the app" />
+                </div>
+              </section>
+            )}
 
             <section className="panel account-profile acct-section" aria-labelledby="nt-later">
               <h2 id="nt-later">Coming later</h2>

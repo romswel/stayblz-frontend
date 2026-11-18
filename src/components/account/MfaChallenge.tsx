@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { User } from "../../types";
-import Brand from "../Brand";
-import "./account.css";
+import AuthLayout from "../auth/AuthLayout";
 
 /** Shown instead of the app when 2-step login is on and this session has not passed it. */
 export default function MfaChallenge() {
@@ -36,19 +35,25 @@ export default function MfaChallenge() {
   }
 
   return (
-    <main className="acct-gate">
-      <section className="panel acct-gate-card" aria-labelledby="mfa-title">
-        <Brand />
+    <AuthLayout>
+      <section className="au-solo gx-glass" aria-labelledby="mfa-title">
+        <div className="au-emblem" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="6" y="2.5" width="12" height="19" rx="3" />
+            <path d="M10 6.5h4M9.5 14l2 2 3.5-4" />
+          </svg>
+        </div>
         <h1 id="mfa-title">2-step login</h1>
-        <p>
+        <p className="au-lede">
           Open your authenticator app and enter the 6-digit Stayblz code
           {user?.email ? ` for ${user.email}` : ""}.
         </p>
-        <form onSubmit={submit} noValidate>
-          <label className="acct-code">
-            6-digit code
+        <form className="au-form" onSubmit={submit} noValidate>
+          <label className="au-field">
+            <span>6-digit code</span>
             <input
               ref={input}
+              className="au-code"
               inputMode="numeric"
               autoComplete="one-time-code"
               pattern="[0-9]*"
@@ -59,20 +64,18 @@ export default function MfaChallenge() {
             />
           </label>
           {error && (
-            <p id="mfa-error" className="form-error" role="alert">
+            <p id="mfa-error" className="au-msg is-error" role="alert">
               {error}
             </p>
           )}
-          <div className="acct-actions">
-            <button className="btn btn-primary" disabled={busy}>
-              {busy ? "Checking…" : "Continue"}
-            </button>
-            <button type="button" className="btn btn-quiet" onClick={() => void logout().catch(() => undefined)}>
-              Sign out
-            </button>
-          </div>
+          <button className="au-submit" disabled={busy}>
+            {busy ? "Checking…" : "Continue"}
+          </button>
+          <button type="button" className="au-back" onClick={() => void logout().catch(() => undefined)}>
+            Sign out
+          </button>
         </form>
       </section>
-    </main>
+    </AuthLayout>
   );
 }

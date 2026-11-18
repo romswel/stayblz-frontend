@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import StatusPage from "../components/status/StatusPage";
+import AuthLayout from "../components/auth/AuthLayout";
 
 // Read the one-time token once, then remove it from the address bar and history.
 const initialToken =
@@ -33,57 +33,64 @@ export default function NotMe() {
     }
   }
 
-  if (state === "done")
-    return (
-      <StatusPage
-        standalone
-        kind="done"
-        title="Sign-up removed"
-        message="Thanks for telling us. The account made with your email has been removed and can't be used. You don't need to do anything else."
-        actions={
-          <Link className="btn btn-primary status-primary" to="/">
-            Go to Stayblz
-          </Link>
-        }
-      />
-    );
-
+  const title =
+    state === "done" ? "Sign-up removed" : state === "error" ? "We couldn't finish this" : "Didn't sign up for Stayblz?";
+  const message =
+    state === "done"
+      ? "Thanks for telling us. The account made with your email has been removed and can't be used. You don't need to do anything else."
+      : state === "error"
+        ? error
+        : "Someone started a Stayblz account with your email address. If it wasn't you, remove it here. The account was never confirmed, so nobody could use it.";
   return (
-    <StatusPage
-      standalone
-      kind={state === "error" ? "error" : "notice"}
-      title={state === "error" ? "We couldn't finish this" : "Didn't sign up for Stayblz?"}
-      message={
-        state === "error"
-          ? error
-          : "Someone started a Stayblz account with your email address. If it wasn't you, remove it here. The account was never confirmed, so nobody could use it."
-      }
-      actions={
-        state === "error" ? (
-          <>
-            <Link className="btn btn-primary status-primary" to="/login">
-              Go to log in
+    <AuthLayout>
+      <section className="au-solo gx-glass" aria-labelledby="not-me-title">
+        <div className={`au-emblem${state === "error" ? " is-error" : ""}`} aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            {state === "done" ? (
+              <path d="m5 12.5 4.5 4.5L19 7.5" />
+            ) : state === "error" ? (
+              <>
+                <circle cx="12" cy="12" r="9.5" />
+                <path d="M12 7v6M12 17h.01" />
+              </>
+            ) : (
+              <>
+                <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" />
+                <path d="m4.5 7 7.5 6 7.5-6" />
+              </>
+            )}
+          </svg>
+        </div>
+        <div role="status" aria-live="polite">
+          <h1 id="not-me-title">{title}</h1>
+          <p className="au-lede">{message}</p>
+        </div>
+        <div className="au-actions">
+          {state === "done" ? (
+            <Link className="au-submit" to="/">
+              Go to Stayblz
             </Link>
-            <Link className="btn btn-quiet" to="/faq">
-              Help & FAQ
-            </Link>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="btn btn-primary status-primary"
-              onClick={() => void remove()}
-              disabled={state === "busy"}
-            >
-              {state === "busy" ? "Removing…" : "Yes, remove this sign-up"}
-            </button>
-            <Link className="btn btn-quiet" to="/login">
-              It was me, keep it
-            </Link>
-          </>
-        )
-      }
-    />
+          ) : state === "error" ? (
+            <>
+              <Link className="au-submit" to="/login">
+                Go to log in
+              </Link>
+              <Link className="au-quiet" to="/faq">
+                Help &amp; FAQ
+              </Link>
+            </>
+          ) : (
+            <>
+              <button type="button" className="au-submit" onClick={() => void remove()} disabled={state === "busy"}>
+                {state === "busy" ? "Removing…" : "Yes, remove this sign-up"}
+              </button>
+              <Link className="au-quiet" to="/login">
+                It was me, keep it
+              </Link>
+            </>
+          )}
+        </div>
+      </section>
+    </AuthLayout>
   );
 }

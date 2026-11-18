@@ -191,7 +191,7 @@ test("login retains its layout at mobile and desktop widths", async ({
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/login");
     await expect(
-      page.getByRole("button", { name: "Sign in", exact: true }),
+      page.getByRole("button", { name: "Log in", exact: true }),
     ).toBeVisible();
     expect(
       await page.evaluate(

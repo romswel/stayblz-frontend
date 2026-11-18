@@ -130,7 +130,15 @@ export async function fakeServer(page: Page, unread = { personal: 0, requests: 0
     if (path === "/api/auth/me") return json({ user: me });
     if (path === "/api/messages/unread") {
       if (!url.searchParams.get("since")) return json(unread);
-      return json({ ...unread, incoming: state.alerts.splice(0), now: now() });
+      // Saved alerts (new backends: they have actorName) and the older "incoming" message list.
+      const items = state.alerts.splice(0);
+      return json({
+        ...unread,
+        incoming: items.filter((a) => !("actorName" in a)),
+        alerts: items.filter((a) => "actorName" in a),
+        alertsUnread: 0,
+        now: now(),
+      });
     }
     if (path === "/api/notifications/settings") {
       if (!state.notify) return json({});

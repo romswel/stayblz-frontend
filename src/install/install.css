@@ -1,0 +1,115 @@
+/* "Get the Stayblz app": the button and the directions dialog. Glass tokens only (--gx-*), light + dark. */
+.ig-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 999px;
+  background: var(--gx-surface-strong);
+  color: var(--gx-text);
+  font: 600 13px/1 "Archivo", system-ui, sans-serif;
+  cursor: pointer;
+  transition: border-color 160ms var(--gx-ease), background 160ms var(--gx-ease), transform 120ms var(--gx-ease);
+}
+.ig-chip:hover {
+  border-color: var(--gx-accent);
+  color: var(--gx-accent);
+}
+.ig-chip:active {
+  transform: scale(0.97);
+}
+.ig-chip svg,
+.ig-icon svg {
+  flex: none;
+}
+
+.ig-dialog .ig-hero {
+  display: grid;
+  place-items: center;
+  margin: 2px 0 14px;
+}
+.ig-dialog .ig-hero img {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  box-shadow: var(--gx-shadow);
+}
+.ig-dialog .dlg-text {
+  text-align: center;
+}
+.ig-install {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin: 6px 0 4px;
+  font-size: 15px;
+}
+.ig-steps {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ig-steps li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid var(--gx-border);
+  border-radius: var(--gx-radius-sm);
+  background: var(--gx-field);
+  color: var(--gx-text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.ig-num {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gx-accent-soft);
+  color: var(--gx-accent);
+  font-weight: 800;
+  font-size: 13px;
+}
+.ig-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  margin: 0 1px;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 7px;
+  background: var(--gx-surface-solid);
+  color: var(--gx-text);
+  font-weight: 650;
+  font-size: 13px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.ig-key svg {
+  width: 15px;
+  height: 15px;
+}
+.ig-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--gx-radius-sm);
+  background: var(--gx-accent-soft);
+  color: var(--gx-text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ig-chip {
+    transition: none;
+  }
+}

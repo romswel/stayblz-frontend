@@ -184,9 +184,6 @@
   overflow-wrap: anywhere;
 }
 .nt-toast-kind {
-  position: absolute;
-  top: 6px;
-  right: 40px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -237,9 +234,15 @@
 .nt-bell-wrap {
   position: relative;
 }
-/* Very small phones: the header is full; notifications stay in My account → Notifications. */
-@media (max-width: 420px) {
-  .nt-bell-wrap {
+/* Phones keep the bell (that's where notifications matter most); "Install app" moves to the menu instead. */
+@media (max-width: 600px) {
+  .gx-actions .ig-icon {
+    display: none;
+  }
+}
+/* The narrowest phones show the crest without the word, so the bell fits without cutting the name. */
+@media (max-width: 359px) {
+  .gx-header .gx-brand-text {
     display: none;
   }
 }
@@ -339,7 +342,7 @@
 .nt-panel-row:hover {
   background: var(--gx-hover);
 }
-.nt-panel-row > span:not(.mx-av):not(.nt-panel-icon) {
+.nt-panel-row > span:not(.mx-av):not(.nt-panel-icon):not(.nt-face) {
   flex: 1;
   min-width: 0;
   display: grid;
@@ -608,4 +611,204 @@
   .nt-call-btn.is-join {
     animation: none;
   }
+}
+
+/* ---------- Faces, badges and pictures in alerts (2026-11-19) ---------- */
+.nt-face {
+  position: relative;
+  flex: none;
+  display: inline-grid;
+}
+.nt-face-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border: 2px solid var(--gx-surface-solid);
+  border-radius: 999px;
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+.nt-face-badge.is-emoji {
+  background: var(--gx-surface-solid);
+  color: inherit;
+  font-size: 12px;
+}
+.nt-panel-row .nt-face-badge {
+  right: -3px;
+  bottom: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-width: 1.5px;
+  font-size: 9.5px;
+}
+.nt-panel-row .nt-face-badge.is-emoji {
+  font-size: 10px;
+}
+.nt-pic {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--gx-border);
+  object-fit: cover;
+  background: var(--gx-field);
+}
+.nt-panel-row .nt-pic {
+  width: 40px;
+  height: 40px;
+}
+.nt-panel-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.nt-text-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gx-accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.nt-panel-row {
+  position: relative;
+}
+.nt-panel-row.is-unread {
+  background: var(--gx-accent-soft);
+}
+.nt-panel-row.is-unread:hover {
+  background: color-mix(in srgb, var(--gx-accent) 18%, transparent);
+}
+.nt-panel-row.is-unread strong {
+  font-weight: 750;
+}
+.nt-panel-row small {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.nt-unread-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--gx-accent);
+}
+
+/* ---------- "Set up notifications" guide ---------- */
+.ns-check {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--gx-border);
+  border-radius: var(--gx-radius-sm);
+  background: var(--gx-field);
+  list-style: none;
+}
+.ns-check li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gx-muted);
+  font-size: 13.5px;
+}
+.ns-check li > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--gx-border-strong);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+}
+.ns-check li.is-ok {
+  color: var(--gx-text);
+  font-weight: 650;
+}
+.ns-check li.is-ok > span:first-child {
+  border-color: var(--gx-accent);
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink);
+}
+.ns-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.ns-list {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 12px;
+  padding: 0;
+  list-style: none;
+  color: var(--gx-text);
+  font-size: 14px;
+}
+.ns-small {
+  margin: 8px 0 0;
+  color: var(--gx-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.ns-steps {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--gx-border);
+  border-radius: var(--gx-radius-sm);
+  background: var(--gx-field);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.ns-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gx-accent);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.ns-tips {
+  margin-top: 12px;
+  border: 1px solid var(--gx-border);
+  border-radius: var(--gx-radius-sm);
+}
+.ns-tips summary {
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.ns-tips ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0 14px 12px 30px;
+  color: var(--gx-text-2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.ns-message {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--gx-radius-sm);
+  background: var(--gx-accent-soft);
+  font-size: 13.5px;
 }

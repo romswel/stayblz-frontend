@@ -1,0 +1,881 @@
+/* ==========================================================================
+   Stayblz account pages: log in / sign up, email links, "Finish your profile".
+   Glass theme only (--gx-* from components/layout-glass.css via .gx-layer), light + dark.
+   ========================================================================== */
+
+.au-page {
+  --ld-forest: var(--gx-bg-solid); /* the crest's inner lines (components/Brand.tsx) */
+  --au-gutter: clamp(16px, 4vw, 40px);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--gx-bg);
+  color: var(--gx-text);
+  font: 15px/1.55 "Archivo", system-ui, sans-serif;
+}
+.au-page *,
+.au-page *::before,
+.au-page *::after {
+  box-sizing: border-box;
+}
+.au-page :where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--gx-accent);
+  outline-offset: 2px;
+}
+.au-skip {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 50;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+.au-skip:focus {
+  top: 12px;
+}
+
+/* ---------- Top bar ---------- */
+.au-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 16px var(--au-gutter);
+}
+.au-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gx-text);
+  text-decoration: none;
+}
+.au-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--gx-surface-strong);
+  border: 1px solid var(--gx-border);
+  box-shadow: var(--gx-shadow);
+}
+.au-brand-mark svg {
+  width: 28px;
+  height: 28px;
+}
+.au-brand-name {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+}
+.au-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Main area ---------- */
+.au-main {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 8px var(--au-gutter) 28px;
+  outline: none;
+}
+
+/* Log in / sign up: photo on the left, the form on the right (form only on phones). */
+.au-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  width: min(1040px, 100%);
+  min-height: 640px;
+  border-radius: 28px;
+  overflow: hidden;
+  animation: au-rise 260ms var(--gx-ease) both;
+}
+.au-visual {
+  position: relative;
+  isolation: isolate;
+  margin: 10px 0 10px 10px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #0d2318;
+}
+.au-visual img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 58% center;
+}
+.au-visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(6, 20, 13, 0.05) 35%, rgba(6, 20, 13, 0.82) 100%);
+}
+.au-visual-copy {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  display: grid;
+  gap: 12px;
+  padding: clamp(24px, 3.4vw, 40px);
+  color: #fff;
+  --ld-forest: #0d2318;
+}
+.au-visual-copy svg {
+  width: 44px;
+  height: 44px;
+  color: #fff;
+}
+.au-visual-copy p {
+  margin: 0;
+  font-size: clamp(24px, 2.6vw, 32px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.au-visual-copy small {
+  font-family: var(--gx-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  opacity: 0.78;
+}
+.au-panel {
+  display: grid;
+  place-items: center;
+  padding: clamp(28px, 4vw, 52px) clamp(22px, 4vw, 52px);
+}
+
+/* ---------- The card ---------- */
+.au-card {
+  width: 100%;
+  max-width: 400px;
+}
+.au-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border: 1px solid var(--gx-border);
+  border-radius: 14px;
+  background: var(--gx-field);
+}
+.au-tabs button {
+  position: relative;
+  z-index: 1;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--gx-muted);
+  font: 650 14px/1 "Archivo", system-ui, sans-serif;
+  cursor: pointer;
+  transition: color 160ms var(--gx-ease);
+}
+.au-tabs button[aria-selected="true"] {
+  color: var(--gx-text);
+}
+.au-tabs-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 10px;
+  background: var(--gx-surface-solid);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 4px 12px -6px rgba(15, 23, 42, 0.2);
+  transition: transform 220ms var(--gx-ease);
+}
+.au-tabs-pill.is-right {
+  transform: translateX(100%);
+}
+.au-head h1 {
+  margin: 24px 0 6px;
+  font-size: clamp(25px, 3vw, 30px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.au-head p {
+  margin: 0;
+  color: var(--gx-muted);
+  font-size: 14.5px;
+}
+.au-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+/* Fields (ours and PasswordField's .ld-field). */
+.au-field,
+.au-card .ld-field,
+.au-solo .ld-field {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.au-field > span,
+.au-card .ld-field > label,
+.au-solo .ld-field > label {
+  color: var(--gx-text-2);
+  font-size: 13px;
+  font-weight: 650;
+}
+.au-page :is(.au-field, .ld-field) :is(input, select),
+.au-page .roles select {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
+  background: var(--gx-field-strong);
+  color: var(--gx-text);
+  font: 15px/1.2 "Archivo", system-ui, sans-serif;
+  transition: border-color 140ms var(--gx-ease), box-shadow 140ms var(--gx-ease);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.au-page :is(.au-field, .ld-field) select,
+.au-page .roles select {
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+.au-page :is(.au-field, .ld-field) :is(input, select)::placeholder {
+  color: var(--gx-muted);
+  opacity: 0.75;
+}
+.au-page :is(.au-field, .ld-field) :is(input, select):focus,
+.au-page .roles select:focus {
+  outline: none;
+  border-color: var(--gx-accent);
+  box-shadow: 0 0 0 4px var(--gx-accent-soft);
+}
+.au-page :is(.au-field, .ld-field) input:user-invalid {
+  border-color: var(--gx-danger);
+}
+.au-page .ld-password {
+  position: relative;
+  display: block;
+}
+.au-page .ld-password input {
+  padding-right: 70px;
+}
+.au-page .ld-password button {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--gx-accent);
+  font: 650 12.5px/1 "Archivo", system-ui, sans-serif;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+.au-page .ld-password button:hover {
+  background: var(--gx-accent-soft);
+}
+.au-field-row {
+  position: relative;
+}
+.au-forgot {
+  position: absolute;
+  top: -2px;
+  right: 0;
+}
+.au-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.au-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: -6px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--gx-muted);
+  font-size: 12.5px;
+}
+.au-rules li {
+  transition: color 160ms var(--gx-ease);
+}
+.au-rules li.is-ok {
+  color: var(--gx-accent);
+  font-weight: 650;
+}
+.au-check {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  align-items: start;
+  color: var(--gx-text);
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.au-check input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--gx-accent);
+}
+.au-check small {
+  display: block;
+  color: var(--gx-muted);
+  font-size: 12.5px;
+}
+.au-inline,
+.au-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gx-accent);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.au-inline {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.au-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.au-forgot.au-link {
+  font-size: 13px;
+}
+
+/* ---------- Buttons ---------- */
+.au-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 4px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink);
+  font: 700 15.5px/1 "Archivo", system-ui, sans-serif;
+  text-decoration: none;
+  box-shadow: 0 12px 26px -14px var(--gx-accent), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: filter 140ms var(--gx-ease), transform 120ms var(--gx-ease), opacity 140ms;
+}
+.au-submit:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+.au-submit:active:not(:disabled) {
+  transform: scale(0.985);
+}
+.au-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.au-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
+  background: var(--gx-surface-strong);
+  color: var(--gx-text);
+  font: 650 14px/1.2 "Archivo", system-ui, sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 140ms var(--gx-ease), color 140ms var(--gx-ease);
+}
+.au-quiet:hover:not(:disabled) {
+  border-color: var(--gx-accent);
+  color: var(--gx-accent);
+}
+.au-quiet:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.au-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  margin: 8px auto 0;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--gx-muted);
+  font: 650 14px/1 "Archivo", system-ui, sans-serif;
+  cursor: pointer;
+}
+.au-back:hover {
+  color: var(--gx-text);
+}
+
+/* ---------- Messages ---------- */
+.au-msg,
+.au-intent {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.au-msg.is-error {
+  border: 1px solid color-mix(in srgb, var(--gx-danger) 30%, transparent);
+  background: color-mix(in srgb, var(--gx-danger) 9%, transparent);
+  color: var(--gx-danger);
+}
+.au-msg.is-ok,
+.au-intent {
+  border: 1px solid color-mix(in srgb, var(--gx-accent) 30%, transparent);
+  background: var(--gx-accent-soft);
+  color: var(--gx-text);
+}
+.au-kept {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--gx-field);
+  color: var(--gx-muted);
+  font-size: 12.5px;
+}
+.au-switch {
+  margin: 22px 0 0;
+  color: var(--gx-muted);
+  font-size: 14px;
+  text-align: center;
+}
+.au-small {
+  margin: 12px 0 0;
+  color: var(--gx-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* ---------- Check your inbox ---------- */
+.au-inbox {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+.au-envelope {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  margin-bottom: 18px;
+  border-radius: 28px;
+  background: var(--gx-accent-soft);
+  animation: au-pop 320ms var(--gx-ease) both;
+}
+.au-env-back {
+  fill: var(--gx-surface-solid);
+  stroke: var(--gx-text);
+  stroke-width: 2;
+}
+.au-env-flap {
+  stroke: var(--gx-text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.au-env-dot {
+  fill: var(--gx-accent);
+}
+.au-env-tick {
+  stroke: var(--gx-accent-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.au-inbox-title {
+  margin: 0 0 8px;
+  font-size: clamp(24px, 3vw, 28px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  outline: none;
+}
+.au-inbox-text {
+  margin: 0 0 6px;
+  color: var(--gx-text-2);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.au-inbox-text strong {
+  color: var(--gx-text);
+}
+.au-webmail {
+  margin-top: 14px;
+}
+.au-inbox-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+/* ---------- Single card pages (email link, This wasn't me, Finish your profile) ---------- */
+.au-solo {
+  width: min(460px, 100%);
+  padding: clamp(28px, 4vw, 40px) clamp(20px, 4vw, 36px);
+  border-radius: 26px;
+  text-align: center;
+  animation: au-rise 260ms var(--gx-ease) both;
+}
+.au-solo.is-wide {
+  width: min(600px, 100%);
+  text-align: left;
+}
+.au-solo h1 {
+  margin: 0 0 8px;
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.au-solo .au-lede {
+  margin: 0;
+  color: var(--gx-text-2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.au-emblem {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: var(--gx-accent-soft);
+  color: var(--gx-accent);
+  animation: au-pop 320ms var(--gx-ease) both;
+}
+.au-emblem.is-error {
+  background: color-mix(in srgb, var(--gx-danger) 12%, transparent);
+  color: var(--gx-danger);
+}
+.au-emblem svg {
+  width: 40px;
+  height: 40px;
+}
+.au-spin {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--gx-accent-soft);
+  border-top-color: var(--gx-accent);
+  border-radius: 50%;
+  animation: au-spin 0.8s linear infinite;
+}
+.au-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+.au-solo .au-form {
+  text-align: left;
+}
+.au-step {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: var(--gx-accent);
+  font-family: var(--gx-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.au-section-title {
+  margin: 8px 0 -2px;
+  color: var(--gx-text);
+  font-size: 14px;
+  font-weight: 750;
+}
+.au-optional {
+  color: var(--gx-muted);
+  font-weight: 500;
+}
+/* The role picker inside "Finish your profile". */
+.au-page .roles .roles-field,
+.au-page .roles .ld-field {
+  display: grid;
+  gap: 6px;
+  color: var(--gx-text-2);
+  font-size: 13px;
+  font-weight: 650;
+}
+.au-page .roles-hint {
+  margin: 6px 0 0;
+  color: var(--gx-muted);
+  font-size: 12.5px;
+}
+.au-page .roles-more {
+  margin-top: 10px;
+  border: 1px solid var(--gx-border);
+  border-radius: 12px;
+  background: var(--gx-field);
+}
+.au-page .roles-more summary {
+  padding: 12px 14px;
+  color: var(--gx-text);
+  font-size: 13.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.au-page .roles-more summary span {
+  color: var(--gx-muted);
+  font-weight: 500;
+}
+.au-page .roles-more fieldset {
+  margin: 0;
+  padding: 0 14px 12px;
+  border: 0;
+}
+.au-page .roles-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+}
+.au-page .roles-group-label {
+  flex-basis: 100%;
+  color: var(--gx-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.au-page .roles-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  color: var(--gx-text);
+  font-size: 13.5px;
+}
+.au-page .roles-check input {
+  accent-color: var(--gx-accent);
+}
+.au-page .roles-count {
+  margin: 10px 0 0;
+  color: var(--gx-muted);
+  font-size: 12px;
+}
+.au-page .roles-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* The 2-step login code. */
+.au-page .au-field input.au-code {
+  height: 56px;
+  font: 700 24px/1 var(--gx-mono);
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
+/* "Get Stayblz on this device" (Finish your profile, step 2). */
+.wl-cards {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+.wl-card {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 16px;
+  background: var(--gx-surface-strong);
+  color: var(--gx-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms var(--gx-ease), transform 120ms var(--gx-ease);
+}
+.wl-card:hover {
+  border-color: var(--gx-accent);
+}
+.wl-card:active {
+  transform: scale(0.99);
+}
+.wl-card strong {
+  display: block;
+  font-size: 15px;
+}
+.wl-card small {
+  display: block;
+  margin-top: 2px;
+  color: var(--gx-muted);
+  font-size: 13px;
+}
+.wl-card-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: var(--gx-accent-soft);
+  color: var(--gx-accent);
+  font-size: 20px;
+  font-weight: 800;
+}
+.wl-card.is-done .wl-card-icon {
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink);
+}
+
+/* ---------- Footer ---------- */
+.au-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 18px;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 14px var(--au-gutter) calc(18px + env(safe-area-inset-bottom, 0px));
+  color: var(--gx-muted);
+  font-size: 12.5px;
+}
+.au-foot nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.au-foot a {
+  color: var(--gx-muted);
+  text-decoration: none;
+}
+.au-foot a:hover {
+  color: var(--gx-text);
+}
+
+/* ---------- Sizes ---------- */
+@media (max-width: 880px) {
+  .au-split {
+    grid-template-columns: 1fr;
+    width: min(480px, 100%);
+    min-height: 0;
+    border-radius: 24px;
+  }
+  .au-visual {
+    display: none;
+  }
+}
+@media (max-width: 520px) {
+  .au-top {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .au-top-actions .ig-chip {
+    padding: 0 11px;
+    font-size: 12.5px;
+  }
+  .au-main {
+    align-items: start;
+    padding-top: 4px;
+  }
+  .au-panel {
+    padding: 22px 18px 26px;
+  }
+  .au-head h1 {
+    margin-top: 20px;
+  }
+  .au-inbox-actions {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 380px) {
+  .au-pair {
+    grid-template-columns: 1fr;
+  }
+  .au-brand-name {
+    display: none;
+  }
+}
+@media (min-width: 1800px) {
+  .au-split {
+    width: 1180px;
+    min-height: 720px;
+  }
+}
+
+@keyframes au-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes au-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes au-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .au-split,
+  .au-solo,
+  .au-envelope,
+  .au-emblem {
+    animation: none;
+  }
+  .au-tabs-pill,
+  .au-submit,
+  .au-quiet {
+    transition: none;
+  }
+  .au-spin {
+    animation-duration: 2.4s;
+  }
+}

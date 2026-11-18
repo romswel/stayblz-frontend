@@ -250,7 +250,7 @@ test("signed-out PP links keep their destination through login", async ({
     .getByLabel("Email", { exact: true })
     .fill("test@example.test");
   await page.getByLabel("Password", { exact: true }).fill("TestPassword123");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
   await expect(page).toHaveURL(/\/pps\/harness-workspace$/);
 });
 

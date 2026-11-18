@@ -25,6 +25,7 @@ import UpdatesPopup from "./updates/UpdatesPopup";
 import { useUpdates } from "./updates/UpdatesContext";
 import { useNotifications } from "../notifications/NotificationsContext";
 import { NotificationBell, NotificationPrompt, NotificationToasts } from "../notifications/NotificationUI";
+import { InstallButton } from "../install/InstallGuide";
 import PaddockAlerts from "../notifications/PaddockAlerts";
 import { CHAT_NAME, TEAM_CHAT_NAME } from "./messenger/brand";
 import { TV_NAME } from "./tv/brand";
@@ -710,6 +711,7 @@ export default function Layout() {
           >
             <SearchIcon />
           </button>
+          <InstallButton variant="icon" />
           <NotificationBell />
           <button
             type="button"
@@ -823,6 +825,7 @@ export default function Layout() {
             </Link>
             {navigation}
             <div className="gx-drawer-actions">
+              <InstallButton variant="pill" label="Install app" />
               <button type="button" className="gx-pill" onClick={share}>
                 <ShareIcon /> Share
               </button>
