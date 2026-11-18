@@ -227,7 +227,7 @@ function TopOwners({ title, sort, showEarnings }: { title: string; sort: string;
   useEffect(() => {
     let live = true;
     community
-      .people({ sort })
+      .people({ sort, page: 1 })
       .then((r) => live && setPeople(r.people.filter((p) => !p.me && (showEarnings ? (p.earningsCents ?? 0) > 0 : p.horses > 0 && !p.isFollowing)).slice(0, 5)))
       .catch(() => live && setPeople([]));
     return () => {
@@ -270,19 +270,22 @@ function Members() {
   const [params, setParams] = useSearchParams();
   const sort = SORTS.some((s) => s.value === params.get("sort")) ? params.get("sort")! : "active";
   const urlQ = params.get("q") ?? "";
+  const rawPage = Number(params.get("page") ?? 1);
+  const page = Number.isSafeInteger(rawPage) && rawPage >= 1 && rawPage <= 500 ? rawPage : 1;
   const [q, setQ] = useState(urlQ);
   const [people, setPeople] = useState<Person[] | null>(null);
-  const [next, setNext] = useState<number | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [hasNext, setHasNext] = useState(false);
   const [error, setError] = useState("");
+  const topRef = useRef<HTMLElement>(null);
 
-  // Typing waits for a pause before searching; the search lives in the address.
+  // Typing waits for a pause before searching; the search lives in the address. A new search starts at page 1.
   useEffect(() => {
     if (q.trim() === urlQ) return;
     const t = window.setTimeout(() => {
       const nextParams = new URLSearchParams(params);
       if (q.trim()) nextParams.set("q", q.trim());
       else nextParams.delete("q");
+      nextParams.delete("page");
       setParams(nextParams, { replace: true });
     }, 300);
     return () => window.clearTimeout(t);
@@ -292,34 +295,31 @@ function Members() {
     const c = new AbortController();
     setPeople(null);
     community
-      .people({ q: urlQ, sort }, c.signal)
+      .people({ q: urlQ, sort, page }, c.signal)
       .then((r) => {
         setPeople(r.people);
-        setNext(r.nextOffset);
+        setHasNext(r.hasNext);
         setError("");
       })
       .catch((e) => {
         if (c.signal.aborted) return;
         setError(errorText(e, "Members couldn't be loaded."));
         setPeople([]);
+        setHasNext(false);
       });
     return () => c.abort();
-  }, [urlQ, sort]);
+  }, [urlQ, sort, page]);
 
-  async function more() {
-    if (next === null || busy) return;
-    setBusy(true);
-    try {
-      const r = await community.people({ q: urlQ, sort, offset: next });
-      setPeople((p) => [...(p ?? []), ...r.people]);
-      setNext(r.nextOffset);
-    } finally {
-      setBusy(false);
-    }
+  function goTo(p: number) {
+    const n = new URLSearchParams(params);
+    if (p > 1) n.set("page", String(p));
+    else n.delete("page");
+    setParams(n);
+    topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   }
 
   return (
-    <section className="cm-members" aria-label="Members">
+    <section className="cm-members" aria-label="Members" ref={topRef}>
       <div className="cm-toolbar gx-glass">
         <label className="cm-search">
           <Icon.Search />
@@ -332,6 +332,7 @@ function Members() {
             onChange={(e) => {
               const n = new URLSearchParams(params);
               n.set("sort", e.target.value);
+              n.delete("page");
               setParams(n, { replace: true });
             }}
           >
@@ -343,16 +344,22 @@ function Members() {
       {people === null ? (
         <Skeletons kind="card" count={6} />
       ) : people.length ? (
-        <>
-          <div className="cm-grid">
-            {people.map((p) => (
-              <PersonCard key={p.id} person={p} onFollow={(u) => setPeople((l) => (l ?? []).map((x) => (x.id === u.id ? u : x)))} />
-            ))}
-          </div>
-          {next !== null && <button type="button" className="cm-btn cm-more" onClick={more} disabled={busy}>{busy ? "Loading…" : "Show more members"}</button>}
-        </>
+        <div className="cm-grid">
+          {people.map((p) => (
+            <PersonCard key={p.id} person={p} onFollow={(u) => setPeople((l) => (l ?? []).map((x) => (x.id === u.id ? u : x)))} />
+          ))}
+        </div>
+      ) : page > 1 && !error ? (
+        <Empty icon={<Icon.Users />} title="No members on this page" />
       ) : (
         <Empty icon={<Icon.Search />} title={urlQ ? `No members match “${urlQ}”` : "No members to show yet"} />
+      )}
+      {(page > 1 || hasNext) && (
+        <nav className="cm-pager" aria-label="Members pages">
+          <button type="button" className="cm-btn" onClick={() => goTo(page - 1)} disabled={page <= 1 || people === null}>← Previous</button>
+          <span aria-current="page">Page {page}</span>
+          <button type="button" className="cm-btn" onClick={() => goTo(page + 1)} disabled={!hasNext || people === null}>Next →</button>
+        </nav>
       )}
     </section>
   );

@@ -173,8 +173,9 @@ export const community = {
   search: (text: string, signal?: AbortSignal) => api.get<SearchResults>(`${BASE}/search${q({ q: text })}`, { signal }),
   saveSettings: (changes: Partial<Settings>) => api.patch<{ settings: Settings }>(`${BASE}/me/settings`, changes),
 
-  people: (opts: { q?: string; sort?: string; offset?: number }, signal?: AbortSignal) =>
-    api.get<{ people: Person[]; nextOffset: number | null }>(`${BASE}/people${q(opts)}`, { signal }),
+  /** Members directory: pages of 15, placeholder accounts already hidden by the server. */
+  people: (opts: { q?: string; sort?: string; page: number }, signal?: AbortSignal) =>
+    api.get<{ people: Person[]; page: number; hasNext: boolean }>(`${BASE}/people${q(opts)}`, { signal }),
   person: (id: string) => api.get<{ person: Person }>(`${BASE}/people/${id}`),
   personHorses: (id: string) => api.get<{ horses: Horse[]; restricted: boolean }>(`${BASE}/people/${id}/horses`),
   personPosts: (id: string, before?: string | null) => api.get<FeedPage>(`${BASE}/people/${id}/posts${q({ before })}`),
