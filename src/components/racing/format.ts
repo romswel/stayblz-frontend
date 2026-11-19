@@ -81,7 +81,8 @@ export function raceTitle(race: Pick<Race, "number" | "name">) {
 }
 export function raceFacts(race: Race) {
   return [
-    race.grade ? `Grade ${race.grade}` : raceTypeLabels[race.type] ?? "Race",
+    // British, Irish and French pattern races are "Group" races; the rest of the world says "Grade".
+    race.grade ? `${/Group [123]/.test(race.conditions ?? "") ? "Group" : "Grade"} ${race.grade}` : raceTypeLabels[race.type] ?? "Race",
     race.distance,
     surfaceLabels[race.surface],
     race.purse !== null ? `Purse ${money(race.purse, race.currency)}` : "",

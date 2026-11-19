@@ -1,7 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Empty, LoadNotice, RaceView, RacingHead, useRacing } from "../../components/racing/RacingParts";
 import { breedLabels, dateLabel } from "../../components/racing/format";
-import type { RaceDay } from "../../components/racing/types";
+import { sourceLabels, type RaceDay } from "../../components/racing/types";
 import StatusPage from "../../components/status/StatusPage";
 
 /** One track's full card: every race, with entries or the official result. */
@@ -82,6 +82,7 @@ export default function RaceDayPage() {
               ))}
             </div>
           )}
+          {day.source && <p className="rc-source">Data: {sourceLabels[day.source] ?? day.source}</p>}
         </>
       )}
     </div>

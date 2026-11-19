@@ -121,6 +121,8 @@ test("watch updates reject duplicate clicks and show failures without losing the
     await route.fulfill({ status: 500, json: { error: "Test save failure" } });
   });
   await page.goto("/virtual-stable");
+  // The earlier flat-record follows now sit under My racing → Following → "Earlier racing records you follow".
+  await page.getByText("Earlier racing records you follow").click();
   const button = page.getByRole("button", {
     name: "Watch Test Horse",
     exact: true,

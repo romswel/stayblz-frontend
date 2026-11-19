@@ -1,0 +1,140 @@
+/* My racing → Following (FollowingPanel.tsx). Glass tokens with the old ones as fallback. */
+.fl {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.fl-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--gx-border-strong, var(--line));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gx-text, var(--ink));
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+.fl-chip[aria-pressed="true"] {
+  background: var(--gx-accent-soft, var(--gold-tint));
+  border-color: var(--gx-accent, var(--gold));
+}
+.fl-chip:focus-visible,
+.fl-older summary:focus-visible {
+  outline: 2px solid var(--gx-accent, var(--gold));
+  outline-offset: 2px;
+}
+.fl-count {
+  font-size: 0.8rem;
+  color: var(--gx-muted, var(--ink-soft));
+}
+.fl-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fl-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--gx-border-strong, var(--line));
+  border-radius: 16px;
+  background: var(--gx-surface, var(--surface));
+  animation: fl-rise 200ms ease both;
+}
+.fl-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 240px;
+}
+.fl-main h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+.fl-main h3 a {
+  color: inherit;
+}
+.fl-what,
+.fl-start,
+.fl-foot,
+.fl-notice {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--gx-muted, var(--ink-soft));
+  overflow-wrap: anywhere;
+}
+.fl-start-label {
+  display: inline-block;
+  min-width: 3.2em;
+  font-weight: 600;
+  color: var(--gx-text, var(--ink));
+}
+.fl-start abbr {
+  text-decoration: none;
+}
+.fl-quiet {
+  font-style: italic;
+}
+.fl-unfollow {
+  width: auto;
+  min-height: 40px;
+}
+.fl-notice:empty {
+  display: none;
+}
+.fl-empty {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px dashed var(--gx-border-strong, var(--line));
+  border-radius: 16px;
+}
+.fl-empty p {
+  margin: 0;
+}
+.fl-empty-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fl-empty-links .btn {
+  width: auto;
+  text-decoration: none;
+}
+.fl-older summary {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--gx-muted, var(--ink-soft));
+}
+@keyframes fl-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-item {
+    animation: none;
+  }
+  .fl-chip {
+    transition: none;
+  }
+}

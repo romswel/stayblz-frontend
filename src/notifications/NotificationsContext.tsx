@@ -7,7 +7,7 @@ import { isInstalledApp } from "../pwa";
 import { isIOS } from "../install/installState";
 import { chime } from "./chime";
 import { allowedBy, fromIncoming, viewOf } from "./chatAlertView";
-import { notifyApi, type ChatAlert, type ChatAlertKind, type NotificationSettings, type PushInfo, type SettingsChange, type UnreadAnswer } from "./notifyApi";
+import { isRacingAlert, notifyApi, type ChatAlert, type ChatAlertKind, type NotificationSettings, type PushInfo, type SettingsChange, type UnreadAnswer } from "./notifyApi";
 import { viewingChat } from "./viewing";
 
 /**
@@ -23,7 +23,7 @@ import { viewingChat } from "./viewing";
  */
 export interface AppAlert {
   id: string;
-  kind: "chat" | "call" | "meeting";
+  kind: "chat" | "call" | "meeting" | "racing";
   title: string;
   body: string;
   url: string;
@@ -125,7 +125,7 @@ function chatAppAlert(a: ChatAlert, previews: boolean): AppAlert {
     id: `${a.id}:${a.at}`,
     chatAlertId: a.id,
     alertKind: a.kind,
-    kind: "chat",
+    kind: isRacingAlert(a.kind) ? "racing" : "chat",
     title: view.title,
     body: view.body,
     url: view.url,
@@ -348,7 +348,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(timer);
       if (document.hidden && !watchHidden()) return schedule();
       try {
-        const data = await api.get<UnreadAnswer>(`/api/messages/unread?since=${encodeURIComponent(since ?? new Date().toISOString())}`);
+        const data = await api.get<UnreadAnswer>(`/api/messages/unread?since=${encodeURIComponent(since ?? new Date().toISOString())}&racing=1`);
         if (stopped || !data || typeof data.personal !== "number") return schedule();
         setCounts({ personal: data.personal, requests: data.requests, team: data.team });
         const items = Array.isArray(data.alerts) ? data.alerts : (data.incoming ?? []).map(fromIncoming);

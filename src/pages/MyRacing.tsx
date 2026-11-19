@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
-import VirtualStable from "./VirtualStable";
+import FollowingPanel from "../components/my-racing/FollowingPanel";
 import NotesPanel from "../components/my-racing/NotesPanel";
 import PreferencesPanel from "../components/my-racing/PreferencesPanel";
 import "../components/overview/overview.css";
@@ -28,7 +28,7 @@ const ClockIcon = () => (<svg {...I} width={16} height={16}><circle cx="12" cy="
 const TeamIcon = () => (<svg {...I} width={16} height={16}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6" /></svg>);
 
 const TABS = [
-  { key: "following", label: "Following", hint: "Horses, jockeys & trainers", icon: <StarIcon /> },
+  { key: "following", label: "Following", hint: "Horses, families & people", icon: <StarIcon /> },
   { key: "notes", label: "My notes", hint: "Private, only you can see", icon: <NoteIcon /> },
   { key: "alerts", label: "Alert settings", hint: "Choose your updates", icon: <BellIcon /> },
 ] as const;
@@ -94,7 +94,7 @@ export default function MyRacing() {
           </div>
         </header>
         <div className="mrg-panel-body" key={tab}>
-          {tab === "following" ? <VirtualStable embedded /> : tab === "notes" ? <NotesPanel /> : <PreferencesPanel />}
+          {tab === "following" ? <FollowingPanel /> : tab === "notes" ? <NotesPanel /> : <PreferencesPanel />}
         </div>
       </section>
 

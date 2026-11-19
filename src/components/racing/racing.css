@@ -821,3 +821,175 @@
     transform: none !important;
   }
 }
+
+/* Follow buttons on horse and person pages (FollowButtons.tsx). */
+.rc-follows {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+  max-width: 420px;
+}
+.rc-follow-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.rc-follow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  width: auto;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.rc-follow.is-on {
+  background: var(--gx-accent-soft, var(--gold-tint));
+  border-color: var(--gx-accent, var(--gold));
+  color: var(--gx-text, var(--ink));
+}
+.rc-follow.is-on svg {
+  color: var(--gx-accent, var(--gold));
+}
+.rc-follow-hint,
+.rc-follow-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--gx-muted, var(--ink-soft));
+  text-align: right;
+}
+.rc-follow-note:empty {
+  display: none;
+}
+@media (max-width: 640px) {
+  .rc-follows,
+  .rc-follow-row {
+    justify-items: start;
+    justify-content: flex-start;
+  }
+  .rc-follow-hint,
+  .rc-follow-note {
+    text-align: left;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rc-follow {
+    transition: none;
+  }
+}
+
+/* Data credit under a card from a feed, and the publishing tool's Data feed section (FeedPanel.tsx). */
+.rc-source {
+  margin: 18px 0 0;
+  font-size: 0.82rem;
+  color: var(--gx-muted, var(--ink-soft));
+}
+.rca-feed {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+.rca-feed section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.rca-feed h2 {
+  margin: 0;
+}
+.rca-feed-facts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.rca-feed-facts > div {
+  padding: 12px 14px;
+  border: 1px solid var(--gx-border-strong, var(--line));
+  border-radius: 14px;
+}
+.rca-feed-facts dt {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.rca-feed-facts dd {
+  margin: 0;
+  color: var(--gx-text-2, var(--ink-soft));
+  overflow-wrap: anywhere;
+}
+.rca-file {
+  display: grid;
+  gap: 6px;
+  max-width: 520px;
+}
+.rca-file input {
+  min-height: 40px;
+  max-width: 100%;
+}
+.rca-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+.rca-feed-actions .btn {
+  width: auto;
+}
+.rca-feed-results ul {
+  margin: 6px 0 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+.rca-feed-results li {
+  overflow-wrap: anywhere;
+}
+.rca-feed-results li.is-error {
+  color: var(--gx-danger, var(--danger));
+}
+.rca-feed-note {
+  margin: 8px 0 0;
+  font-size: 0.88rem;
+  color: var(--gx-muted, var(--ink-soft));
+}
+.rca-feed code {
+  overflow-wrap: anywhere;
+}
+/* Data feed → The Racing API: pull now */
+.rca-pull {
+  display: grid;
+  gap: 10px;
+}
+.rca-pull-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: end;
+}
+.rca-pull-fields label {
+  display: grid;
+  gap: 6px;
+  min-width: 150px;
+  flex: 1 1 150px;
+  max-width: 220px;
+}
+.rca-pull-fields input,
+.rca-pull-fields select {
+  min-height: 40px;
+  width: 100%;
+}
+.rca-feed-results .rca-jobs > li > ul {
+  margin: 4px 0 0 14px;
+  color: var(--gx-text-2, var(--ink-soft));
+  font-size: 0.92rem;
+}
+.rca-feed-results li.is-error ul {
+  color: var(--gx-text-2, var(--ink-soft));
+}
+.rc-history-race {
+  min-width: 160px;
+  max-width: 320px;
+  white-space: normal;
+}

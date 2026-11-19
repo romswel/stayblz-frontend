@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../api";
 type Preferences = {
   entry_alerts: boolean;
@@ -10,18 +11,18 @@ const options: [keyof Preferences, string, string][] = [
   [
     "entry_alerts",
     "Race entries",
-    "When a horse, jockey, or trainer you follow has a race entry.",
+    "When a horse, family or person you follow is entered or scratched.",
   ],
   [
     "workout_alerts",
     "Morning workouts",
-    "New workout records for horses you follow.",
+    "New published workouts for horses and families you follow.",
   ],
-  ["result_alerts", "Race results", "Race results for horses and people you follow."],
+  ["result_alerts", "Race results", "When a race they ran in is made official."],
   [
     "email_enabled",
     "Email delivery",
-    "Choose whether you want email updates.",
+    "Not sent yet. We'll save your choice for when email alerts start.",
   ],
 ];
 export default function PreferencesPanel() {
@@ -59,9 +60,7 @@ export default function PreferencesPanel() {
     setNotice("");
     try {
       await api.patch("/api/my-racing/preferences", values);
-      setNotice(
-        "Preferences saved. Automatic alerts and email delivery are not active yet.",
-      );
+      setNotice("Preferences saved.");
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Preferences could not be saved.",
@@ -79,10 +78,11 @@ export default function PreferencesPanel() {
       </div>
       <div className="ov-paper mr-preferences">
         <div className="mr-service-status">
-          <span>DELIVERY NOT CONNECTED</span>
+          <span>HOW ALERTS ARRIVE</span>
           <p>
-            You can save your choices now. Automatic alerts and email
-            notifications are not being sent yet.
+            Racing alerts go to the bell, and to this device when{" "}
+            <Link to="/account/notifications">notifications</Link> are on.
+            Email alerts aren't sent yet.
           </p>
         </div>
         {error && (

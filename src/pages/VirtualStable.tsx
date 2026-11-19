@@ -9,10 +9,17 @@ interface WatchItem {
   nextAlert: string | null;
 }
 type Kind = "horses" | "jockeys" | "trainers";
+/**
+ * Follows saved on the earlier flat racing records (/api/watchlist). New follows use the linked racing data
+ * (My racing → Following, components/my-racing/FollowingPanel.tsx); this list is shown there as "Earlier racing
+ * records you follow" (legacy) so nobody loses what they saved.
+ */
 export default function VirtualStable({
   embedded = false,
+  legacy = false,
 }: {
   embedded?: boolean;
+  legacy?: boolean;
 }) {
   const [kind, setKind] = useState<Kind>("horses");
   const [items, setItems] = useState<WatchItem[]>([]);
@@ -84,9 +91,11 @@ export default function VirtualStable({
     <section>
       <div className="mr-intro">
         <span className="ov-kicker">HORSES, JOCKEYS AND TRAINERS</span>
-        {embedded ? <h2>Following</h2> : <h1>Following</h1>}
+        {legacy ? <h3>Earlier racing records</h3> : embedded ? <h2>Following</h2> : <h1>Following</h1>}
         <p>
-          Follow horses, jockeys, and trainers. You do not need to own a horse or join a stable.
+          {legacy
+            ? "Follows saved on the earlier racing record pages. These don't send alerts; follow from a horse's or person's racing page instead."
+            : "Follow horses, jockeys, and trainers. You do not need to own a horse or join a stable."}
         </p>
       </div>
       <div className="mr-follows-toolbar">

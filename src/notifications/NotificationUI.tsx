@@ -19,7 +19,7 @@ const ago = (at: number) => {
   const h = Math.floor(m / 60);
   return h < 24 ? `${h}h` : `${Math.floor(h / 24)}d`;
 };
-const KIND_LABEL: Record<AppAlert["kind"], string> = { chat: "Stayblz Chat", call: "Stayblz Paddock", meeting: "Stayblz Paddock" };
+const KIND_LABEL: Record<AppAlert["kind"], string> = { chat: "Stayblz Chat", call: "Stayblz Paddock", meeting: "Stayblz Paddock", racing: "Racing" };
 
 /** The face of who it's from, with a small badge for what happened (🎉, @, ↩…). */
 function AlertFace({ alert, size }: { alert: AppAlert; size: "sm" | "md" }) {
@@ -191,7 +191,7 @@ export function NotificationBell() {
             <div className="nt-panel-off">
               <p>
                 {off
-                  ? "Notifications are off, so you won't hear about new messages, mentions or calls."
+                  ? "Notifications are off, so you won't hear about new messages, mentions, calls or racing you follow."
                   : pushState === "needs-install"
                     ? "On iPhone, notifications need the Stayblz app on your Home Screen."
                     : "This device isn't set up for notifications yet."}
@@ -238,7 +238,7 @@ export function NotificationBell() {
               ))}
             </ul>
           ) : (
-            !chats && <p className="nt-panel-empty">You're all caught up. Messages, mentions, reactions, requests, calls and meetings show here.</p>
+            !chats && <p className="nt-panel-empty">You're all caught up. Messages, mentions, reactions, requests, calls, meetings and racing you follow show here.</p>
           )}
         </div>
       )}

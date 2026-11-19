@@ -113,6 +113,12 @@ export default function RaceDayEditor() {
             {day.races.length} races · {runners} runners
             {published ? " · visible to everyone" : " · only admins can see it"}
           </p>
+          {day.source && (
+            <p className="rca-feed-note">
+              From a data feed ({day.source === "equibase" ? "Equibase" : day.source}). It can be published once the data licence is confirmed
+              on the server; importing again updates this card.
+            </p>
+          )}
         </div>
         <div className="up-hero-actions">
           {published && (
