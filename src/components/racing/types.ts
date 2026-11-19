@@ -143,6 +143,8 @@ export interface Start {
   lengths: number | null;
   odds: number | null;
   earnings: number | null;
+  /** The race's prize money currency. */
+  currency?: string;
   field: number;
 }
 export interface Stats {
@@ -151,6 +153,8 @@ export interface Stats {
   places: number;
   shows: number;
   earnings: number;
+  /** Prize money currency; null = won in several currencies (no meaningful total). Absent on older API answers. */
+  currency?: string | null;
 }
 export interface Workout {
   id: string;

@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { Empty, LoadNotice, RacingHead, useRacing } from "../../components/racing/RacingParts";
-import { breedLabels, dateLabel, money, odds, ordinal, surfaceLabels, winPct } from "../../components/racing/format";
+import { breedLabels, dateLabel, earnings, money, odds, ordinal, surfaceLabels, winPct } from "../../components/racing/format";
 import { sourceLabels, type HistoryStart, type Horse, type Start, type Stats, type Workout } from "../../components/racing/types";
 import StatusPage from "../../components/status/StatusPage";
 import FollowButtons from "../../components/racing/FollowButtons";
@@ -12,7 +12,7 @@ function StatTiles({ stats }: { stats: Stats }) {
     ["2nd", stats.places],
     ["3rd", stats.shows],
     ["Win rate", winPct(stats.wins, stats.starts)],
-    ["Earnings", money(stats.earnings)],
+    ["Earnings", earnings(stats.earnings, stats.currency)],
   ] as const;
   return (
     <dl className="rc-stats">
@@ -76,7 +76,7 @@ function StartsTable({ starts, show }: { starts: Start[]; show: "horse" | "perso
               <td>{odds(start.odds)}</td>
               {show === "horse" && <td>{start.jockey ? <Link to={`/racing/people/${start.jockey.id}`}>{start.jockey.name}</Link> : "—"}</td>}
               <td>{start.trainer ? <Link to={`/racing/people/${start.trainer.id}`}>{start.trainer.name}</Link> : "—"}</td>
-              <td>{start.earnings != null ? money(start.earnings) : "—"}</td>
+              <td>{start.earnings != null ? money(start.earnings, start.currency) : "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -210,7 +210,7 @@ export function PersonPage() {
                       <td>{row.places}</td>
                       <td>{row.shows}</td>
                       <td>{winPct(row.wins, row.starts)}</td>
-                      <td>{money(row.earnings)}</td>
+                      <td>{earnings(row.earnings, row.currency)}</td>
                     </tr>
                   ))}
                 </tbody>

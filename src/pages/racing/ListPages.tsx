@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Empty, LoadNotice, RacingHead, useRacing } from "../../components/racing/RacingParts";
-import { breedLabels, dateLabel, money, shiftDate, todayISO, winPct } from "../../components/racing/format";
+import { breedLabels, dateLabel, earnings, money, shiftDate, todayISO, winPct } from "../../components/racing/format";
 import type { Race, Track, Workout } from "../../components/racing/types";
 import { WorkoutTable } from "./ProfilePages";
 
@@ -143,7 +143,7 @@ export function StakesPage() {
   );
 }
 
-type Leader = { id: string; name: string; starts: number; wins: number; places: number; shows: number; earnings: number };
+type Leader = { id: string; name: string; starts: number; wins: number; places: number; shows: number; earnings: number; currency?: string | null };
 const roles = [
   { role: "jockey", label: "Jockeys & drivers" },
   { role: "trainer", label: "Trainers" },
@@ -232,7 +232,7 @@ export function LeadersPage() {
                   <td>{row.places}</td>
                   <td>{row.shows}</td>
                   <td>{winPct(row.wins, row.starts)}</td>
-                  <td>{money(row.earnings)}</td>
+                  <td>{earnings(row.earnings, row.currency)}</td>
                 </tr>
               ))}
             </tbody>

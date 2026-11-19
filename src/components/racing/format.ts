@@ -68,6 +68,19 @@ export function money(amount: number | null | undefined, currency = "USD") {
     return `${currency} ${amount.toLocaleString()}`;
   }
 }
+/** Prize money that may be in any currency; `null` = several currencies, so no single total can be shown. */
+export function earnings(amount: number | null | undefined, currency: string | null | undefined) {
+  if (currency === null) return "Several currencies";
+  return money(amount, currency ?? "USD");
+}
+/** "£", "€", "HK$"… for a currency code. */
+export function currencySymbol(currency: string) {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency }).formatToParts(1).find((p) => p.type === "currency")?.value ?? currency;
+  } catch {
+    return currency;
+  }
+}
 export const payout = (amount: number) => amount.toFixed(2);
 export const odds = (value: number | null | undefined) =>
   value === null || value === undefined ? "—" : `${Number(value.toFixed(2))}-1`;
