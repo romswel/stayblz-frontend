@@ -343,6 +343,82 @@ html[data-theme="dark"] .mx-row[data-tone="5"] { --mx-rail: #9a9a9a; }
   font-weight: 800;
 }
 
+/* ---------- Marketplace listing under a "Message seller" message ---------- */
+.mx-listingcard {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 4px 10px;
+  align-items: center;
+  width: min(300px, 100%);
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  background: var(--mx-field-strong);
+  box-shadow: inset 0 0 0 1px var(--mx-line);
+  color: var(--mx-ink) !important;
+  text-decoration: none !important;
+  white-space: normal;
+}
+.is-mine .mx-listingcard {
+  background: color-mix(in srgb, var(--mx-own-ink) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mx-own-ink) 18%, transparent);
+  color: var(--mx-own-ink) !important;
+}
+.mx-listingcard:hover,
+.mx-listingcard:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--mx-accent);
+}
+.mx-listingcard-media {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--mx-accent), var(--mx-accent-2));
+  color: #fff;
+}
+.mx-listingcard-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mx-listingcard-text {
+  min-width: 0;
+  display: grid;
+  line-height: 1.3;
+}
+.mx-listingcard-text small {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.mx-listingcard-text strong,
+.mx-listingcard-loc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mx-listingcard-price {
+  font-weight: 800;
+}
+.mx-listingcard-loc {
+  font-size: 12px;
+  opacity: 0.8;
+}
+.mx-listingcard-go {
+  grid-column: 1 / -1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--mx-accent);
+  color: var(--gx-accent-ink, #fff);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
 /* ---------- Composer: one dock ---------- */
 .mx-composer {
   padding: 8px 10px calc(10px + var(--safe-bottom, 0px));

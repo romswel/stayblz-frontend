@@ -2,6 +2,7 @@ import { memo, useRef, useState, type PointerEvent as ReactPointerEvent } from "
 import { Link } from "react-router-dom";
 import AttachmentView from "./AttachmentView";
 import LinkCards from "./LinkCards";
+import ListingMessageCard from "./ListingMessageCard";
 import EmojiPicker from "./EmojiPicker";
 import { clock, dayLabel, firstName, fullTime, linkify, tone } from "./format";
 import {
@@ -295,6 +296,7 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
                   )}
                   {m.body && <span className="mx-text">{linkify(m.body, highlight, mentions)}</span>}
                   {m.body && <LinkCards text={m.body} />}
+                  {m.listing && <ListingMessageCard listing={m.listing} />}
                   {m.edited && <span className="mx-edited">Edited</span>}
                 </>
               )}

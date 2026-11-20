@@ -259,3 +259,12 @@ export const getListing = (id: string, signal?: AbortSignal) =>
     if (!d?.listing?.id) throw new Error("This listing couldn't be loaded.");
     return d.listing;
   });
+
+/* ---------- Message seller ---------- */
+
+/** Sends `body` to the listing's seller (with the listing under it) and says which chat it went to. */
+export const messageSeller = (id: string, body: string, clientId: string) =>
+  api.post<{ conversationId: string }>(`${BASE}/listings/${id}/message`, { body, clientId }).then((d) => {
+    if (!d?.conversationId) throw new Error("Your message couldn't be sent. Please try again.");
+    return d.conversationId;
+  });

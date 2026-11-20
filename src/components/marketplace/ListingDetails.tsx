@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import {
@@ -15,7 +16,8 @@ import {
   labelOf,
   type Listing,
 } from "./options";
-import { getListing, mediaUrl, pictureUrl, posterUrl } from "./media";
+import { getListing, mediaUrl, messageSeller, pictureUrl, posterUrl } from "./media";
+import { createRequestId } from "../../requestId";
 import { PlayIcon } from "./ListingMedia";
 import "./marketplace-media.css";
 
@@ -41,10 +43,13 @@ export default function ListingDetails({
   listing: summary,
   onClose,
   onEdit,
+  focusMessage = false,
 }: {
   listing: Listing;
   onClose: () => void;
   onEdit?: (listing: Listing) => void;
+  /** Opened with a card's "Message" button: start in the message box. */
+  focusMessage?: boolean;
 }) {
   const [state, setState] = useState<{ loading: boolean; error: string; listing: Listing }>({
     loading: true,
@@ -216,6 +221,7 @@ export default function ListingDetails({
           <p className="mkm-seller">
             {l.mine ? "Listed by you" : <>Listed by <b>{l.sellerName}</b></>}
           </p>
+          {!l.mine && !state.error && <MessageSeller listing={l} autoFocus={focusMessage} />}
           {l.mine && onEdit && (
             <button type="button" className="btn btn-primary mkm-edit" onClick={() => onEdit(l)}>
               Edit listing
@@ -224,5 +230,92 @@ export default function ListingDetails({
         </section>
       </div>
     </Modal>
+  );
+}
+
+const QUICK_REPLIES = ["Hi, is this still available?", "Is the price negotiable?", "Can I come see the horse?"];
+const MAX_MESSAGE = 1000;
+
+/**
+ * "Message seller": sends the first message of a one-to-one chat with the seller, with this listing
+ * shown under it, then opens that chat in Messages.
+ */
+function MessageSeller({ listing, autoFocus }: { listing: Listing; autoFocus: boolean }) {
+  const navigate = useNavigate();
+  const [text, setText] = useState(QUICK_REPLIES[0]);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  // One id per draft: a retry after a lost response can't send the message twice.
+  const clientId = useRef(createRequestId());
+
+  const edit = (value: string) => {
+    if (value !== text) clientId.current = createRequestId();
+    setText(value);
+    setError("");
+  };
+  const trimmed = text.trim();
+  async function send() {
+    if (!trimmed || sending) return;
+    setSending(true);
+    setError("");
+    try {
+      const chatId = await messageSeller(listing.id, trimmed, clientId.current);
+      navigate(`/messages/${chatId}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Your message couldn't be sent. Please try again.");
+      setSending(false);
+    }
+  }
+
+  return (
+    <form
+      className="mkm-ask"
+      aria-label={`Message ${listing.sellerName}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void send();
+      }}
+    >
+      <p className="mkm-ask-head">
+        Message the seller
+        <small>Your message goes to {listing.sellerName} in Stayblz Chat, with this listing attached.</small>
+      </p>
+      <ul className="mkm-ask-chips" aria-label="Quick messages">
+        {QUICK_REPLIES.map((q) => (
+          <li key={q}>
+            <button type="button" className="mkm-ask-chip" aria-pressed={text === q} onClick={() => edit(q)} disabled={sending}>
+              {q}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="mkm-ask-row">
+        <textarea
+          // The dialog focuses this first when opened with a card's "Message" button.
+          data-autofocus={autoFocus || undefined}
+          value={text}
+          rows={3}
+          maxLength={MAX_MESSAGE}
+          aria-label="Your message"
+          placeholder="Write a message…"
+          onChange={(e) => edit(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+          disabled={sending}
+        />
+        <button type="submit" className="btn btn-primary" disabled={!trimmed || sending}>
+          {sending ? "Sending…" : "Send"}
+        </button>
+      </div>
+      {error && (
+        <p className="mkm-ask-error" role="alert">
+          {error}
+        </p>
+      )}
+    </form>
   );
 }

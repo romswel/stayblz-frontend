@@ -25,6 +25,10 @@ export function normalizeMessage(m: Partial<ChatMessage> & { id: string }): Chat
     system: !!m.system,
     pinned: !!m.pinned,
     attachment: m.attachment && typeof m.attachment === "object" ? m.attachment : null,
+    listing:
+      m.listing && typeof m.listing === "object" && typeof m.listing.id === "string" && typeof m.listing.name === "string"
+        ? m.listing
+        : null,
     reactions: Array.isArray(m.reactions) ? m.reactions : [],
     replyTo: m.replyTo ?? null,
   };

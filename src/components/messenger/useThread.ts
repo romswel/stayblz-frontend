@@ -265,7 +265,7 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
     (messageId: string) =>
       change(
         messageId,
-        (m) => ({ ...m, removed: true, body: "", attachment: null, reactions: [] }),
+        (m) => ({ ...m, removed: true, body: "", attachment: null, listing: null, reactions: [] }),
         () => chatApi.unsend(idRef.current!, messageId),
         "Message not unsent. Try again.",
       ),
