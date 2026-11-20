@@ -1,4 +1,5 @@
 import { firstName } from "../components/messenger/format";
+import { plainText } from "../components/messenger/chatMarkdown";
 import { isRacingAlert, type ChatAlert, type ChatAlertKind, type IncomingChat, type NotificationSettings } from "./notifyApi";
 
 /**
@@ -18,7 +19,8 @@ export interface AlertView {
 const clip = (text: string, max: number) => (text.length > max ? text.slice(0, max - 1).trimEnd() + "…" : text);
 
 export function summaryOf(body: string, attachment: ChatAlert["attachment"]) {
-  const text = body.replace(/\s+/g, " ").trim();
+  // Chat formatting marks and "@highlight" dropped, spoilers kept hidden, a GIF link reads "GIF".
+  const text = plainText(body).replace(/\s+/g, " ").trim();
   if (text) return clip(text, 140);
   const type = attachment?.type ?? "";
   if (type.startsWith("image/")) return "📷 Sent a photo";

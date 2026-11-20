@@ -12,9 +12,12 @@ import ConnectionNotice from './components/status/ConnectionNotice';
 import { ConfirmProvider } from './components/ui/Confirm';
 import { registerServiceWorker } from './pwa';
 import { listenForInstall } from './install/installState';
+import { startViewportWatch } from './viewport';
 
 // Before React starts: the browser can offer "Install app" straight away.
 listenForInstall();
+// Phones: keep chat, sheets and the tab bar inside the visible area when the keyboard opens and closes.
+startViewportWatch();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

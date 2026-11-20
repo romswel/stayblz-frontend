@@ -4,7 +4,7 @@ import { prepareAvatar } from "../account/avatars";
 import ConversationInvites from "../my-racing/ConversationInvites";
 import ChatAvatar from "./ChatAvatar";
 import type { ChatApi } from "./chatApi";
-import { activeLabel, muteLabel } from "./format";
+import { muteLabel, presenceLabel, presenceOf } from "./format";
 import {
   ArchiveIcon,
   Avatar,
@@ -101,7 +101,8 @@ export default function ChatInfo({
   onSearch: () => void;
   onPinned: () => void;
   onJump: (id: string) => void;
-  onOpenImage: (m: ChatMessage, url: string) => void;
+  /** Opens the viewer at `m`; `list` = all the media it can step through. */
+  onOpenImage: (m: ChatMessage, url: string, list?: ChatMessage[]) => void;
   onAbout: () => void;
   onNewFolder: () => void;
   onError: (text: string) => void;
@@ -116,7 +117,7 @@ export default function ChatInfo({
   const [photoBusy, setPhotoBusy] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const fileCount = thread.messages.filter((m) => m.attachment && !m.removed).length;
-  const status = direct ? (thread.waiting ? "Hasn't accepted yet" : activeLabel(other?.active, other?.seenAt)) : `${thread.members.length} members`;
+  const status = direct ? (thread.waiting ? "Hasn't accepted yet" : presenceLabel(other)) : `${thread.members.length} members`;
 
   async function changePhoto(file: File | undefined) {
     if (!file || photoBusy) return;
@@ -170,7 +171,7 @@ export default function ChatInfo({
         </button>
       </div>
       <div className="mx-info-hero">
-        <ChatAvatar c={thread} size="xl" active={direct && !!other?.active} />
+        <ChatAvatar c={thread} size="xl" presence={direct ? presenceOf(other) : null} />
         <h2>{thread.title}</h2>
         {status && <p>{status}</p>}
         {thread.muted && <p className="mx-info-muted">{muteLabel(thread.mutedUntil)}</p>}
@@ -240,10 +241,12 @@ export default function ChatInfo({
           <ul className="mx-rows mx-members">
             {thread.members.map((m) => (
               <li key={m.id}>
-                <Avatar name={m.name} id={m.id} size="sm" active={!!m.active} />
+                <Avatar name={m.name} id={m.id} size="sm" presence={m.me ? null : presenceOf(m)} />
                 <span>
                   {m.me ? `${m.name} (you)` : m.name}
-                  <small>{m.admin ? "Created the group" : m.pending ? "Hasn't accepted" : m.active ? "Active now" : "Member"}</small>
+                  <small>
+                    {[m.admin ? "Created the group" : m.pending ? "Hasn't accepted" : "", m.me ? "" : presenceLabel(m)].filter(Boolean).join(" · ") || "Member"}
+                  </small>
                 </span>
                 {!m.me && (
                   <button

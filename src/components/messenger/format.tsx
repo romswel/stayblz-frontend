@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import type { ChatMessage } from "./types";
+import { plainText } from "./chatMarkdown";
+import type { ChatMessage, Presence } from "./types";
 
 /** Postgres sends microseconds; trim to milliseconds so every browser parses it. */
 export function toMs(iso: string | null | undefined): number {
@@ -59,6 +60,29 @@ export function activeLabel(active?: boolean, seenAt?: string | null, now = Date
   if (!Number.isFinite(ms)) return "";
   const minutes = Math.max(1, Math.round((now - ms) / 60000));
   return minutes < 60 ? `Active ${minutes}m ago` : `Active ${Math.round(minutes / 60)}h ago`;
+}
+
+/** A person's state from a newer server (`presence`) or an older one (`active` only). Undefined = not shared. */
+export function presenceOf(p?: { presence?: Presence | null; active?: boolean } | null): Presence | null {
+  if (!p) return null;
+  if (p.presence !== undefined) return p.presence;
+  return p.active ? "online" : null;
+}
+export const presenceOfChat = (c: { presence?: Presence | null; active?: boolean }) => presenceOf(c);
+
+/** "Online", "Away", "Offline · active 5m ago", "Offline" — or "" when they don't share it. */
+export function presenceLabel(p?: { presence?: Presence | null; active?: boolean; seenAt?: string | null } | null, now = Date.now()): string {
+  const state = presenceOf(p);
+  if (state === "online") return "Online";
+  if (state === "away") return "Away";
+  if (state === "offline") {
+    const ms = toMs(p?.seenAt);
+    if (!Number.isFinite(ms)) return "Offline";
+    const minutes = Math.max(1, Math.round((now - ms) / 60000));
+    const ago = minutes < 60 ? `${minutes}m` : minutes < 48 * 60 ? `${Math.round(minutes / 60)}h` : `${Math.round(minutes / 1440)}d`;
+    return `Offline · active ${ago} ago`;
+  }
+  return activeLabel(p?.active, p?.seenAt, now);
 }
 
 export function fileSize(bytes: number): string {
@@ -206,7 +230,7 @@ export function previewLine(c: {
   lastSenderName?: string | null;
   kind?: "direct" | "group";
 }): string {
-  const text = c.lastMessage;
+  const text = plainText(c.lastMessage);
   if (!text) return "No messages yet";
   const who = c.lastMessageMine ? "You" : c.lastSenderName ? firstName(c.lastSenderName) : "";
   const sent = (what: string) => (who ? `${who} sent ${what}.` : `Sent ${what}.`);

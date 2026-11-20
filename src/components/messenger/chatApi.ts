@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { api, apiRaw } from "../../api";
 import { useStableApi, useWorkspace } from "../../workspace";
+import { presenceState } from "../../notifications/presence";
 import type { ChatLimits } from "./files";
 import type {
   ChatAttachment,
@@ -14,6 +15,12 @@ import type {
   Person,
   ThreadResponse,
 } from "./types";
+
+/**
+ * Requests refreshed on a timer say when you aren't really using Stayblz (else you'd never show as Away).
+ * The server counts a request as "active" by default, so the flag is only added when it's "idle".
+ */
+const idleQuery = () => (presenceState() === "idle" ? "?presence=idle" : "");
 
 /** Tells the menu badge to refresh soon (after reading, sending, accepting or leaving). */
 export const notifyChatsChanged = () => window.dispatchEvent(new Event("stayblz:chats-changed"));
@@ -31,13 +38,25 @@ export function useChatApi(mode: ChatMode) {
     const headers: Record<string, string> = mode === "team" ? { "X-Stayblz-Stable": stableId } : {};
     return {
       mode,
-      list: (signal?: AbortSignal) => client.get<{ conversations: ChatPreview[] }>(base, { signal }),
+      // Refreshed on a timer, so it says whether you're really using Stayblz (else you'd never show as Away).
+      list: (signal?: AbortSignal) => client.get<{ conversations: ChatPreview[] }>(`${base}${idleQuery()}`, { signal }),
       thread: (id: string, options: { signal?: AbortSignal; before?: string } = {}) =>
         client.get<ThreadResponse>(at(id) + (options.before ? `?before=${encodeURIComponent(options.before)}` : ""), {
           signal: options.signal,
         }),
-      updates: (id: string, since: string, signal?: AbortSignal) =>
-        client.get<ThreadResponse>(`${at(id)}/updates?since=${encodeURIComponent(since)}`, { signal }),
+      /**
+       * What changed since `since`. With `v` (from the last answer) the server waits up to `wait` seconds for a change
+       * first (long-poll), so new messages, Seen and typing show up at once.
+       */
+      updates: (id: string, since: string, options: { signal?: AbortSignal; v?: number | null; wait?: number } = {}) => {
+        const q = new URLSearchParams({ since, presence: presenceState() });
+        const longPoll = options.v != null && !!options.wait;
+        if (longPoll) {
+          q.set("v", String(options.v));
+          q.set("wait", String(options.wait));
+        }
+        return client.get<ThreadResponse>(`${at(id)}/updates?${q}`, { signal: options.signal, longPoll });
+      },
       send: (id: string, body: string, clientId: string, replyTo: string | null) =>
         client.post<{ message: ChatMessage }>(`${at(id)}/messages`, { body, clientId, replyTo }),
       /** One photo or file per message; the body is the raw file. */
@@ -104,7 +123,9 @@ export const peopleApi = {
   search: (q: string, signal?: AbortSignal) =>
     api.get<{ people: Person[] }>(`/api/messages/people/search?q=${encodeURIComponent(q)}`, { signal }),
   friends: (signal?: AbortSignal) =>
-    api.get<{ friends: Person[]; incoming: Person[]; outgoing: Person[] }>("/api/messages/people/friends", { signal }),
+    api.get<{ friends: Person[]; incoming: Person[]; outgoing: Person[] }>(`/api/messages/people/friends${idleQuery()}`, { signal }),
+  /** Friends first, then everyone you share a chat with (newer servers), with Online / Away / Offline. */
+  contacts: (signal?: AbortSignal) => api.get<{ people: Person[] }>(`/api/messages/people/contacts${idleQuery()}`, { signal }),
   friend: (person: string, action: "request" | "accept" | "decline" | "remove") =>
     api.post<{ status: FriendStatus }>(`/api/messages/people/friends/${encodeURIComponent(person)}/${action}`, {}),
   blocks: (signal?: AbortSignal) => api.get<{ blocked: Person[] }>("/api/messages/people/blocks", { signal }),
@@ -120,6 +141,23 @@ export const peopleApi = {
   renameFolder: (id: string, name: string) =>
     api.post<{ folder: ChatFolder }>(`/api/messages/folders/${encodeURIComponent(id)}/rename`, { name }),
   deleteFolder: (id: string) => api.post<{ ok: true }>(`/api/messages/folders/${encodeURIComponent(id)}/delete`, {}),
+};
+
+export interface Gif {
+  id: string;
+  title: string;
+  url: string;
+  preview: string;
+  width: number;
+  height: number;
+}
+/** GIF search (GIPHY through our server; `enabled: false` until the server has a key). Empty query = trending. */
+export const gifApi = {
+  find: (q: string, offset = 0, signal?: AbortSignal) =>
+    api.get<{ enabled: boolean; results: Gif[]; next: number | null }>(
+      `/api/gifs?${new URLSearchParams({ q, offset: String(offset) })}`,
+      { signal },
+    ),
 };
 
 export type { ChatAttachment };

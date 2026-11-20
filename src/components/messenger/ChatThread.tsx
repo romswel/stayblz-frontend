@@ -2,11 +2,13 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useConfirm } from "../ui/Confirm";
-import { downloadFile, Lightbox } from "./AttachmentView";
+import { downloadFile } from "./AttachmentView";
 import ChatAvatar from "./ChatAvatar";
+import type { CommandResult } from "./commands";
 import Composer from "./Composer";
-import { activeLabel, buildTimeline, mentionPattern, muteLabel, toMs } from "./format";
-import { ArrowLeftIcon, Avatar, ChevronIcon, CloseIcon, DownIcon, InfoIcon, MuteIcon, PhoneIcon, PinIcon, VideoIcon } from "./icons";
+import { buildTimeline, mentionPattern, muteLabel, presenceLabel, presenceOf, toMs } from "./format";
+import { ArrowLeftIcon, Avatar, ChevronIcon, CloseIcon, DownIcon, InfoIcon, MuteIcon, PinIcon, VideoIcon } from "./icons";
+import MediaViewer, { mediaItems } from "./MediaViewer";
 import { MessageSheet, PinnedDialog, ReactionsDialog, type SheetAction } from "./MessageDialogs";
 import MessageRow, { type RowHandlers, type Who } from "./MessageRow";
 import ThreadSearch from "./ThreadSearch";
@@ -15,6 +17,12 @@ import type { ThreadState } from "./useThread";
 
 const NEAR_BOTTOM_PX = 140;
 const SHOW_JUMP_PX = 480;
+
+/** The chat's loaded photos, videos and GIFs; one opened from further back (pinned list) still shows on its own. */
+function viewerItems(messages: ChatMessage[], open: ChatMessage) {
+  const items = mediaItems(messages);
+  return items.some((i) => i.id === open.id) ? items : mediaItems([open]);
+}
 
 export default function ChatThread({
   mode,
@@ -33,6 +41,7 @@ export default function ChatThread({
   onUnblock,
   onForward,
   onCall,
+  onChatCommand,
   calling,
   fileLoader,
   busy,
@@ -54,7 +63,10 @@ export default function ChatThread({
   onDecline: () => void;
   onUnblock: () => void;
   onForward: (m: ChatMessage) => void;
+  /** Start this chat's Stayblz Paddock (video meeting; the link is posted in the chat). */
   onCall: (video: boolean) => void;
+  /** Typed commands that change the chat itself: /mute, /unmute, /rename, /leave. */
+  onChatCommand: (command: CommandResult) => void;
   calling: boolean;
   fileLoader: (m: ChatMessage) => (() => Promise<Blob>) | null;
   busy: boolean;
@@ -70,9 +82,11 @@ export default function ChatThread({
   const [newBelow, setNewBelow] = useState(0);
   const [farUp, setFarUp] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [searchStart, setSearchStart] = useState("");
   const [highlight, setHighlight] = useState("");
   const [dragging, setDragging] = useState(false);
-  const [viewer, setViewer] = useState<{ url: string; m: ChatMessage } | null>(null);
+  /** The photo / video / GIF open in the viewer (it steps through all of the chat's loaded media). */
+  const [viewer, setViewer] = useState<ChatMessage | null>(null);
   const [sheet, setSheet] = useState<ChatMessage | null>(null);
   const [reactions, setReactions] = useState<string | null>(null);
   const [pinsOpen, setPinsOpen] = useState(false);
@@ -91,10 +105,11 @@ export default function ChatThread({
   const group = head?.kind === "group";
   const canAct = !!thread && !thread.request;
   const timeline = useMemo(() => buildTimeline(messages), [messages]);
+  const viewerList = useMemo(() => (viewer ? viewerItems(messages, viewer) : []), [messages, viewer]);
   // Groups: @mentions of members (shown as chips), and the people you can mention.
   const members = thread?.members;
   const meName = members?.find((p) => p.me)?.name ?? "";
-  const mentions = useMemo(() => (group && members ? mentionPattern(members.map((p) => p.name)) : null), [group, members]);
+  const mentions = useMemo(() => (group && members ? mentionPattern([...members.map((p) => p.name), "everyone"]) : null), [group, members]);
   const mentionable = useMemo(
     () => (group && members ? members.filter((p) => !p.me && !p.pending).map((p) => ({ id: p.id, name: p.name })) : undefined),
     [group, members],
@@ -257,7 +272,7 @@ export default function ChatThread({
       onRetry: retrySend,
       onDiscard: discard,
       onJump: (id) => void jump(id),
-      onOpenImage: (m, url) => setViewer({ m, url }),
+      onOpenImage: (m) => setViewer(m),
       onError: setNotice,
       onSheet: setSheet,
       onReactions: (m) => setReactions(m.id),
@@ -279,11 +294,24 @@ export default function ChatThread({
     } else if (action === "unsend") void askUnsend(m);
   }
 
-  function onSend(text: string) {
+  function onSend(text: string, fromBox: boolean) {
     send(text, reply);
-    if (text === draft.trim()) onDraft("");
+    if (fromBox) onDraft("");
     setReply(null);
     requestAnimationFrame(() => toBottom());
+  }
+  /** "/search", "/pins", "/info", "/paddock" here; "/mute", "/rename", "/leave"… in Messenger. */
+  function onCommand(command: CommandResult) {
+    if (command.kind === "search") {
+      setSearchStart(command.query);
+      setSearching(true);
+    } else if (command.kind === "pins") {
+      if (pins.length) setPinsOpen(true);
+      else setNotice("Nothing is pinned in this chat yet. Pin a message from its ⋯ menu.");
+    } else if (command.kind === "info") {
+      if (!infoOpen) onInfo();
+    } else if (command.kind === "paddock") onCall(true);
+    else onChatCommand(command);
   }
   function onFiles(files: File[]) {
     if (!canAct || !files.length) return;
@@ -332,7 +360,7 @@ export default function ChatThread({
       : head.kind === "direct"
         ? head.waiting
           ? "Waiting for them to accept your request"
-          : activeLabel(other?.active, other?.seenAt) || (mode === "team" ? "Teammate" : "Stayblz member")
+          : presenceLabel(other) || (mode === "team" ? "Teammate" : "Stayblz member")
         : head.participants.length
           ? `You, ${head.participants.join(", ")}`
           : "Only you so far";
@@ -367,7 +395,7 @@ export default function ChatThread({
           <ArrowLeftIcon />
         </button>
         <button type="button" className="mx-thread-who" onClick={onInfo} aria-label={head ? `${head.title}: chat info` : "Chat info"} disabled={!thread}>
-          {head && <ChatAvatar c={head} size="md" active={head.kind === "direct" && !!other?.active} />}
+          {head && <ChatAvatar c={head} size="md" presence={head.kind === "direct" ? (other ? presenceOf(other) : undefined) : null} />}
           <span className="mx-thread-title">
             <span className="mx-thread-name">{head?.title ?? "Loading…"}</span>
             <span className={`mx-thread-sub${typingNames.length ? " is-typing" : ""}`}>
@@ -392,16 +420,17 @@ export default function ChatThread({
         {thread && (
           <div className="mx-thread-actions">
             {canAct && !thread.direct?.blockedByMe && !thread.direct?.blockedMe && (
-              <>
-                <button type="button" className="mx-head-btn" aria-label="Start a voice call" title="Voice call (Stayblz Paddock)" disabled={calling} onClick={() => onCall(false)}>
-                  <PhoneIcon size={16} />
-                  <span>Call</span>
-                </button>
-                <button type="button" className="mx-head-btn" aria-label="Start a video call" title="Video call (Stayblz Paddock)" disabled={calling} onClick={() => onCall(true)}>
-                  <VideoIcon size={17} />
-                  <span>Video</span>
-                </button>
-              </>
+              <button
+                type="button"
+                className="mx-head-btn is-paddock"
+                aria-label="Start a Paddock for this chat"
+                title="Start a Paddock: a video meeting for this chat (you can share its link)"
+                disabled={calling}
+                onClick={() => onCall(true)}
+              >
+                <VideoIcon size={17} />
+                <span>{calling ? "Starting…" : "Paddock"}</span>
+              </button>
             )}
             <button type="button" className="mx-head-btn is-info" aria-label="Chat info" aria-pressed={infoOpen} title="Chat info" onClick={onInfo}>
               <InfoIcon size={17} />
@@ -413,6 +442,7 @@ export default function ChatThread({
 
       {searching && thread && (
         <ThreadSearch
+          initialQuery={searchStart}
           search={(q, signal) => state.searchIn(q, signal)}
           onHighlight={setHighlight}
           onPick={async (id) => {
@@ -425,6 +455,7 @@ export default function ChatThread({
           }}
           onClose={() => {
             setSearching(false);
+            setSearchStart("");
             setHighlight("");
           }}
         />
@@ -496,7 +527,7 @@ export default function ChatThread({
                   </button>
                 ) : (
                   <div className="mx-intro">
-                    <ChatAvatar c={thread} size="lg" active={false} />
+                    <ChatAvatar c={thread} size="lg" presence={null} />
                     <div className="mx-intro-text">
                       <span className="mx-intro-kicker">{group ? "Group chat" : mode === "team" ? "Team chat" : "Private chat"}</span>
                       <p className="mx-intro-name">{thread.title}</p>
@@ -637,7 +668,9 @@ export default function ChatThread({
               setReply(null);
               requestAnimationFrame(() => toBottom());
             }}
-            onCall={onCall}
+            onPaddock={() => onCall(true)}
+            onCommand={onCommand}
+            group={group}
             onTyping={state.typing}
             onError={setNotice}
             replyTo={reply}
@@ -658,12 +691,19 @@ export default function ChatThread({
       {/* Dialogs go to <body>: this glass card's blur would otherwise trap them inside it. */}
       {createPortal(
         <>
-      {viewer && viewer.m.attachment && (
-        <Lightbox
-          url={viewer.url}
-          name={viewer.m.attachment.name}
+      {viewer && (
+        <MediaViewer
+          items={viewerList}
+          startId={viewer.id}
+          fileLoader={fileLoader}
           onClose={() => setViewer(null)}
-          onDownload={() => download(viewer.m)}
+          onDownload={download}
+          onShowInChat={(m) => {
+            setViewer(null);
+            requestAnimationFrame(() => {
+              if (!jump(m.id)) setNotice("That message is further back. Scroll up to load more.");
+            });
+          }}
         />
       )}
       {sheet && (
@@ -702,7 +742,7 @@ export default function ChatThread({
             if (!jump(id)) setNotice("That message is further back. Scroll up to load more.");
           }}
           onUnpin={(id) => void pin(id, false)}
-          onOpenImage={(m, url) => setViewer({ m, url })}
+          onOpenImage={(m) => setViewer(m)}
           onError={setNotice}
           onClose={() => setPinsOpen(false)}
         />

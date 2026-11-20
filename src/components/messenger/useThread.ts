@@ -7,7 +7,13 @@ import { useOutbox } from "./useOutbox";
 
 export { mergeMessages, normalizeThread, previewOf, toggleReaction } from "./threadModel";
 
-/** Poll quickly while a conversation is active, slower when it goes quiet, never while hidden. */
+/**
+ * Newer servers: long-poll — the server holds each request until something in the chat changes (a message, Seen,
+ * Delivered, typing…) or LONG_POLL_S passes, and the next one starts right away. Older servers: poll quickly while
+ * a conversation is active, slower when it goes quiet. Never while the tab is hidden.
+ */
+const LONG_POLL_S = 15;
+const MIN_GAP_MS = 400;
 const FAST_MS = 4_000;
 const SLOW_MS = 12_000;
 const QUIET_AFTER_MS = 2 * 60_000;
@@ -52,6 +58,8 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
   const [reloadKey, setReloadKey] = useState(0);
   const visible = useDocumentVisible();
   const since = useRef<string | null>(null);
+  /** The chat's live version from the server (null = an older server: plain polling). */
+  const version = useRef<number | null>(null);
   const activity = useRef(Date.now());
   const readFor = useRef<string | null>(null);
   const typingSent = useRef(0);
@@ -103,6 +111,7 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
     setNotice("");
     setSyncTrouble(false);
     since.current = null;
+    version.current = null;
     readFor.current = null;
     if (!id) {
       setStatus("idle");
@@ -118,6 +127,7 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
         setThread(c);
         setBefore(data.before ?? null);
         since.current = data.now ?? null;
+        version.current = typeof data.v === "number" ? data.v : null;
         activity.current = Date.now();
         // Already read: don't spend a write on it.
         if (!c.unread) readFor.current = lastFromOthers(c.messages)?.id ?? null;
@@ -135,7 +145,7 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
     return () => controller.abort();
   }, [chatApi, id, reloadKey]);
 
-  // Poll for new and changed messages while this chat is open and the tab is visible.
+  // Follow new and changed messages while this chat is open and the tab is visible.
   useEffect(() => {
     if (!id || status !== "ready" || !visible) return;
     let stopped = false;
@@ -143,20 +153,31 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
     let timer = 0;
     let controller: AbortController | null = null;
     const delay = () =>
-      failures ? Math.min(30_000, 8_000 * failures) : Date.now() - activity.current < QUIET_AFTER_MS ? FAST_MS : SLOW_MS;
+      failures
+        ? Math.min(30_000, 4_000 * 2 ** Math.min(failures - 1, 3))
+        : version.current !== null
+          ? 0
+          : Date.now() - activity.current < QUIET_AFTER_MS
+            ? FAST_MS
+            : SLOW_MS;
     const schedule = (ms: number) => {
       window.clearTimeout(timer);
       if (!stopped) timer = window.setTimeout(tick, ms);
     };
     async function tick() {
       if (stopped || !since.current) return;
-      controller = new AbortController();
+      controller?.abort();
+      const mine = new AbortController();
+      controller = mine;
+      const started = Date.now();
+      const live = version.current !== null;
       try {
-        const data = await chatApi.updates(id!, since.current, controller.signal);
-        if (stopped) return;
+        const data = await chatApi.updates(id!, since.current, { signal: mine.signal, v: version.current, wait: live ? LONG_POLL_S : 0 });
+        if (stopped || mine.signal.aborted) return;
         failures = 0;
         setSyncTrouble(false);
         since.current = data.now ?? since.current;
+        version.current = typeof data.v === "number" ? data.v : null;
         const { messages: changed, ...meta } = normalizeThread(data.conversation);
         if (meta.typing.length) activity.current = Date.now();
         setThread((old) => {
@@ -165,20 +186,24 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
           if (changed.some((m) => !known.has(m.id))) activity.current = Date.now();
           return { ...old, ...meta, messages: mergeMessages(old.messages, changed) };
         });
-        if (changed.length) callbacks.current.onPreview(previewOf({ ...meta, messages: [] }));
+        // Keep the chat list in step (including the other person's Online / Away / Offline in one-to-one chats).
+        callbacks.current.onPreview(previewOf({ ...meta, messages: [] }));
       } catch (reason) {
-        if (stopped) return;
+        if (stopped || mine.signal.aborted) return; // replaced by a newer request
         if (reason instanceof ApiError && reason.status === 404) {
           setStatus("missing");
           return;
         }
         failures++;
+        version.current = null; // after trouble, start again with one quick check before waiting
         if (failures >= 2) setSyncTrouble(true);
+        return schedule(delay());
       }
-      schedule(delay());
+      schedule(live ? Math.max(0, MIN_GAP_MS - (Date.now() - started)) : delay());
     }
     const wake = () => {
       activity.current = Date.now();
+      controller?.abort();
       schedule(0);
     };
     window.addEventListener("focus", wake);

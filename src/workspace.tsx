@@ -127,7 +127,7 @@ export function useStableApi() {
   return useMemo(() => {
     const headers = { "X-Stayblz-Stable": active?.id ?? "" };
     return {
-      get: <T,>(path: string, options?: { signal?: AbortSignal }) =>
+      get: <T,>(path: string, options?: { signal?: AbortSignal; longPoll?: boolean }) =>
         api.get<T>(path, { ...options, headers }),
       post: <T,>(path: string, body?: unknown) =>
         api.post<T>(path, body, { headers }),

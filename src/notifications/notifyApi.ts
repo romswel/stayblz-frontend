@@ -86,6 +86,8 @@ export interface UnreadAnswer {
   alerts?: ChatAlert[];
   alertsUnread?: number | null;
   now?: string;
+  /** Your live version (newer servers): send it back as `uv` with `wait` to long-poll. */
+  uv?: number;
 }
 
 export const notifyApi = {

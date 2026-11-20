@@ -101,6 +101,8 @@ export interface ChatPreview {
   folderId?: string | null;
   /** The other person is on Stayblz Chat right now (one-to-one chats). */
   active?: boolean;
+  /** One-to-one chats: Online / Away / Offline (null when either of you hides it; missing on older servers). */
+  presence?: Presence | null;
   /** Group photo version (members-only file), or null. */
   photo?: string | null;
 }
@@ -111,8 +113,11 @@ export interface ChatMember {
   pending: boolean;
   admin?: boolean;
   active?: boolean;
+  presence?: Presence | null;
   seenAt?: string | null;
 }
+/** online = using Stayblz now; away = open but idle (or a few minutes ago); offline = gone a while. */
+export type Presence = "online" | "away" | "offline";
 export interface ChatRead {
   id: string;
   name?: string;
@@ -138,6 +143,8 @@ export interface ThreadResponse {
   conversation: ChatThread;
   before: string | null;
   now: string;
+  /** The chat's live version (newer servers): send it back to long-poll for changes. */
+  v?: number;
 }
 export interface UnreadCounts {
   personal: number;
@@ -173,6 +180,11 @@ export interface Person {
   role?: string;
   status?: FriendStatus;
   active?: boolean;
+  presence?: Presence | null;
+  seenAt?: string | null;
+  /** People list: how many chats you share, and when one of them last had a message. */
+  sharedChats?: number;
+  lastAt?: string | null;
 }
 export interface ChatProfile {
   discoverable: boolean;

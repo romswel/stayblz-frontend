@@ -4,7 +4,8 @@ import AttachmentView from "./AttachmentView";
 import LinkCards from "./LinkCards";
 import ListingMessageCard from "./ListingMessageCard";
 import EmojiPicker from "./EmojiPicker";
-import { clock, dayLabel, firstName, fullTime, linkify, tone } from "./format";
+import { chatMarks, gifUrl, renderChat } from "./chatMarkdown";
+import { clock, dayLabel, firstName, fullTime, tone } from "./format";
 import {
   Avatar,
   CopyIcon,
@@ -27,8 +28,8 @@ import { QUICK_REACTION, REACTIONS, type ChatMessage, type DeliveryStatus } from
 
 /** One to three emoji and nothing else are shown large, without a bubble. */
 const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*){1,3}$/u;
-/** The message a chat call posts (see callLink.ts). */
-const CALL_MESSAGE = /^(📹|📞) (Video|Voice) call on Stayblz Paddock[^:]*: \S*\/paddock\/([a-z]{4}-[a-z]{4})\s*$/u;
+/** The message a chat's Paddock posts (see callLink.ts; older ones say "Video call" / "Voice call"). */
+const CALL_MESSAGE = /^(📹|📞) (?:(Video|Voice) call on Stayblz Paddock|Paddock)[^:]*: \S*\/paddock\/([a-z]{4}-[a-z]{4})\s*$/u;
 
 export interface Who {
   id?: string | null;
@@ -111,7 +112,10 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
   const emojiOnly = !m.removed && !m.attachment && EMOJI_ONLY.test(m.body.trim());
   const call = !m.removed && !m.attachment ? CALL_MESSAGE.exec(m.body.trim()) : null;
   const loader = h.fileLoader(m);
-  const media = !!m.attachment && !m.body && /^(image|video)\//.test(m.attachment.type);
+  const gif = !m.removed && !m.attachment ? gifUrl(m.body) : null;
+  const media = (!!m.attachment && !m.body && /^(image|video)\//.test(m.attachment.type)) || !!gif;
+  // "@highlight" → the whole message stands out; "/me waves" → "Ann waves".
+  const marks = chatMarks(m.body);
 
   const menu: MenuEntry[] = [
     ...(canEdit ? [{ label: "Edit", icon: <EditIcon />, onSelect: () => h.onEdit(m) }] : []),
@@ -136,8 +140,13 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
         ? "In reply to an earlier message"
         : `In reply to ${firstName(m.replyTo.from)}`;
   }
+  // Groups: "@Your Name" or "@everyone" makes the message stand out for you.
   const mentionsMe =
-    !!mentions && !!meName && !m.mine && !m.removed && m.body.toLowerCase().includes(`@${meName.toLowerCase()}`);
+    !!mentions &&
+    !!meName &&
+    !m.mine &&
+    !m.removed &&
+    (m.body.toLowerCase().includes(`@${meName.toLowerCase()}`) || /(^|[^\w.@])@everyone(?![\w])/i.test(m.body));
 
   function quickReact() {
     if (!actionable) return;
@@ -215,7 +224,7 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
       id={`msg-${m.id}`}
       className={`mx-row is-${side}${first ? " is-first" : ""}${last ? " is-last" : ""}${fresh ? " is-new" : ""}${
         m.reactions.length ? " has-reacts" : ""
-      }${menuAt ? " is-menu" : ""}${mentionsMe ? " is-mention" : ""}`}
+      }${menuAt ? " is-menu" : ""}${mentionsMe ? " is-mention" : ""}${marks.highlight && !m.removed ? " is-highlight" : ""}`}
       data-tone={m.mine ? undefined : tone(m.senderId || m.from)}
     >
       {!m.mine && <span className="mx-row-av">{last && <Avatar name={m.from} id={m.senderId} size="sm" />}</span>}
@@ -272,9 +281,9 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
                 <em>{m.mine ? "You removed a message" : `${firstName(m.from)} removed a message`}</em>
               ) : call ? (
                 <span className="mx-call">
-                  <span className="mx-call-icon">{call[2] === "Video" ? <VideoIcon size={20} /> : <PhoneIcon size={18} />}</span>
+                  <span className="mx-call-icon">{call[2] === "Voice" ? <PhoneIcon size={18} /> : <VideoIcon size={20} />}</span>
                   <span className="mx-call-text">
-                    <strong>{call[2]} call</strong>
+                    <strong>{call[2] ? `${call[2]} call` : "Paddock"}</strong>
                     <small>Stayblz Paddock · {clock(m.sentAt)}</small>
                   </span>
                   <Link className="mx-call-join" to={`/paddock/${call[3]}`}>
@@ -294,9 +303,32 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
                       onError={h.onError}
                     />
                   )}
+<<<<<<< HEAD
                   {m.body && <span className="mx-text">{linkify(m.body, highlight, mentions)}</span>}
                   {m.body && <LinkCards text={m.body} />}
                   {m.listing && <ListingMessageCard listing={m.listing} />}
+=======
+                  {gif ? (
+                    <button type="button" className="mx-gif" aria-label="GIF. Open larger" onClick={() => h.onOpenImage(m, gif)}>
+                      <img src={gif} alt="GIF" loading="lazy" decoding="async" referrerPolicy="no-referrer" draggable={false} />
+                      <span className="mx-gif-tag" aria-hidden="true">GIF</span>
+                    </button>
+                  ) : (
+                    m.body && (
+                      <div className={`mx-text${marks.me ? " is-action" : ""}`}>
+                        {marks.highlight && (
+                          <span className="mx-highlight-tag">
+                            <StarGlyph /> Highlight
+                          </span>
+                        )}
+                        {/* "/me is saddling up" reads "Rae is saddling up" for everyone, you included. */}
+                        {marks.me && <strong className="mx-action-who">{firstName(m.from)} </strong>}
+                        {renderChat(marks.text, { highlight, mentions })}
+                      </div>
+                    )
+                  )}
+                  {m.body && !gif && <LinkCards text={m.body} />}
+>>>>>>> main
                   {m.edited && <span className="mx-edited">Edited</span>}
                 </>
               )}
@@ -426,3 +458,9 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
   );
 }
 export default memo(MessageRow);
+
+const StarGlyph = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 2.8l2.8 5.8 6.4.9-4.6 4.5 1.1 6.3L12 17.3l-5.7 3 1.1-6.3L2.8 9.5l6.4-.9z" />
+  </svg>
+);

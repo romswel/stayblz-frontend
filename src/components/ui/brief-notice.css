@@ -1,0 +1,121 @@
+/* BriefNotice: a small glass card that slides in at the bottom corner for a few seconds (BriefNotice.tsx). */
+.brief-notice {
+  position: fixed;
+  left: max(16px, var(--safe-left, 0px));
+  bottom: calc(16px + var(--safe-bottom, 0px));
+  z-index: 70;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: min(380px, calc(100vw - 32px));
+  padding: 11px 8px 13px 13px;
+  overflow: hidden;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 16px;
+  background: var(--gx-surface-strong);
+  -webkit-backdrop-filter: var(--gx-blur);
+  backdrop-filter: var(--gx-blur);
+  box-shadow: var(--gx-shadow-lg);
+  color: var(--gx-text-2);
+  font: 13px/1.45 "Archivo", system-ui, sans-serif;
+  animation: brief-in 0.26s var(--gx-ease) both;
+}
+.brief-notice.is-leaving {
+  animation: brief-out 0.22s ease both;
+}
+.brief-notice p {
+  flex: 1;
+  margin: 1px 0 0;
+}
+.brief-notice strong {
+  color: var(--gx-text);
+}
+.brief-notice a,
+.brief-notice .brief-notice-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gx-accent);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.brief-notice-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--gx-warn) 14%, transparent);
+  color: var(--gx-warn);
+}
+.brief-notice-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: -4px 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--gx-muted);
+  cursor: pointer;
+}
+.brief-notice-close:hover {
+  background: var(--gx-hover);
+  color: var(--gx-text);
+}
+/* How long until it goes: a thin line along the bottom that runs out (paused while you hover it). */
+.brief-notice-timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gx-accent), var(--gx-accent-2));
+  transform-origin: left;
+  animation: brief-timer linear both;
+  opacity: 0.7;
+}
+.brief-notice:hover .brief-notice-timer,
+.brief-notice:focus-within .brief-notice-timer {
+  animation-play-state: paused;
+}
+@keyframes brief-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+}
+@keyframes brief-out {
+  to { opacity: 0; transform: translateY(10px); }
+}
+@keyframes brief-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+/* Phones: above the bottom tab bar, full width. */
+@media (max-width: 900px) {
+  .brief-notice {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    bottom: calc(88px + var(--safe-bottom, 0px));
+  }
+  html.kb-open .brief-notice {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brief-notice,
+  .brief-notice.is-leaving,
+  .brief-notice-timer {
+    animation: none;
+  }
+}
+@media print {
+  .brief-notice {
+    display: none;
+  }
+}

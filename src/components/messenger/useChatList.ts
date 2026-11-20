@@ -61,11 +61,20 @@ export function useChatList(chatApi: ChatApi) {
       if (!document.hidden) void load(controller.signal);
     };
     const timer = window.setInterval(refresh, LIST_POLL_MS);
+    // The site-wide poll saw something new (a message in another chat, a request…): refresh now.
+    let soon = 0;
+    const activity = () => {
+      window.clearTimeout(soon);
+      soon = window.setTimeout(refresh, 250);
+    };
     document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("stayblz:chat-activity", activity);
     return () => {
       controller.abort();
       window.clearInterval(timer);
+      window.clearTimeout(soon);
       document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("stayblz:chat-activity", activity);
     };
   }, [load]);
 
@@ -73,9 +82,13 @@ export function useChatList(chatApi: ChatApi) {
     setStatus((s) => (s === "error" ? "loading" : s));
     void load();
   }, [load]);
-  /** Add or replace one chat (e.g. after opening or starting it). */
+  /** Add or update one chat (e.g. after opening or starting it). Fields the update doesn't carry are kept. */
   const upsert = useCallback(
-    (preview: ChatPreview) => setItems((old) => byNewest([preview, ...old.filter((c) => c.id !== preview.id)])),
+    (preview: ChatPreview) =>
+      setItems((old) => {
+        const before = old.find((c) => c.id === preview.id);
+        return byNewest([{ ...before, ...preview }, ...old.filter((c) => c.id !== preview.id)]);
+      }),
     [],
   );
   const patch = useCallback(

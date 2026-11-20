@@ -68,17 +68,19 @@ test("chat info: mute for a while, media/files/links, and voice clips play from 
   await expect(info.getByRole("button", { name: "Privacy & support" })).toBeVisible();
 });
 
-test("calls start a Stayblz Paddock meeting with the chat invited and post the link", async ({ page }) => {
+test("one Paddock button starts a video meeting for the chat, with everyone invited and the link posted", async ({ page }) => {
   const server = await fakeServer(page);
   await page.goto(`/messages/${ANN}`);
-  await page.getByRole("button", { name: "Start a video call" }).click();
+  // One button (video icon): no separate voice and video calls any more.
+  await expect(page.getByRole("button", { name: "Start a voice call" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Start a Paddock for this chat" }).click();
   await expect(page).toHaveURL(/\/paddock\/abcd-efgh$/);
   expect(server.meetings).toBe(1);
   const sent = server.threads[ANN].messages.at(-1)!;
-  expect(sent.body).toMatch(/^📹 Video call on Stayblz Paddock — tap to join: http.*\/paddock\/abcd-efgh$/);
-  // The call shows as a card with a Join button in the chat.
+  expect(sent.body).toMatch(/^📹 Paddock started for this chat — tap to join: http.*\/paddock\/abcd-efgh$/);
+  // It shows as a Paddock card with a Join button in the chat.
   await page.goto(`/messages/${ANN}`);
-  await expect(row(page, "Video call").getByRole("link", { name: "Join" })).toHaveAttribute("href", "/paddock/abcd-efgh");
+  await expect(row(page, "Paddock").getByRole("link", { name: "Join" })).toHaveAttribute("href", "/paddock/abcd-efgh");
 });
 
 test("group chats: two faces for a group, 'Bo: …' previews, group photo upload", async ({ page }) => {

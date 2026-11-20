@@ -231,6 +231,8 @@ test("Stable workspace → Virtual Stayblz is shared: calls carry the stable hea
   await page.getByRole("button", { name: "+ Add horse" }).click();
   const dialog = page.getByRole("dialog", { name: "Add a horse to Virtual Stayblz" });
   await dialog.getByLabel("Search horses shared by Stayblz members").fill("midnight");
+  // The search is debounced: wait for the filtered list (one horse, one Add) before clicking.
+  await expect(dialog.getByRole("button", { name: "Add" })).toHaveCount(1);
   await expect(dialog.getByText("Dusty Quarter")).toBeHidden();
   await dialog.getByRole("button", { name: "Add" }).click();
   await expect(dialog).toBeHidden();
