@@ -1,0 +1,290 @@
+/* ==========================================================================
+   Virtual Stayblz (vs-): tracked horses, entries, public horses, add buttons.
+   Uses the glass tokens (--gx-*) so it follows both themes. Works from 320px wide.
+   ========================================================================== */
+
+.vs { display: grid; gap: 16px; min-width: 0; }
+.vs-page .vs-panel { padding: clamp(14px, 3vw, 24px); }
+.vs-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.vs-kicker {
+  font-size: 0.7rem; font-weight: 750; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gx-accent);
+}
+.vs-intro p { margin: 4px 0 0; color: var(--gx-muted); max-width: 70ch; }
+.vs-muted { color: var(--gx-muted); font-size: 0.88rem; margin: 0; }
+.vs-foot { margin-top: 8px; font-size: 0.8rem; }
+.vs-notice, .vs-ok {
+  margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 0.88rem;
+  border: 1px solid var(--gx-border); background: var(--gx-field);
+}
+.vs-ok { border-color: var(--green-line); color: var(--green-ink); background: var(--green-tint); }
+.vs-error-inline { color: var(--gx-danger, var(--danger)); font-size: 0.82rem; flex-basis: 100%; margin: 0; }
+
+/* ---------- Buttons ---------- */
+.vs-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 38px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid var(--gx-border-strong); background: var(--gx-field-strong); color: var(--gx-text);
+  font: inherit; font-size: 0.85rem; font-weight: 650; text-decoration: none; cursor: pointer;
+  white-space: nowrap; transition: background-color 0.15s ease, filter 0.15s ease, transform 0.15s ease;
+}
+.vs-btn:hover { background: var(--gx-hover); }
+.vs-btn:active { transform: scale(0.97); }
+.vs-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+.vs-btn-primary {
+  border-color: transparent; color: var(--gx-accent-ink);
+  background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2, var(--gx-accent)));
+}
+.vs-btn-primary:hover { background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2, var(--gx-accent))); filter: brightness(1.08); }
+.vs-btn.is-danger { color: var(--danger-ink); border-color: var(--danger-line); }
+.vs-btn.is-danger:hover { background: var(--danger-tint); }
+.vs-link {
+  border: 0; background: none; padding: 4px 2px; font: inherit; font-size: 0.82rem; font-weight: 650;
+  color: var(--gx-accent); cursor: pointer;
+}
+.vs-link.is-danger { color: var(--danger-ink); }
+.vs-back {
+  justify-self: start; border: 0; background: none; padding: 4px 0; font: inherit; font-weight: 650;
+  color: var(--gx-accent); cursor: pointer;
+}
+
+/* ---------- Segmented tabs ---------- */
+.vs-seg {
+  display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px;
+  border: 1px solid var(--gx-border); background: var(--gx-field); width: fit-content; max-width: 100%;
+}
+.vs-seg-btn {
+  flex: 1 1 auto; min-height: 34px; padding: 0 12px; border: 0; border-radius: 9px; background: none;
+  color: var(--gx-muted); font: inherit; font-size: 0.85rem; font-weight: 650; cursor: pointer;
+}
+.vs-seg-btn[aria-selected="true"], .vs-seg-btn[aria-checked="true"] {
+  background: var(--gx-surface-strong, var(--surface)); color: var(--gx-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- Toolbar, fields ---------- */
+.vs-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.vs-toolbar > .vs-btn:only-child { margin-left: auto; }
+.vs-filter { flex: 1 1 200px; max-width: 360px; }
+.vs-field { display: grid; gap: 5px; min-width: 0; }
+.vs-field > span { font-size: 0.78rem; font-weight: 650; color: var(--gx-muted); }
+.vs-field input, .vs-field select, .vs-field textarea {
+  width: 100%; min-width: 0; box-sizing: border-box; padding: 9px 11px; border-radius: 10px;
+  border: 1px solid var(--gx-border-strong); background: var(--gx-field); color: var(--gx-text); font: inherit;
+}
+.vs-field textarea { resize: vertical; }
+.vs-form { display: grid; gap: 14px; }
+.vs-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); }
+.vs-form-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+/* ---------- Cards ---------- */
+.vs-cards {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+}
+.vs-card {
+  display: flex; gap: 12px; width: 100%; height: 100%; padding: 12px; text-align: left; cursor: pointer;
+  border: 1px solid var(--gx-border); border-radius: 14px; background: var(--gx-field); color: var(--gx-text); font: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.vs-card:hover { border-color: var(--gx-accent); background: var(--gx-hover); }
+.vs-card-body { display: grid; gap: 3px; min-width: 0; align-content: start; }
+.vs-card-body strong { font-size: 1rem; overflow-wrap: anywhere; }
+.vs-card-body small { color: var(--gx-muted); font-size: 0.8rem; overflow-wrap: anywhere; }
+.vs-card-stats { font-family: var(--gx-mono, var(--mono)); }
+.vs-avatar {
+  flex: none; width: 56px; height: 56px; border-radius: 12px; overflow: hidden; display: grid; place-items: center;
+  background: var(--gx-accent-soft, var(--gold-tint)); color: var(--gx-accent); font-weight: 800; letter-spacing: 0.04em;
+}
+.vs-avatar.is-lg { width: 88px; height: 88px; border-radius: 16px; font-size: 1.4rem; }
+.vs-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.vs-badge {
+  justify-self: start; padding: 2px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 750;
+  letter-spacing: 0.04em; text-transform: uppercase; border: 1px solid var(--gx-border-strong); color: var(--gx-muted);
+}
+.vs-badge.is-community { color: var(--gx-accent); border-color: var(--gx-accent); }
+.vs-badge.is-racing { color: var(--amber); border-color: currentColor; }
+.vs-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.vs-chips span {
+  padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 650;
+  background: var(--gx-accent-soft, var(--gold-tint)); color: var(--gx-text);
+}
+.vs-chips .is-quiet { background: none; color: var(--gx-muted); padding-left: 0; }
+.vs-empty { padding: 24px 16px; text-align: center; border: 1px dashed var(--gx-border-strong); border-radius: 14px; }
+.vs-empty h3 { margin: 0 0 6px; }
+.vs-empty p { margin: 0 auto; max-width: 52ch; color: var(--gx-muted); }
+.vs-more { display: flex; justify-content: center; }
+
+/* ---------- Public horses: filters + list ---------- */
+.vs-public { display: grid; gap: 12px; min-width: 0; }
+.vs-pfilters { display: grid; gap: 10px; }
+.vs-psearch { display: flex; gap: 8px; align-items: end; }
+.vs-grow { flex: 1 1 auto; }
+.vs-pfilter-toggle { display: none; }
+.vs-pfilter-grid {
+  display: grid; gap: 10px; align-items: end;
+  grid-template-columns: minmax(150px, 1.4fr) repeat(2, minmax(110px, 1fr)) repeat(2, minmax(90px, 0.7fr)) auto auto;
+}
+.vs-field input[aria-invalid] { border-color: var(--danger-line); }
+.vs-check { display: inline-flex; gap: 8px; align-items: center; min-height: 40px; font-size: 0.86rem; font-weight: 650; white-space: nowrap; }
+.vs-check input { width: 18px; height: 18px; accent-color: var(--gx-accent); }
+.vs-pclear { min-height: 40px; white-space: nowrap; }
+
+.vs-plist { display: grid; border: 1px solid var(--gx-border); border-radius: 14px; overflow: hidden; min-width: 0; }
+.vs-prow {
+  display: grid; gap: 4px 12px; align-items: center; padding: 10px 14px; min-width: 0;
+  grid-template-columns: minmax(190px, 2.2fr) minmax(90px, 1fr) minmax(90px, 1fr) minmax(90px, 0.9fr) minmax(80px, 0.8fr) minmax(70px, 0.8fr) minmax(90px, 1fr) auto;
+  border-top: 1px solid var(--gx-border); font-size: 0.86rem;
+}
+.vs-prow:first-child { border-top: 0; }
+.vs-prow:not(.vs-phead):hover { background: var(--gx-hover); }
+.vs-phead {
+  background: var(--gx-field); font-size: 0.7rem; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gx-muted);
+}
+.vs-prow > [role="cell"] { min-width: 0; overflow-wrap: anywhere; }
+.vs-pname {
+  display: flex; gap: 10px; align-items: center; width: 100%; padding: 0; border: 0; background: none;
+  color: var(--gx-text); font: inherit; text-align: left; cursor: pointer;
+}
+.vs-pname:hover strong { color: var(--gx-accent); text-decoration: underline; }
+.vs-mono { font-family: var(--gx-mono, var(--mono)); font-size: 0.82rem; }
+.vs-status {
+  display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+  border: 1px solid var(--gx-border-strong); color: var(--gx-muted); white-space: nowrap;
+}
+.vs-status.is-racing, .vs-status.is-training { color: var(--gx-accent); border-color: var(--gx-accent); }
+.vs-status.is-for_sale { color: var(--amber); border-color: currentColor; }
+.vs-status.is-injured { color: var(--danger-ink); border-color: var(--danger-line); }
+/* The track button sits in the last column; its panel opens on a full-width line under the row. */
+.vs-pcell-track, .vs-pcell-track .vs-add { display: contents; }
+.vs-prow .vs-add-toggle { justify-self: end; min-height: 34px; padding: 0 12px; }
+.vs-prow .vs-add-panel { grid-column: 1 / -1; margin-top: 6px; }
+
+@media (max-width: 1100px) {
+  .vs-pfilter-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+}
+@media (max-width: 900px) {
+  .vs-phead { display: none; }
+  .vs-prow { grid-template-columns: 1fr 1fr; gap: 6px 14px; padding: 12px; }
+  .vs-pcell-horse { grid-column: 1 / -1; }
+  .vs-prow > [data-label]::before {
+    content: attr(data-label); display: block; font-size: 0.68rem; font-weight: 750; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--gx-muted);
+  }
+  .vs-prow .vs-add-toggle { grid-column: 1 / -1; justify-self: stretch; margin-top: 4px; }
+}
+@media (max-width: 720px) {
+  .vs-pfilter-toggle { display: inline-flex; }
+  .vs-pfilter-grid { display: none; }
+  .vs-pfilter-grid[data-open] { display: grid; grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------- Detail ---------- */
+.vs-detail { display: grid; gap: 14px; min-width: 0; }
+.vs-detail-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.vs-detail-title { flex: 1 1 240px; min-width: 0; display: grid; gap: 4px; }
+.vs-detail-title h2 { margin: 0; font-size: clamp(1.4rem, 4vw, 1.9rem); overflow-wrap: anywhere; }
+.vs-detail-title p { margin: 0; color: var(--gx-muted); }
+.vs-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.vs-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 6px 0 0; }
+.vs-facts div { display: flex; gap: 6px; font-size: 0.86rem; min-width: 0; }
+.vs-facts dt { color: var(--gx-muted); }
+.vs-facts dd { margin: 0; overflow-wrap: anywhere; }
+
+.vs-sections {
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin;
+  border-bottom: 1px solid var(--gx-border);
+}
+.vs-section-btn {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border: 0;
+  border-bottom: 2px solid transparent; background: none; color: var(--gx-muted);
+  font: inherit; font-size: 0.88rem; font-weight: 650; cursor: pointer;
+}
+.vs-section-btn[aria-pressed="true"] { color: var(--gx-text); border-bottom-color: var(--gx-accent); }
+.vs-count {
+  min-width: 20px; padding: 0 6px; border-radius: 999px; font-size: 0.72rem; line-height: 20px; text-align: center;
+  background: var(--gx-accent-soft, var(--gold-tint)); color: var(--gx-text);
+}
+.vs-section { display: grid; gap: 16px; min-width: 0; }
+.vs-live, .vs-block { display: grid; gap: 10px; min-width: 0; }
+.vs-live { padding: 14px; border-radius: 14px; border: 1px solid var(--gx-border); background: var(--gx-field); }
+.vs-live h3, .vs-block h3 { margin: 0; font-size: 1rem; }
+.vs-live h3 small { font-weight: 500; color: var(--gx-muted); font-size: 0.78rem; margin-left: 6px; }
+.vs-block-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.vs-stats {
+  display: grid; gap: 8px; margin: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 120px), 1fr));
+}
+.vs-stats div { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--gx-border); min-width: 0; }
+.vs-stats dt { font-size: 0.72rem; color: var(--gx-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.vs-stats dd { margin: 4px 0 0; font-weight: 750; font-family: var(--gx-mono, var(--mono)); overflow-wrap: anywhere; }
+.vs-table-wrap { overflow-x: auto; max-width: 100%; }
+.vs-table { width: 100%; font-size: 0.85rem; }
+
+.vs-timeline, .vs-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.vs-timeline li { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.vs-timeline li > span:last-child { display: grid; min-width: 0; }
+.vs-timeline small { color: var(--gx-muted); font-size: 0.78rem; }
+.vs-timeline strong { overflow-wrap: anywhere; font-size: 0.9rem; }
+.vs-kind {
+  flex: none; min-width: 74px; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 750; text-align: center;
+  border: 1px solid var(--gx-border-strong); color: var(--gx-muted);
+}
+.vs-kind.is-race { color: var(--gx-accent); border-color: var(--gx-accent); }
+.vs-kind.is-sale { color: var(--amber); border-color: currentColor; }
+.vs-entry {
+  display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: space-between; align-items: flex-start;
+  padding: 12px; border-radius: 12px; border: 1px solid var(--gx-border); background: var(--gx-field); min-width: 0;
+}
+.vs-entry-main { display: grid; gap: 3px; flex: 1 1 220px; min-width: 0; }
+.vs-entry-main strong { overflow-wrap: anywhere; }
+.vs-entry-main small { color: var(--gx-muted); font-size: 0.8rem; }
+.vs-entry-main p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.9rem; }
+.vs-entry-date { font-size: 0.75rem; font-weight: 700; color: var(--gx-muted); font-family: var(--gx-mono, var(--mono)); }
+.vs-author { font-style: italic; }
+.vs-entry-actions { display: flex; gap: 8px; }
+
+/* ---------- Add dialog ---------- */
+.vs-dialog { width: min(640px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; display: grid; gap: 14px; box-sizing: border-box; }
+.vs-dialog .vs-seg { width: auto; }
+.vs-search { display: grid; gap: 10px; }
+.vs-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.vs-results li {
+  display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 12px; border: 1px solid var(--gx-border); min-width: 0;
+}
+.vs-thumb {
+  flex: none; width: 44px; height: 44px; border-radius: 10px; overflow: hidden; display: grid; place-items: center;
+  background: var(--gx-accent-soft, var(--gold-tint)); color: var(--gx-accent); font-weight: 800; font-size: 0.85rem;
+}
+.vs-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.vs-result-text { flex: 1; display: grid; min-width: 0; }
+.vs-result-text strong { overflow-wrap: anywhere; }
+.vs-result-text small { color: var(--gx-muted); font-size: 0.78rem; overflow-wrap: anywhere; }
+
+/* ---------- "Track in Virtual Stayblz" ---------- */
+.vs-add { display: grid; gap: 8px; min-width: 0; }
+.vs-add-toggle { justify-self: start; }
+.vs-add.is-compact .vs-add-toggle { width: 100%; }
+.vs-add-panel {
+  display: grid; gap: 8px; padding: 10px; border-radius: 12px;
+  border: 1px solid var(--gx-border-strong); background: var(--gx-field);
+}
+.vs-add-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; min-width: 0; }
+.vs-add-text { display: grid; min-width: 0; flex: 1 1 140px; }
+.vs-add-text strong { font-size: 0.88rem; overflow-wrap: anywhere; }
+.vs-add-text small { color: var(--gx-muted); font-size: 0.75rem; }
+.vs-add-done { display: inline-flex; gap: 10px; align-items: center; font-size: 0.85rem; font-weight: 650; color: var(--green-ink); }
+.vs-add-done a { color: var(--gx-accent); }
+.vs-add-foot { font-size: 0.78rem; }
+.cm-hv-track { margin: 4px 0; }
+.rc-head .vs-add, .cm-horse-identity .vs-add { margin-top: 6px; }
+
+@media (max-width: 480px) {
+  .vs-detail-actions { width: 100%; }
+  .vs-detail-actions .vs-btn { flex: 1 1 auto; }
+  .vs-avatar.is-lg { width: 64px; height: 64px; }
+  .vs-seg.vs-tabs { width: 100%; }
+}

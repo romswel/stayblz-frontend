@@ -16,6 +16,7 @@ const destinations = new Set([
   "/inventory",
   "/my-racing",
   "/workspace",
+  "/workspace/virtual",
   "/team-messages",
   "/paddock",
 ]);

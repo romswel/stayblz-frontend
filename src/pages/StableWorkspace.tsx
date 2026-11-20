@@ -29,6 +29,7 @@ export default function StableWorkspace() {
           ["/stables", "Stables & team"],
           ["/inventory", "Horse inventory"],
           ["/tracker", "Training & condition"],
+          ["/workspace/virtual", "Virtual Stayblz"],
           ["/team-messages", "Team messages"],
         ].map(([to, label]) => (
           <Link key={to} to={to}>

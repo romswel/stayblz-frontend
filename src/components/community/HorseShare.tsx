@@ -16,6 +16,7 @@ import {
   type Post,
 } from "./api";
 import { Avatar, FollowButton, Icon, StatusBadge } from "./ui";
+import AddToVirtualButton from "../virtual/AddToVirtualButton";
 
 type SharedHorse = NonNullable<Post["horse"]>;
 
@@ -246,7 +247,7 @@ export function HorseViewer({
   );
 }
 
-function HorseInfo({ horse }: { horse: HorseDetail }) {
+export function HorseInfo({ horse }: { horse: HorseDetail }) {
   const age = horse.foaledYear ? new Date().getFullYear() - horse.foaledYear : null;
   const s = horse.stats;
   const winRate = s.starts ? Math.round((s.wins / s.starts) * 100) : 0;
@@ -277,6 +278,12 @@ function HorseInfo({ horse }: { horse: HorseDetail }) {
         <div><dt>Win rate</dt><dd>{s.starts ? `${winRate}%` : "—"}</dd></div>
         <div><dt>Earnings</dt><dd className={s.earningsCents === null ? "is-hidden" : undefined}>{money(s.earningsCents, true)}</dd></div>
       </dl>
+
+      {!horse.owner.me && (
+        <section className="cm-hv-track">
+          <AddToVirtualButton target={{ communityHorseId: horse.id }} name={horse.name} />
+        </section>
+      )}
 
       {facts.length > 0 && (
         <section>

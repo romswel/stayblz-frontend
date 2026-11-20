@@ -13,6 +13,7 @@ import {
   type HorseDetail,
   type Post,
 } from "../components/community/api";
+import AddToVirtualButton from "../components/virtual/AddToVirtualButton";
 import { Avatar, Composer, Empty, FollowButton, Icon, PostCard, Skeletons, StatusBadge } from "../components/community/ui";
 import { HorseViewer } from "../components/community/HorseShare";
 
@@ -159,6 +160,7 @@ export default function HorseProfile() {
             </Link>
             {!horse.owner.me && <FollowButton personId={horse.owner.id} isFollowing={horse.owner.isFollowing} size="sm" />}
           </div>
+          {!horse.mine && <AddToVirtualButton target={{ communityHorseId: horse.id }} name={horse.name} />}
         </div>
       </section>
 
