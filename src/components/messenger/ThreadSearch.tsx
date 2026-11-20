@@ -9,13 +9,16 @@ export default function ThreadSearch({
   onPick,
   onHighlight,
   onClose,
+  initialQuery = "",
 }: {
   search: (q: string, signal: AbortSignal) => Promise<ChatMessage[]>;
   onPick: (id: string) => void;
   onHighlight: (q: string) => void;
   onClose: () => void;
+  /** Words to start with (e.g. from "/search words"). */
+  initialQuery?: string;
 }) {
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQuery);
   const [results, setResults] = useState<ChatMessage[] | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

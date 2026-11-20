@@ -59,11 +59,14 @@ export const friendly = {
 let refreshPending: Promise<boolean> | null = null;
 async function request<T>(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit & { longPoll?: boolean } = {},
   renewed = false,
 ): Promise<T> {
   const token = getToken();
-  const settle = netStatus.track();
+  // A long-poll waits on the server on purpose: it must never count as "slow" (the "Still working…" notice).
+  const { longPoll, ...init } = options;
+  options = init;
+  const settle = longPoll ? () => undefined : netStatus.track();
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
@@ -103,7 +106,7 @@ async function request<T>(
         .finally(() => {
           refreshPending = null;
         });
-    if (await refreshPending) return request<T>(path, options, true);
+    if (await refreshPending) return request<T>(path, { ...options, longPoll }, true);
   }
   let data: unknown;
   try {
@@ -218,9 +221,10 @@ export async function apiRaw(path: string, init: RequestInit = {}, renewed = fal
 }
 
 export const api = {
+  /** `longPoll`: the server holds this request until something changes (not counted as a slow request). */
   get: <T>(
     path: string,
-    options?: { signal?: AbortSignal; headers?: Record<string, string> },
+    options?: { signal?: AbortSignal; headers?: Record<string, string>; longPoll?: boolean },
   ) => request<T>(path, options),
   post: <T>(
     path: string,

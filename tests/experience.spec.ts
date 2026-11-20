@@ -123,16 +123,24 @@ test.describe("pages that can't be shown", () => {
 });
 
 test.describe("development preview notice", () => {
-  test("shows on public and signed-in pages and can be hidden for this visit", async ({ page }) => {
+  test("a brief corner notice (not a banner): shows once a day, goes by itself or with ×", async ({ page }) => {
     await api(page, null);
     await page.goto("/faq");
-    const notice = page.getByRole("note", { name: "Development preview" });
-    await expect(notice).toContainText("Expect bugs");
-    await notice.getByRole("button", { name: "Hide" }).click();
+    const notice = page.locator(".brief-notice");
+    await expect(notice).toContainText("Development preview.");
+    await expect(notice).toContainText("expect bugs");
+    await notice.getByRole("button", { name: "Dismiss" }).click();
     await expect(notice).toHaveCount(0);
+    // Already shown today: not again on the next page or visit.
     await page.reload();
-    await expect(page.getByRole("note", { name: "Development preview" })).toHaveCount(0);
+    await page.waitForTimeout(400);
+    await expect(page.locator(".brief-notice")).toHaveCount(0);
     await expect(page.getByText(/DEVELOPMENT PREVIEW/)).toBeVisible();
+    // A day later it shows again, then leaves on its own after a few seconds.
+    await page.evaluate(() => localStorage.setItem("stayblz.devNotice.shownAt", String(Date.now() - 2 * 86_400_000)));
+    await page.reload();
+    await expect(page.locator(".brief-notice")).toBeVisible();
+    await expect(page.locator(".brief-notice")).toHaveCount(0, { timeout: 12_000 });
   });
 });
 

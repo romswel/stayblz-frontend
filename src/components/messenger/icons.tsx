@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import AvatarFace from "../account/AvatarFace";
 import { initials, tone } from "./format";
-import type { DeliveryStatus } from "./types";
+import type { DeliveryStatus, Presence } from "./types";
 import "./avatar.css";
 
 const Svg = ({ children, size = 18, fill = "none" }: { children: ReactNode; size?: number; fill?: string }) => (
@@ -95,7 +95,10 @@ export const StopIcon = ({ size = 14 }: Sized) => (
 );
 export const TrashIcon = ({ size = 18 }: Sized) => <Svg size={size}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" /></Svg>;
 export const LinkIcon = ({ size = 16 }: Sized) => <Svg size={size}><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /></Svg>;
-/** A person's picture as a saddlecloth (rounded square: their profile photo, or initials), with an optional "active now" pip. */
+/**
+ * A person's picture as a saddlecloth (rounded square: their profile photo, or initials), with an optional presence
+ * pip: green = online, amber = away, grey ring = offline. `active` is the older on/off form (true = online).
+ */
 export function Avatar({
   name,
   id,
@@ -103,6 +106,7 @@ export function Avatar({
   people,
   size = "md",
   active = false,
+  presence,
   src = null,
 }: {
   name: string;
@@ -113,16 +117,19 @@ export function Avatar({
   people?: { id?: string | null; name: string }[];
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   active?: boolean;
+  presence?: Presence | null;
   /** A ready picture (e.g. a group photo) instead of looking one up. */
   src?: string | null;
 }) {
+  const state = presence ?? (active ? "online" : null);
+  const dot = state ? <i className={`mx-av-dot is-${state}`} /> : null;
   if (src) {
     return (
       <span className={`mx-av mx-av-${size}${group ? " is-group-photo" : ""}`} aria-hidden="true">
         <span className="mx-av-face">
           <img className="avatar-photo" src={src} alt="" decoding="async" draggable={false} />
         </span>
-        {active && <i className="mx-av-dot" />}
+        {dot}
       </span>
     );
   }
@@ -136,14 +143,14 @@ export function Avatar({
         <span className={`mx-av-face is-front mx-tone-${tone(pair[0].id || pair[0].name)}`}>
           <AvatarFace id={pair[0].id}>{initials(pair[0].name)}</AvatarFace>
         </span>
-        {active && <i className="mx-av-dot" />}
+        {dot}
       </span>
     );
   }
   return (
     <span className={`mx-av mx-av-${size} mx-tone-${tone(id || name)}${group ? " is-group" : ""}`} aria-hidden="true">
       <span className="mx-av-face">{group ? initials(name) : <AvatarFace id={id}>{initials(name)}</AvatarFace>}</span>
-      {active && <i className="mx-av-dot" />}
+      {dot}
     </span>
   );
 }

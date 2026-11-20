@@ -9,6 +9,7 @@ import { chime } from "./chime";
 import { allowedBy, fromIncoming, viewOf } from "./chatAlertView";
 import { isRacingAlert, notifyApi, type ChatAlert, type ChatAlertKind, type NotificationSettings, type PushInfo, type SettingsChange, type UnreadAnswer } from "./notifyApi";
 import { viewingChat } from "./viewing";
+import { onPresenceChange, presenceState } from "./presence";
 
 /**
  * Notifications for the whole site: Stayblz Chat (messages, mentions, replies, reactions, requests, friends, groups)
@@ -338,18 +339,34 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     let timer = 0;
     let soonTimer = 0;
     let since: string | null = null;
+    // Live version from the server (newer servers): while the page is in front, the poll waits on the server until
+    // something reaches you (up to 15 s), so badges, the bell and alerts follow within a moment.
+    let uv: number | null = null;
+    let failures = 0;
+    let inflight: AbortController | null = null;
     const seen = new Set<string>();
     const watchHidden = () => !!settingsRef.current?.enabled && readPermission() === "granted" && !pushOnRef.current;
-    const schedule = () => {
+    const schedule = (ms?: number) => {
       window.clearTimeout(timer);
-      if (!stopped) timer = window.setTimeout(load, document.hidden ? HIDDEN_MS : VISIBLE_MS);
+      if (!stopped) timer = window.setTimeout(load, ms ?? (document.hidden ? HIDDEN_MS : VISIBLE_MS));
     };
     async function load() {
       window.clearTimeout(timer);
       if (document.hidden && !watchHidden()) return schedule();
+      inflight?.abort();
+      const controller = new AbortController();
+      inflight = controller;
+      const started = Date.now();
+      const longPoll = !document.hidden && uv !== null && since !== null;
       try {
-        const data = await api.get<UnreadAnswer>(`/api/messages/unread?since=${encodeURIComponent(since ?? new Date().toISOString())}&racing=1`);
-        if (stopped || !data || typeof data.personal !== "number") return schedule();
+        const query =
+          `since=${encodeURIComponent(since ?? new Date().toISOString())}&racing=1&presence=${presenceState()}` +
+          (longPoll ? `&uv=${uv}&wait=15` : "");
+        const data = await api.get<UnreadAnswer>(`/api/messages/unread?${query}`, { signal: controller.signal, longPoll });
+        if (stopped || controller.signal.aborted) return;
+        if (!data || typeof data.personal !== "number") return schedule();
+        failures = 0;
+        uv = typeof data.uv === "number" ? data.uv : null;
         setCounts({ personal: data.personal, requests: data.requests, team: data.team });
         const items = Array.isArray(data.alerts) ? data.alerts : (data.incoming ?? []).map(fromIncoming);
         const fresh = items.filter((i) => !seen.has(`${i.id}:${i.at}`));
@@ -368,11 +385,21 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }
         // The first answer only sets the starting point: nothing that arrived before you opened Stayblz pops up.
         if (since !== null) handleIncoming(fresh);
+        // Something new arrived: the chat list (if open) refreshes now instead of on its next round.
+        if (since !== null && fresh.length) window.dispatchEvent(new Event("stayblz:chat-activity"));
         since = data.now ?? since;
       } catch {
+        if (controller.signal.aborted || stopped) return; // replaced by a newer poll
         /* The badge is a hint; a failed check keeps the last numbers. */
+        failures++;
+        uv = null;
+        return schedule(Math.min(VISIBLE_MS, 2_000 * 2 ** Math.min(failures, 4)));
+      } finally {
+        if (inflight === controller) inflight = null;
       }
-      schedule();
+      // Long-polling: ask again straight away (at most once a second); otherwise the usual rhythm.
+      if (uv !== null && !document.hidden) schedule(Math.max(0, 1_000 - (Date.now() - started)));
+      else schedule();
     }
     const soon = () => {
       window.clearTimeout(soonTimer);
@@ -380,11 +407,21 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     };
     pollSoon.current = soon;
     void load();
-    const onVisible = () => !document.hidden && soon();
+    const onVisible = () => {
+      if (!document.hidden) return soon();
+      // Going to the background: stop waiting, and tell the server once that you're away.
+      inflight?.abort();
+      void api.get(`/api/messages/unread?presence=idle`).catch(() => undefined);
+      schedule();
+    };
+    // Going idle or coming back: check in now so friends see Away / Online without waiting.
+    const offPresence = onPresenceChange(() => !document.hidden && soon());
     window.addEventListener("stayblz:chats-changed", soon);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       stopped = true;
+      inflight?.abort();
+      offPresence();
       window.clearTimeout(timer);
       window.clearTimeout(soonTimer);
       window.removeEventListener("stayblz:chats-changed", soon);

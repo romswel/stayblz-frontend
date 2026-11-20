@@ -9,22 +9,26 @@ async function more(page: Page, text: string, item: string) {
   await page.getByRole("menu", { name: "Message options" }).getByRole("menuitem", { name: item }).click();
 }
 
-test("Stayblz Chat: honest free-plan notice, unread badge and settings", async ({ page }) => {
+test("Stayblz Chat: brief free-plan notice, unread badge and settings", async ({ page }) => {
   const server = await fakeServer(page, { personal: 2, requests: 1, team: 0 });
   await page.goto("/messages");
   await expect(page.getByRole("heading", { name: "Stayblz Chat", exact: true })).toBeVisible();
   await expect(page.locator(".gx-version")).toHaveText(/^v\d+\.\d+/);
   await expect(page.getByRole("link", { name: "Stayblz Chat (3 unread)" })).toBeVisible();
-  await expect(page.getByText("Free plan:")).toBeVisible();
-  await page.getByRole("button", { name: "What this means" }).click();
+  // A small notice for a few seconds (at most once a week), not a banner that stays.
+  const notice = page.locator(".brief-notice");
+  await expect(notice.getByText("Free plan.")).toBeVisible();
+  await notice.getByRole("button", { name: "What this means" }).click();
   const about = page.getByRole("dialog", { name: "About chat storage" });
   await expect(about.getByText("Messages can go missing.")).toBeVisible();
   await expect(about.getByText("File limits.")).toBeVisible();
   await about.getByRole("button", { name: "Got it" }).click();
-  await page.getByRole("button", { name: "Dismiss notice" }).click();
+  await notice.getByRole("button", { name: "Dismiss" }).click();
+  await expect(notice).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Stayblz Chat", exact: true })).toBeVisible();
-  await expect(page.getByText("Free plan:")).toHaveCount(0);
+  await page.waitForTimeout(400);
+  await expect(page.getByText("Free plan.")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Chat settings" }).click();
   const settings = page.getByRole("dialog", { name: "Stayblz Chat settings" });
@@ -149,7 +153,11 @@ test("emoji button, photos and files: send, preview, and open large", async ({ p
   await expect.poll(uploadNames).toEqual(["card.csv", "paddock.png"]);
   expect(server.threads[ANN].messages.find((m) => m.attachment?.name === "card.csv")?.attachment?.type).toBe("text/csv");
   await photo.click();
-  await expect(page.getByRole("dialog", { name: "Photo: paddock.png" })).toBeVisible();
+  const viewer = page.getByRole("dialog", { name: /^Photo 1 of 1, from You/ });
+  await expect(viewer).toBeVisible();
+  await expect(viewer.getByRole("button", { name: "Zoom in" })).toBeEnabled();
+  await page.keyboard.press("Escape");
+  await expect(viewer).toHaveCount(0);
 });
 
 test("chat list: pin, mute, folders, and day dividers", async ({ page }) => {

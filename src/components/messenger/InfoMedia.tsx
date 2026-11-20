@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AttachmentView from "./AttachmentView";
+import { MediaTile } from "./MediaViewer";
 import type { ChatApi } from "./chatApi";
 import { clock, dayLabel, isAudio, isImage, isVideo } from "./format";
 import { ArrowLeftIcon, LinkIcon } from "./icons";
@@ -33,7 +34,7 @@ export default function InfoMedia({
   onTab: (tab: MediaTab) => void;
   onBack: () => void;
   onJump: (id: string) => void;
-  onOpenImage: (m: ChatMessage, url: string) => void;
+  onOpenImage: (m: ChatMessage, url: string, list?: ChatMessage[]) => void;
   fileLoader: (m: ChatMessage) => (() => Promise<Blob>) | null;
   /** Changes when the chat gains or loses a file, so the lists reload. */
   refreshKey: number;
@@ -89,7 +90,7 @@ export default function InfoMedia({
           visual.length ? (
             <div className="mx-media-grid">
               {visual.map((m) => (
-                <AttachmentView key={m.id} a={m.attachment!} fileKey={m.id} load={fileLoader(m)} onOpenImage={(url) => onOpenImage(m, url)} onError={setError} />
+                <MediaTile key={m.id} m={m} load={fileLoader(m)} onOpen={() => onOpenImage(m, "", visual)} />
               ))}
             </div>
           ) : (

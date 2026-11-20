@@ -6,7 +6,9 @@ import { setViewingChat } from "../../notifications/viewing";
 import { useWorkspace } from "../../workspace";
 import { useConfirm } from "../ui/Confirm";
 import { accountDraftKey, useDraft } from "../ui/useDraft";
-import { downloadFile, Lightbox } from "./AttachmentView";
+import { downloadFile } from "./AttachmentView";
+import type { CommandResult } from "./commands";
+import MediaViewer, { mediaItems } from "./MediaViewer";
 import { CHAT_NAME, TEAM_CHAT_NAME } from "./brand";
 import { startChatCall } from "./callLink";
 import { ChatApiContext } from "./ChatAvatar";
@@ -29,6 +31,7 @@ import "./messenger.css";
 import "./thread.css";
 import "./panels.css";
 import "./chat-identity.css";
+import "./chat-extras.css";
 
 /** The app fills the window under the site header, so the message box is always on screen. */
 function useFitToWindow() {
@@ -109,7 +112,8 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
   const [calling, setCalling] = useState(false);
   const [toast, setToast] = useState("");
   const [folders, setFolders] = useState<ChatFolder[]>([]);
-  const [viewer, setViewer] = useState<{ url: string; m: ChatMessage } | null>(null);
+  /** Chat info → Media: the viewer steps through that list. */
+  const [viewer, setViewer] = useState<{ list: ChatMessage[]; start: string } | null>(null);
   const [searchSignal, setSearchSignal] = useState(0);
   const [pinnedSignal, setPinnedSignal] = useState(0);
   const appRef = useFitToWindow();
@@ -334,7 +338,26 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
     }
   }
 
-  /** Voice or video call: a Stayblz Paddock meeting with everyone here invited, its link posted in the chat. */
+  /** Typed commands that change the open chat: /mute [time], /unmute, /rename name, /leave. */
+  async function chatCommand(command: CommandResult) {
+    const current = thread.thread;
+    if (!current) return;
+    if (command.kind === "mute") return void applySetting(current, command.minutes ? { muteMinutes: command.minutes } : { muted: true });
+    if (command.kind === "unmute") return void applySetting(current, { muted: false });
+    if (command.kind === "leave") return void leave(current);
+    if (command.kind === "rename") {
+      try {
+        await chatApi.rename(current.id, command.title);
+        thread.setThread((old) => (old && old.id === current.id ? { ...old, title: command.title } : old));
+        list.patch(current.id, { title: command.title });
+        setToast(`Group renamed to "${command.title}".`);
+      } catch (reason) {
+        setToast(reason instanceof Error ? reason.message : "The group couldn't be renamed.");
+      }
+    }
+  }
+
+  /** This chat's Stayblz Paddock: a video meeting with everyone here invited, its link posted in the chat. */
   async function call(video: boolean) {
     const current = thread.thread;
     if (!current || calling) return;
@@ -480,6 +503,7 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
               onUnblock={() => void block(false)}
               onForward={(m) => setDialog({ kind: "forward", message: m })}
               onCall={(video) => void call(video)}
+              onChatCommand={(command) => void chatCommand(command)}
               calling={calling}
               fileLoader={fileLoader}
               busy={busy}
@@ -532,7 +556,7 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
               }}
               onPinned={() => setPinnedSignal((n) => n + 1)}
               onJump={jumpTo}
-              onOpenImage={(m, url) => setViewer({ m, url })}
+              onOpenImage={(m, _url, all) => setViewer({ list: all?.length ? all : [m], start: m.id })}
               onAbout={() => setDialog({ kind: "about" })}
               onNewFolder={() => setDialog({ kind: "folder", assignTo: thread.thread!.id })}
               onError={setToast}
@@ -620,14 +644,19 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
           />
         )}
         {dialog?.kind === "about" && <FreePlanDialog onClose={() => setDialog(null)} />}
-        {viewer && viewer.m.attachment && (
-          <Lightbox
-            url={viewer.url}
-            name={viewer.m.attachment.name}
+        {viewer && (
+          <MediaViewer
+            items={mediaItems(viewer.list)}
+            startId={viewer.start}
+            fileLoader={fileLoader}
             onClose={() => setViewer(null)}
-            onDownload={() => {
-              const load = fileLoader(viewer.m);
-              if (load) void downloadFile(viewer.m.attachment!.name, load).catch(() => setToast("That file couldn't be downloaded."));
+            onDownload={(m) => {
+              const load = fileLoader(m);
+              if (load && m.attachment) void downloadFile(m.attachment.name, load).catch(() => setToast("That file couldn't be downloaded."));
+            }}
+            onShowInChat={(m) => {
+              setViewer(null);
+              jumpTo(m.id);
             }}
           />
         )}

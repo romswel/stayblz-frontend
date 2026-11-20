@@ -1,50 +1,23 @@
-import { useState } from "react";
 import Modal from "../Modal";
+import BriefNotice from "../ui/BriefNotice";
 import DialogHead from "../ui/DialogHead";
 import { CHAT_NAME } from "./brand";
 import { chatLimits } from "./files";
 import { fileSize } from "./format";
-import { CloseIcon, DatabaseIcon } from "./icons";
+import { DatabaseIcon } from "./icons";
 
-const KEY = "stayblz.chatNotice.v1";
-const seen = () => {
-  try {
-    return localStorage.getItem(KEY) === "1";
-  } catch {
-    return false;
-  }
-};
-
-/** Short, dismissible heads-up shown until someone closes it on this device. */
+/**
+ * A brief heads-up about chat on the free plan: slides in for a few seconds, at most once a week on this device.
+ * The full explanation stays one tap away in Chat settings and Chat info ("How chat works on our free plan").
+ */
 export function FreePlanBanner({ onMore }: { onMore: () => void }) {
-  const [hidden, setHidden] = useState(seen);
-  if (hidden) return null;
   return (
-    <div className="mx-banner" role="note">
-      <DatabaseIcon />
-      <p>
-        <strong>Free plan:</strong> messages can take a few seconds and may rarely fail to save or disappear. Keep
-        copies of anything important.{" "}
-        <button type="button" className="mx-link" onClick={onMore}>
-          What this means
-        </button>
-      </p>
-      <button
-        type="button"
-        className="mx-icon-btn"
-        aria-label="Dismiss notice"
-        onClick={() => {
-          try {
-            localStorage.setItem(KEY, "1");
-          } catch {
-            /* Storage blocked: hide for this visit only. */
-          }
-          setHidden(true);
-        }}
-      >
-        <CloseIcon size={14} />
+    <BriefNotice storageKey="stayblz.chatNotice.shownAt" everyDays={7} seconds={10} title="Free plan." icon={<DatabaseIcon />}>
+      Messages may take a moment and can rarely fail to save, so keep copies of anything important.{" "}
+      <button type="button" className="brief-notice-link" onClick={onMore}>
+        What this means
       </button>
-    </div>
+    </BriefNotice>
   );
 }
 
@@ -61,10 +34,10 @@ export function FreePlanDialog({ onClose }: { onClose: () => void }) {
           </p>
           <ul>
             <li>
-              <strong>Not instant.</strong> New messages, "typing…" and "Seen" show up within a few seconds while a
-              chat is open; elsewhere on Stayblz the count and alerts follow within about half a minute. Alerts when
-              Stayblz is closed only work once you turn them on in Notification settings, on devices that support them.
-              Calls open in Stayblz Paddock.
+              <strong>Nearly instant.</strong> While Stayblz is open, new messages, "typing…", "Delivered" and "Seen"
+              usually show up within a second or two; after the server has been asleep, the first one can take longer.
+              Alerts when Stayblz is closed only work once you turn them on in Notification settings, on devices that
+              support them. Calls open in Stayblz Paddock.
             </li>
             <li>
               <strong>Slow starts.</strong> After a quiet spell the server can take up to a minute to wake up.

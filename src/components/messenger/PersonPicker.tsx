@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { peopleApi } from "./chatApi";
+import { presenceOf } from "./format";
 import { Avatar, CloseIcon } from "./icons";
 import type { Person } from "./types";
 
@@ -108,7 +109,7 @@ export default function PersonPicker({
           <li key={p.id}>
             <label>
               <input type="checkbox" checked={picked.some((x) => x.id === p.id)} onChange={() => toggle(p)} aria-label={p.name} />
-              <Avatar name={p.name} id={p.id} size="sm" active={!!p.active} />
+              <Avatar name={p.name} id={p.id} size="sm" presence={presenceOf(p)} />
               <span>{p.name}</span>
               {p.status === "friends" && !team && <span className="mx-tag">Friend</span>}
             </label>

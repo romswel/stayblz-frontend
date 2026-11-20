@@ -832,7 +832,11 @@ html[data-theme="dark"] :is(.mx, .mx-layer) {
   .mx-has-thread .mx-thread-pane {
     display: block;
     position: fixed;
-    inset: 0;
+    /* Sized to the visible area, not the whole screen: with the keyboard up the message box sits right above it
+       (and above iOS's ^ ˅ ✓ bar) instead of behind it. --vvh / --vv-offset come from src/viewport.ts. */
+    inset: auto 0;
+    top: var(--vv-offset, 0px);
+    height: var(--vvh, 100dvh);
     z-index: 50;
     background: var(--gx-bg-gradient, var(--gx-bg, #eef2f9));
     background-color: var(--gx-bg-solid, #f7f9fc);
@@ -847,11 +851,11 @@ html[data-theme="dark"] :is(.mx, .mx-layer) {
     padding-top: var(--safe-top, 0px);
   }
   .mx-info-pane {
-    inset: 0;
+    inset: auto 0;
     width: 100vw;
-    top: 0;
+    top: var(--vv-offset, 0px);
     right: 0;
-    bottom: 0;
+    height: var(--vvh, 100dvh);
   }
   .mx-info-pane .mx-info {
     border-radius: 0;
@@ -862,6 +866,10 @@ html[data-theme="dark"] :is(.mx, .mx-layer) {
   /* The full-screen chat shouldn't let the page behind it scroll. */
   body:has(.mx-has-thread) {
     overflow: hidden;
+  }
+  /* Keyboard up: it already covers the home-indicator strip, so the message box drops that extra padding. */
+  html.kb-open .mx-has-thread .mx-composer {
+    padding-bottom: 8px;
   }
   /* The pane slides in from the right; clip it so the page never scrolls sideways meanwhile. */
   html:has(.mx-has-thread) {

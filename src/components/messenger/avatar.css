@@ -61,7 +61,21 @@
   border-radius: 30%;
   background: var(--mx-online, #22c55e);
   box-shadow: 0 0 0 2.5px var(--mx-solid, var(--gx-surface-solid, #fff));
-  animation: mx-pop 0.3s var(--mx-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+/* Away: Stayblz is open but idle (or was in use a few minutes ago). */
+.mx-av-dot.is-away {
+  background: var(--mx-away, #f2a516);
+}
+/* Offline: a hollow grey ring, quieter than the two live states. */
+.mx-av-dot.is-offline {
+  background: var(--mx-solid, var(--gx-surface-solid, #fff));
+  box-shadow:
+    inset 0 0 0 2px var(--mx-offline, #94a3b8),
+    0 0 0 2.5px var(--mx-solid, var(--gx-surface-solid, #fff));
+}
+html[data-theme="dark"] .mx-av-dot.is-offline {
+  --mx-offline: #7d8f86;
 }
 /* Saddlecloth colours (US convention): 1 red, 2 white, 3 blue, 4 yellow, 5 green, 6 black, 7 orange, 8 pink. */
 .mx-tone-0 { background-color: #c8282e; color: #fff; }

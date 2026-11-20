@@ -980,6 +980,18 @@ html[data-theme="dark"] .gx-layer {
     box-shadow: 0 6px 16px -6px var(--gx-accent);
   }
   .gx-tab:active .gx-tab-icon { transform: scale(0.92); }
+
+  /* The keyboard is up (src/viewport.ts): the tab bar steps aside so it never rides on the keyboard or covers the
+     field you're typing in, and the page stops reserving room for it. */
+  html.kb-open .gx-tabbar { display: none; }
+  html.kb-open .gx-shell.has-tabbar { --gx-tabbar-space: 0px; }
+  /* iOS left the page out of line after the keyboard closed: pin the bar and header to what's really on screen
+     instead of the (offset) layout viewport, so they can't float in the middle of the page. */
+  html.vv-drift .gx-tabbar {
+    top: calc(var(--vv-bottom, 100vh) - 66px - 10px - env(safe-area-inset-bottom));
+    bottom: auto;
+  }
+  html.vv-drift .gx-header { top: var(--vv-offset, 0px); }
 }
 
 @media (max-width: 600px) {

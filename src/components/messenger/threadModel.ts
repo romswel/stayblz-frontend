@@ -66,18 +66,28 @@ export function normalizeThread(c: Partial<ChatThread> & { id: string }): ChatTh
   };
 }
 
+/**
+ * The chat-list row for a conversation. A thread keeps presence on its members, not on the chat, so for a one-to-one
+ * chat it's copied from the other person; with no member info it's left out, so the list keeps what it had (copying
+ * a blank "not active" here is what made the green dot blink off and on while a chat was open).
+ */
 export function previewOf(thread: ChatThread): ChatPreview {
   const {
-    members: _members,
+    members,
     reads: _reads,
     delivered: _delivered,
     pinnedMessages: _pins,
     typing: _typing,
     direct: _direct,
     messages: _messages,
+    active: _active,
+    presence: _presence,
     ...preview
   } = thread;
-  return preview;
+  const other = preview.kind === "direct" ? members?.find((m) => !m.me) : undefined;
+  if (!other) return preview;
+  if (other.presence !== undefined) return { ...preview, presence: other.presence, active: other.presence === "online" };
+  return { ...preview, active: !!other.active };
 }
 
 /** Your reaction moves to `emoji`, or is removed when it was already `emoji`. */
