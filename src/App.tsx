@@ -13,6 +13,9 @@ const chatLoading = <p className="ws-loading" role="status" style={{ padding: 24
 // Stayblz Paddock (video meetings) is its own download too.
 const Paddock = lazy(() => import("./pages/Paddock"));
 const GuestPaddock = lazy(() => import("./pages/Paddock").then((m) => ({ default: m.GuestPaddock })));
+// Stayblz Data (Explore) is its own download too.
+const StayblzData = lazy(() => import("./pages/StayblzData"));
+const dataLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Loading Stayblz Data…</p>;
 const paddockLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Opening Stayblz Paddock…</p>;
 import Inventory from "./pages/Inventory";
 import HorseTracker from "./pages/HorseTracker";
@@ -188,6 +191,7 @@ export default function App() {
         <Route path="/account/notifications" element={<AccountNotifications />} />
         <Route path="/account/horses" element={<MyHorses />} />
         <Route path="/community" element={<Feeds />} />
+        <Route path="/stayblz-data" element={<Suspense fallback={dataLoading}><StayblzData /></Suspense>} />
         <Route path="/community/people/:id" element={<MemberProfile />} />
         <Route path="/community/horses/:id" element={<HorseProfile />} />
         <Route path="/community/posts/:id" element={<CommunityPost />} />
