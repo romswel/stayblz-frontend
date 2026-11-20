@@ -715,3 +715,10 @@
     transition-duration: 0.001ms !important;
   }
 }
+/* "Message" on a card: messages the seller about this listing. */
+.mp-card-actions .mp-message-btn {
+  min-height: 34px;
+  padding: 6px 12px;
+  gap: 6px;
+  font-size: 0.82rem;
+}

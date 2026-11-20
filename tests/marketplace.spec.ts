@@ -29,6 +29,7 @@ async function mockApp(page: Page, { role = "member", listings = [] as Row[], vi
     posted: [] as unknown[],
     removed: [] as string[],
     dropped: [] as string[],
+    messages: [] as { id: string; body: string; clientId: string }[],
     // Uploaded files by id, with what the browser sent.
     files: new Map<string, { kind: string; type: string; body: Buffer; query: Record<string, string>; poster?: Buffer }>(),
     serveVideo: null as Buffer | null,
@@ -119,6 +120,11 @@ async function mockApp(page: Page, { role = "member", listings = [] as Row[], vi
       const updated = { ...state.listings.find((l) => l.id === edit[1])!, ...body };
       state.listings = state.listings.map((l) => (l.id === edit[1] ? updated : l));
       return route.fulfill({ json: { listing: updated } });
+    }
+    const ask = path.match(/^\/api\/marketplace\/listings\/([^/]+)\/message$/);
+    if (ask && request.method() === "POST") {
+      state.messages.push({ id: ask[1], ...request.postDataJSON() });
+      return route.fulfill({ status: 201, json: { conversationId: "c0ffee00-0000-4000-8000-000000000001", message: { id: "m1" } } });
     }
     const remove = path.match(/^\/api\/marketplace\/listings\/([^/]+)\/remove$/);
     if (remove) {
@@ -450,4 +456,47 @@ test("removing an upload before saving drops it; the form fits a 320px phone", a
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect.poll(() => state.dropped.length).toBe(2);
   expect(new Set(state.dropped)).toEqual(new Set(state.files.keys()));
+});
+
+const SELLER = "5e11e700-0000-4000-8000-000000000001";
+
+test("message seller: a quick reply goes to the seller and opens the chat", async ({ page }) => {
+  const state = await mockApp(page, { listings: [row(SELLER, "Northern Ledger"), row("mine-1", "My Own Horse", { mine: true })] });
+  await page.goto("/marketplace");
+  // Your own listing has no Message button.
+  await expect(page.getByRole("article", { name: /My Own Horse/ }).getByRole("button", { name: /^Message/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Northern Ledger", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  const form = dialog.getByRole("form", { name: "Message Alice Seller" });
+  const box = form.getByRole("textbox", { name: "Your message" });
+  await expect(box).toHaveValue("Hi, is this still available?");
+  await form.getByRole("button", { name: "Is the price negotiable?" }).click();
+  await expect(box).toHaveValue("Is the price negotiable?");
+  await form.getByRole("button", { name: "Send" }).click();
+  await expect(page).toHaveURL(/\/messages\/c0ffee00-0000-4000-8000-000000000001$/);
+  expect(state.messages).toHaveLength(1);
+  expect(state.messages[0].id).toBe(SELLER);
+  expect(state.messages[0].body).toBe("Is the price negotiable?");
+  expect(state.messages[0].clientId).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+test("message seller: the card's Message button starts in the message box; own listings have none", async ({ page }) => {
+  await mockApp(page, { listings: [row(SELLER, "Northern Ledger"), row("mine-1", "My Own Horse", { mine: true })] });
+  await page.goto("/marketplace");
+  await page.getByRole("button", { name: "Message Alice Seller about Northern Ledger" }).click();
+  await expect(page.getByRole("dialog").getByRole("textbox", { name: "Your message" })).toBeFocused();
+  await page.getByRole("dialog").getByRole("button", { name: /close/i }).first().click();
+  await page.getByRole("button", { name: "My Own Horse", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("form", { name: /^Message/ })).toHaveCount(0);
+});
+
+test("a chat's listing card link opens that listing; a removed one says so", async ({ page }) => {
+  await mockApp(page, { listings: [row(SELLER, "Northern Ledger")] });
+  await page.goto(`/marketplace?listing=${SELLER}`);
+  await expect(page.getByRole("dialog").getByRole("heading", { name: "Northern Ledger" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: /close/i }).first().click();
+  await expect(page).toHaveURL(/\/marketplace$/);
+  await page.goto("/marketplace?listing=99999999-9999-4999-8999-999999999999");
+  await expect(page.getByRole("alert")).toContainText("This listing is no longer available.");
+  await expect(page).toHaveURL(/\/marketplace$/);
 });

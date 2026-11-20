@@ -37,6 +37,14 @@ export interface ChatAttachment {
   /** Voice clips: length in whole seconds. */
   duration?: number;
 }
+/** The Marketplace listing a "Message seller" message is about (a snapshot from when it was sent). */
+export interface ChatListing {
+  id: string;
+  name: string;
+  price: number;
+  location: string;
+  cover: { id: string; kind: "photo" | "video"; poster: boolean } | null;
+}
 export interface ChatMessage {
   id: string;
   senderId: string;
@@ -51,6 +59,8 @@ export interface ChatMessage {
   system: boolean;
   pinned: boolean;
   attachment: ChatAttachment | null;
+  /** Sent with "Message seller": the listing card shown under the message. */
+  listing?: ChatListing | null;
   reactions: ChatReaction[];
   replyTo: ChatReply | null;
   /** Browser-only: a message in the outbox that the server hasn't confirmed. */

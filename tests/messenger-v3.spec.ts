@@ -249,3 +249,25 @@ test("group chats: @mentions suggest members and stand out; Stayblz links get a 
   await page.getByRole("textbox", { name: "Write a message" }).fill("@a");
   await expect(page.getByRole("listbox", { name: "Mention someone" })).toHaveCount(0);
 });
+
+test("a Marketplace inquiry shows the message, then the listing card", async ({ page }) => {
+  const server = await fakeServer(page);
+  const id = "5e11e700-0000-4000-8000-000000000001";
+  server.threads[ANN].messages.push(
+    msg("", "Hi, is this still available?", true, 1, {
+      listing: { id, name: "Northern Ledger", price: 45000, location: "Lexington, Kentucky", cover: null },
+    }),
+  );
+  await page.goto(`/messages/${ANN}`);
+  const bubble = row(page, "Hi, is this still available?").locator(".mx-bubble");
+  const card = bubble.locator(".mx-listingcard");
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("Northern Ledger");
+  await expect(card).toContainText("$45,000");
+  await expect(card).toContainText("Lexington, Kentucky");
+  await expect(card).toHaveAttribute("href", `/marketplace?listing=${id}`);
+  // The text comes first, the card under it.
+  const text = await bubble.locator(".mx-text").boundingBox();
+  const box = await card.boundingBox();
+  expect(text && box && box.y > text.y).toBeTruthy();
+});

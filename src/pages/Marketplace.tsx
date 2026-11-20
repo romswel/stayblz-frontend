@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api } from "../api";
+import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import HorsePortrait from "../components/HorsePortrait";
 import { canUse } from "../components/account/roles";
 import ListingForm from "../components/marketplace/ListingForm";
 import ListingDetails from "../components/marketplace/ListingDetails";
-import { pictureUrl } from "../components/marketplace/media";
+import { getListing, pictureUrl } from "../components/marketplace/media";
 import {
   AGE_FILTER,
   BREEDS,
@@ -38,16 +38,22 @@ const CHOICE_FILTERS: { key: string; label: string; options: Option[] }[] = [
   { key: "gender", label: "Gender", options: GENDERS },
   { key: "color", label: "Color", options: COLORS },
 ];
-const RANGE_FILTERS: { label: string; min: string; max: string; options: Option[] }[] = [
+const RANGE_FILTERS: {
+  label: string;
+  min: string;
+  max: string;
+  options: Option[];
+}[] = [
   { label: "Price", min: "priceMin", max: "priceMax", options: PRICE_STEPS },
   { label: "Age (years)", min: "ageMin", max: "ageMax", options: AGE_FILTER },
-  { label: "Height", min: "heightMin", max: "heightMax", options: HEIGHT_FILTER },
+  {
+    label: "Height",
+    min: "heightMin",
+    max: "heightMax",
+    options: HEIGHT_FILTER,
+  },
 ];
-const FILTER_KEYS = [
-  ...CHOICE_FILTERS.map((f) => f.key),
-  ...RANGE_FILTERS.flatMap((f) => [f.min, f.max]),
-  "location",
-];
+const FILTER_KEYS = [...CHOICE_FILTERS.map((f) => f.key), ...RANGE_FILTERS.flatMap((f) => [f.min, f.max]), "location"];
 
 /** Only values the server accepts reach the request; anything odd in the address is ignored. */
 function readFilters(params: URLSearchParams) {
@@ -87,7 +93,12 @@ function useListings(query: string, version: number) {
       .then((d) => {
         if (c.signal.aborted) return;
         if (!Array.isArray(d?.listings)) throw new Error("The marketplace could not be loaded.");
-        setState({ loading: false, error: "", listings: d.listings, more: !!d.more });
+        setState({
+          loading: false,
+          error: "",
+          listings: d.listings,
+          more: !!d.more,
+        });
       })
       .catch((e) => {
         if (c.signal.aborted) return;
@@ -115,19 +126,86 @@ const I = {
   strokeLinejoin: "round",
   "aria-hidden": true,
 } as const;
-const PlusIcon = () => (<svg {...I}><path d="M12 5v14M5 12h14" /></svg>);
-const FilterIcon = () => (<svg {...I}><path d="M4 6h16M7 12h10M10 18h4" /></svg>);
-const CloseIcon = () => (<svg {...I} width={14} height={14}><path d="M18 6 6 18M6 6l12 12" /></svg>);
-const GridIcon = () => (<svg {...I}><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></svg>);
-const ListIcon = () => (<svg {...I}><rect x="4" y="5" width="16" height="5" rx="1.5" /><rect x="4" y="14" width="16" height="5" rx="1.5" /></svg>);
-const PinIcon = () => (<svg {...I} width={14} height={14}><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>);
-const EditIcon = () => (<svg {...I} width={14} height={14}><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>);
-const TrashIcon = () => (<svg {...I} width={14} height={14}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>);
-const SearchIcon = () => (<svg {...I}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>);
-const PhotoIcon = () => (<svg {...I} width={13} height={13}><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="m21 16-5-5-8 8" /></svg>);
-const VideoIcon = () => (<svg {...I} width={13} height={13}><rect x="3" y="6" width="13" height="12" rx="2" /><path d="m16 10.5 5-3v9l-5-3" /></svg>);
-const PlayBadge = () => (<svg {...I} width={22} height={22} fill="currentColor" stroke="none"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>);
-const DocIcon = () => (<svg {...I} width={13} height={13}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>);
+const PlusIcon = () => (
+  <svg {...I}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+const FilterIcon = () => (
+  <svg {...I}>
+    <path d="M4 6h16M7 12h10M10 18h4" />
+  </svg>
+);
+const CloseIcon = () => (
+  <svg {...I} width={14} height={14}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
+const GridIcon = () => (
+  <svg {...I}>
+    <rect x="4" y="4" width="7" height="7" rx="1.5" />
+    <rect x="13" y="4" width="7" height="7" rx="1.5" />
+    <rect x="4" y="13" width="7" height="7" rx="1.5" />
+    <rect x="13" y="13" width="7" height="7" rx="1.5" />
+  </svg>
+);
+const ListIcon = () => (
+  <svg {...I}>
+    <rect x="4" y="5" width="16" height="5" rx="1.5" />
+    <rect x="4" y="14" width="16" height="5" rx="1.5" />
+  </svg>
+);
+const PinIcon = () => (
+  <svg {...I} width={14} height={14}>
+    <path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z" />
+    <circle cx="12" cy="9.5" r="2.5" />
+  </svg>
+);
+const EditIcon = () => (
+  <svg {...I} width={14} height={14}>
+    <path d="M4 20h4L19 9l-4-4L4 16z" />
+  </svg>
+);
+const ChatIcon = () => (
+  <svg {...I} width={14} height={14}>
+    <path d="M5 4h14v12H9l-4 4z" />
+  </svg>
+);
+const TrashIcon = () => (
+  <svg {...I} width={14} height={14}>
+    <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+  </svg>
+);
+const SearchIcon = () => (
+  <svg {...I}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
+const PhotoIcon = () => (
+  <svg {...I} width={13} height={13}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <circle cx="9" cy="11" r="2" />
+    <path d="m21 16-5-5-8 8" />
+  </svg>
+);
+const VideoIcon = () => (
+  <svg {...I} width={13} height={13}>
+    <rect x="3" y="6" width="13" height="12" rx="2" />
+    <path d="m16 10.5 5-3v9l-5-3" />
+  </svg>
+);
+const PlayBadge = () => (
+  <svg {...I} width={22} height={22} fill="currentColor" stroke="none">
+    <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" />
+  </svg>
+);
+const DocIcon = () => (
+  <svg {...I} width={13} height={13}>
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+    <path d="M14 3v5h5" />
+  </svg>
+);
 
 type View = "grid" | "list";
 
@@ -143,6 +221,8 @@ export default function Marketplace() {
   const [form, setForm] = useState<{ editing: Listing | null } | null>(null);
   // The listing open in the photo gallery.
   const [viewing, setViewing] = useState<Listing | null>(null);
+  // Opened with a card's "Message" button: the details start in the message box.
+  const [askFirst, setAskFirst] = useState(false);
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [removing, setRemoving] = useState<string | null>(null);
@@ -190,6 +270,51 @@ export default function Marketplace() {
     };
   }, [showFilters]);
 
+  // ?listing=<id> (the listing card in a chat) opens that listing.
+  const linked = params.get("listing");
+  useEffect(() => {
+    if (!linked) return;
+    const dropLink = () =>
+      setParams(
+        (p) => {
+          const next = new URLSearchParams(p);
+          next.delete("listing");
+          return next;
+        },
+        { replace: true },
+      );
+    if (!/^[0-9a-f-]{36}$/i.test(linked)) return dropLink();
+    const c = new AbortController();
+    getListing(linked, c.signal)
+      .then((l) => {
+        if (c.signal.aborted) return;
+        setAskFirst(false);
+        setViewing(l);
+      })
+      .catch((e) => {
+        if (c.signal.aborted) return;
+        setActionError(
+          e instanceof ApiError && e.status === 404
+            ? "This listing is no longer available."
+            : e instanceof Error
+              ? e.message
+              : "This listing couldn't be loaded.",
+        );
+        dropLink();
+      });
+    return () => c.abort();
+  }, [linked]);
+
+  function closeViewing() {
+    setViewing(null);
+    setAskFirst(false);
+    if (params.has("listing")) {
+      const next = new URLSearchParams(params);
+      next.delete("listing");
+      setParams(next, { replace: true });
+    }
+  }
+
   function update(changes: Record<string, string>) {
     const next = new URLSearchParams(filters);
     for (const [key, value] of Object.entries(changes)) {
@@ -223,7 +348,10 @@ export default function Marketplace() {
     setNotice("");
     try {
       await api.post(`/api/marketplace/listings/${listing.id}/remove`);
-      setListings((s) => ({ ...s, listings: s.listings.filter((l) => l.id !== listing.id) }));
+      setListings((s) => ({
+        ...s,
+        listings: s.listings.filter((l) => l.id !== listing.id),
+      }));
       setNotice(`${listing.name} was removed from the marketplace.`);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "The listing could not be removed. Please try again.");
@@ -241,29 +369,47 @@ export default function Marketplace() {
       setVersion((v) => v + 1);
     } else {
       setNotice(`Changes to ${listing.name} were saved.`);
-      setListings((s) => ({ ...s, listings: s.listings.map((l) => (l.id === listing.id ? listing : l)) }));
+      setListings((s) => ({
+        ...s,
+        listings: s.listings.map((l) => (l.id === listing.id ? listing : l)),
+      }));
     }
   }
 
   /* ---------- Summary figures for the header (from the loaded listings) ---------- */
-  const prices = listings
-    .map((l) => l.price as unknown)
-    .filter((p): p is number => typeof p === "number" && Number.isFinite(p));
+  const prices = listings.map((l) => l.price as unknown).filter((p): p is number => typeof p === "number" && Number.isFinite(p));
   const low = prices.length ? Math.min(...prices) : undefined;
   const high = prices.length ? Math.max(...prices) : undefined;
   const yours = listings.filter((l) => l.mine).length;
   const stats = [
-    { label: mine ? "Your listings" : "Horses listed", value: loading && !listings.length ? "—" : `${listings.length}${more ? "+" : ""}` },
-    { label: "From", value: low !== undefined ? formatPrice(low as Listing["price"]) : "—" },
-    { label: "Up to", value: high !== undefined ? formatPrice(high as Listing["price"]) : "—" },
-    { label: "Yours here", value: loading && !listings.length ? "—" : String(yours) },
+    {
+      label: mine ? "Your listings" : "Horses listed",
+      value: loading && !listings.length ? "—" : `${listings.length}${more ? "+" : ""}`,
+    },
+    {
+      label: "From",
+      value: low !== undefined ? formatPrice(low as Listing["price"]) : "—",
+    },
+    {
+      label: "Up to",
+      value: high !== undefined ? formatPrice(high as Listing["price"]) : "—",
+    },
+    {
+      label: "Yours here",
+      value: loading && !listings.length ? "—" : String(yours),
+    },
   ];
 
   /* ---------- Active filter chips ---------- */
   const chips: { key: string; label: string; clear: Record<string, string> }[] = [];
   for (const f of CHOICE_FILTERS) {
     const v = filters.get(f.key);
-    if (v) chips.push({ key: f.key, label: `${f.label}: ${labelOf(f.options, v)}`, clear: { [f.key]: "" } });
+    if (v)
+      chips.push({
+        key: f.key,
+        label: `${f.label}: ${labelOf(f.options, v)}`,
+        clear: { [f.key]: "" },
+      });
   }
   for (const f of RANGE_FILTERS) {
     const min = filters.get(f.min);
@@ -275,7 +421,12 @@ export default function Marketplace() {
         clear: { [f.min]: "", [f.max]: "" },
       });
   }
-  if (urlLocation) chips.push({ key: "location", label: `Near: ${urlLocation}`, clear: { location: "" } });
+  if (urlLocation)
+    chips.push({
+      key: "location",
+      label: `Near: ${urlLocation}`,
+      clear: { location: "" },
+    });
 
   function range(f: (typeof RANGE_FILTERS)[number]) {
     const min = filters.get(f.min) ?? "";
@@ -292,7 +443,9 @@ export default function Marketplace() {
               </option>
             ))}
           </select>
-          <span className="mp-range-sep" aria-hidden="true">–</span>
+          <span className="mp-range-sep" aria-hidden="true">
+            –
+          </span>
           <select aria-label={`${f.label} up to`} value={max} onChange={(e) => update({ [f.max]: e.target.value })}>
             <option value="">No max</option>
             {f.options.map((o) => (
@@ -307,11 +460,7 @@ export default function Marketplace() {
   }
 
   const filterPanel = (
-    <aside
-      id="mp-filters"
-      className={`mp-filters gx-glass${showFilters ? " is-open" : ""}`}
-      aria-label="Filter horses"
-    >
+    <aside id="mp-filters" className={`mp-filters gx-glass${showFilters ? " is-open" : ""}`} aria-label="Filter horses">
       <div className="mp-filters-head">
         <span className="mp-sheet-grip" aria-hidden="true" />
         <h2>
@@ -324,12 +473,7 @@ export default function Marketplace() {
               Clear all
             </button>
           )}
-          <button
-            type="button"
-            className="mp-icon-btn mp-sheet-only"
-            aria-label="Close filters"
-            onClick={() => setShowFilters(false)}
-          >
+          <button type="button" className="mp-icon-btn mp-sheet-only" aria-label="Close filters" onClick={() => setShowFilters(false)}>
             <CloseIcon />
           </button>
         </div>
@@ -448,7 +592,11 @@ export default function Marketplace() {
             <span>Sort</span>
             <select
               value={filters.get("sort") ?? "newest"}
-              onChange={(e) => update({ sort: e.target.value === "newest" ? "" : e.target.value })}
+              onChange={(e) =>
+                update({
+                  sort: e.target.value === "newest" ? "" : e.target.value,
+                })
+              }
             >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -471,13 +619,7 @@ export default function Marketplace() {
       {chips.length > 0 && (
         <div className="mp-chips" aria-label="Active filters">
           {chips.map((c) => (
-            <button
-              type="button"
-              key={c.key}
-              className="mp-chip"
-              onClick={() => update(c.clear)}
-              aria-label={`Remove filter ${c.label}`}
-            >
+            <button type="button" key={c.key} className="mp-chip" onClick={() => update(c.clear)} aria-label={`Remove filter ${c.label}`}>
               {c.label} <CloseIcon />
             </button>
           ))}
@@ -489,20 +631,16 @@ export default function Marketplace() {
 
       <div className="mp-layout">
         {showFilters && (
-          <button
-            type="button"
-            className="mp-scrim"
-            aria-label="Close filters"
-            tabIndex={-1}
-            onClick={() => setShowFilters(false)}
-          />
+          <button type="button" className="mp-scrim" aria-label="Close filters" tabIndex={-1} onClick={() => setShowFilters(false)} />
         )}
         {filterPanel}
 
         <section className="mp-results" aria-label="Horses for sale" aria-busy={loading}>
           {loading && !listings.length ? (
             <>
-              <p className="mp-count" role="status">Loading horses…</p>
+              <p className="mp-count" role="status">
+                Loading horses…
+              </p>
               <ul className={`mp-grid is-${view}`} aria-hidden="true">
                 {Array.from({ length: 6 }, (_, i) => (
                   <li key={i}>
@@ -517,7 +655,9 @@ export default function Marketplace() {
             </>
           ) : error ? (
             <div className="mp-empty gx-glass" role="alert">
-              <span className="mp-empty-icon is-error" aria-hidden="true">!</span>
+              <span className="mp-empty-icon is-error" aria-hidden="true">
+                !
+              </span>
               <h3>The marketplace could not be loaded.</h3>
               <p>{error}</p>
               <button type="button" className="mp-btn" onClick={() => setVersion((v) => v + 1)}>
@@ -578,29 +718,28 @@ export default function Marketplace() {
                       listing={l}
                       canRemove={l.mine || isAdmin}
                       busy={removing === l.id}
-                      onOpen={() => setViewing(l)}
+                      onOpen={() => {
+                        setAskFirst(false);
+                        setViewing(l);
+                      }}
+                      onMessage={() => {
+                        setAskFirst(true);
+                        setViewing(l);
+                      }}
                       onEdit={() => setForm({ editing: l })}
                       onRemove={() => void remove(l)}
                     />
                   </li>
                 ))}
               </ul>
-              {more && (
-                <p className="mp-footnote">
-                  Showing the first {listings.length} horses. Use the filters to narrow the list.
-                </p>
-              )}
+              {more && <p className="mp-footnote">Showing the first {listings.length} horses. Use the filters to narrow the list.</p>}
             </>
           )}
         </section>
       </div>
 
       {viewing && !form && (
-        <ListingDetails
-          listing={viewing}
-          onClose={() => setViewing(null)}
-          onEdit={(l) => setForm({ editing: l })}
-        />
+        <ListingDetails listing={viewing} onClose={closeViewing} focusMessage={askFirst} onEdit={(l) => setForm({ editing: l })} />
       )}
       {form && <ListingForm editing={form.editing} onClose={() => setForm(null)} onSaved={saved} />}
     </div>
@@ -612,6 +751,7 @@ function ListingCard({
   canRemove,
   busy,
   onOpen,
+  onMessage,
   onEdit,
   onRemove,
 }: {
@@ -619,6 +759,7 @@ function ListingCard({
   canRemove: boolean;
   busy: boolean;
   onOpen: () => void;
+  onMessage: () => void;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -724,38 +865,57 @@ function ListingCard({
           </span>
           <span>
             <span className="mp-seller-name">
-              {l.mine ? "Listed by you" : <>Listed by <b>{l.sellerName}</b></>}
+              {l.mine ? (
+                "Listed by you"
+              ) : (
+                <>
+                  Listed by <b>{l.sellerName}</b>
+                </>
+              )}
             </span>
             {validDate && (
               <small>
                 <time dateTime={l.createdAt}>
-                  {listed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                  {listed.toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </time>
               </small>
             )}
           </span>
         </span>
-        {(l.mine || canRemove) && (
-          <span className="mp-card-actions">
-            {l.mine && (
-              <button type="button" className="mp-icon-btn" onClick={onEdit} disabled={busy} aria-label={`Edit ${l.name}`} title="Edit">
-                <EditIcon />
-              </button>
-            )}
-            {canRemove && (
-              <button
-                type="button"
-                className="mp-icon-btn mp-danger"
-                onClick={onRemove}
-                disabled={busy}
-                aria-label={busy ? `Removing ${l.name}` : `Remove ${l.name}`}
-                title={busy ? "Removing…" : "Remove"}
-              >
-                <TrashIcon />
-              </button>
-            )}
-          </span>
-        )}
+        <span className="mp-card-actions">
+          {!l.mine && (
+            <button
+              type="button"
+              className="mp-btn mp-message-btn"
+              onClick={onMessage}
+              disabled={busy}
+              aria-label={`Message ${l.sellerName} about ${l.name}`}
+            >
+              <ChatIcon /> Message
+            </button>
+          )}
+          {l.mine && (
+            <button type="button" className="mp-icon-btn" onClick={onEdit} disabled={busy} aria-label={`Edit ${l.name}`} title="Edit">
+              <EditIcon />
+            </button>
+          )}
+          {canRemove && (
+            <button
+              type="button"
+              className="mp-icon-btn mp-danger"
+              onClick={onRemove}
+              disabled={busy}
+              aria-label={busy ? `Removing ${l.name}` : `Remove ${l.name}`}
+              title={busy ? "Removing…" : "Remove"}
+            >
+              <TrashIcon />
+            </button>
+          )}
+        </span>
       </footer>
     </article>
   );
