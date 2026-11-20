@@ -121,6 +121,8 @@ test("watch updates reject duplicate clicks and show failures without losing the
     await route.fulfill({ status: 500, json: { error: "Test save failure" } });
   });
   await page.goto("/virtual-stable");
+  // The earlier flat-record follows now sit under My racing → Following → "Earlier racing records you follow".
+  await page.getByText("Earlier racing records you follow").click();
   const button = page.getByRole("button", {
     name: "Watch Test Horse",
     exact: true,
@@ -191,7 +193,7 @@ test("login retains its layout at mobile and desktop widths", async ({
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/login");
     await expect(
-      page.getByRole("button", { name: "Sign in", exact: true }),
+      page.getByRole("button", { name: "Log in", exact: true }),
     ).toBeVisible();
     expect(
       await page.evaluate(

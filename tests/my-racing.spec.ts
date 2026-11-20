@@ -32,6 +32,7 @@ test.beforeEach(async ({ page }) => {
   };
   let conversations: any[] = [];
   const watched = new Set<string>();
+  const follows: any[] = [];
   await page.route("**/api/**", (route) => {
     const req = route.request(),
       url = new URL(req.url()),
@@ -69,6 +70,7 @@ test.beforeEach(async ({ page }) => {
           conversations: conversations.length,
         },
       });
+    if (path === "/api/my-racing/follows") return route.fulfill({ json: { follows } });
     if (path === "/api/watchlist") {
       const kind = url.searchParams.get("kind") ?? "horses";
       return route.fulfill({
@@ -120,7 +122,7 @@ test.beforeEach(async ({ page }) => {
     }
     if (path === "/api/my-racing/preferences") {
       if (method === "PATCH") preferences = req.postDataJSON();
-      return route.fulfill({ json: { preferences, deliveryAvailable: false } });
+      return route.fulfill({ json: { preferences, deliveryAvailable: true, emailAvailable: false } });
     }
     if (path === "/api/messages/unread")
       return route.fulfill({ json: { personal: 0, requests: 0, team: 0 } });
@@ -185,6 +187,8 @@ test("racing and account tools work while the optional stable service is unavail
     .getByRole("link", { name: "Following & notebook", exact: true })
     .click();
   await expect(page.getByRole("heading", { name: "My racing." })).toBeVisible();
+  await expect(page.getByText("You're not following anything yet.")).toBeVisible();
+  await page.getByText("Earlier racing records you follow").click();
   await page
     .getByRole("button", { name: "Watch Published Horse", exact: true })
     .click();
@@ -250,16 +254,15 @@ test("the private notebook saves, edits, preserves failed drafts and confirms de
   ).toHaveCount(0);
 });
 
-test("alert choices persist and delivery remains clearly unavailable", async ({
+test("alert choices persist and say how alerts arrive (email is not sent yet)", async ({
   page,
 }) => {
   await page.goto("/my-racing?tab=alerts");
   await page.getByRole("checkbox", { name: /Race entries/ }).check();
   await page.getByRole("checkbox", { name: /Email delivery/ }).check();
+  await expect(page.getByText("Not sent yet. We'll save your choice for when email alerts start.")).toBeVisible();
   await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByRole("status")).toContainText(
-    "Automatic alerts and email delivery are not active yet.",
-  );
+  await expect(page.locator(".ws-notice")).toHaveText("Preferences saved.");
   await page.reload();
   await expect(
     page.getByRole("checkbox", { name: /Race entries/ }),
@@ -267,9 +270,8 @@ test("alert choices persist and delivery remains clearly unavailable", async ({
   await expect(
     page.getByRole("checkbox", { name: /Email delivery/ }),
   ).toBeChecked();
-  await expect(
-    page.getByText("DELIVERY NOT CONNECTED", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText("HOW ALERTS ARRIVE", { exact: true })).toBeVisible();
+  await expect(page.getByText("Email alerts aren't sent yet.")).toBeVisible();
 });
 
 test("personal conversations and private invitations require an account but no stable", async ({
@@ -355,9 +357,7 @@ test("personal pages remain usable across devices and themes with account access
   for (const width of [320, 375, 768, 1440, 2560]) {
     await page.setViewportSize({ width, height: 950 });
     await page.goto("/my-racing");
-    await expect(
-      page.getByRole("button", { name: "Watch Published Horse" }),
-    ).toBeVisible();
+    await expect(page.getByText("You're not following anything yet.")).toBeVisible();
     for (const theme of ["light", "dark"]) {
       await page.evaluate(
         (theme) => (document.documentElement.dataset.theme = theme),

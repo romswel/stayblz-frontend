@@ -49,16 +49,14 @@ test("branded startup stays visible during session restore and respects reduced 
   );
   release();
   await expect(loader).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "FAQ", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Help", exact: true })).toBeVisible();
 });
 
 test("FAQ is public, searchable, keyboard usable and responsive with a shared footer", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "FAQ", exact: true }).click();
+  await page.getByRole("link", { name: "Help", exact: true }).click();
   await expect(page).toHaveURL(/\/faq$/);
   const question = page
     .locator("summary")
@@ -109,10 +107,10 @@ test("FAQ is public, searchable, keyboard usable and responsive with a shared fo
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme!);
   await page.getByRole("button", { name: "Sign up", exact: false }).click();
   await expect(
-    page.getByRole("heading", { name: "Create an account", exact: true }),
+    page.getByRole("heading", { name: "Create your account", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("navigation", { name: "Footer navigation" }),
+    page.getByRole("navigation", { name: "More from Stayblz" }),
   ).toBeAttached();
 });
 
@@ -175,10 +173,10 @@ test("public motion is quick, preserves form drafts and stops for reduced motion
   });
   await page.goto("/signup");
   await page.getByLabel("First name", { exact: true }).fill("Draft");
-  // The Log in / Sign up switch at the top of the card (the card also has its own "Log in" link).
-  const tabs = page.getByRole("region", { name: "Your Stayblz account" }).getByLabel("Account options");
-  await tabs.getByRole("button", { name: "Log in", exact: true }).click();
-  await tabs.getByRole("button", { name: "Sign up", exact: true }).click();
+  // The Log in / Sign up switch at the top of the card.
+  const tabs = page.getByRole("tablist", { name: "Log in or sign up" });
+  await tabs.getByRole("tab", { name: "Log in", exact: true }).click();
+  await tabs.getByRole("tab", { name: "Sign up", exact: true }).click();
   await expect(page.getByLabel("First name", { exact: true })).toHaveValue(
     "Draft",
   );
@@ -188,13 +186,13 @@ test("public motion is quick, preserves form drafts and stops for reduced motion
         target: string;
         duration: number;
       }[]
-    ).filter((item) => item.target === "ld-auth-body"),
+    ).filter((item) => item.target === "au-body"),
   );
   expect(formMotion.length).toBeGreaterThan(1);
   expect(formMotion.every((item) => item.duration <= 200)).toBe(true);
   await page
-    .getByRole("navigation", { name: "Footer navigation" })
-    .getByRole("link", { name: "Frequently asked questions" })
+    .getByRole("navigation", { name: "More from Stayblz" })
+    .getByRole("link", { name: "Help" })
     .click();
   await expect(page).toHaveURL(/\/faq$/);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);

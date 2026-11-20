@@ -1,19 +1,20 @@
-/* Account security: 2-step login gate, Profile security sections, administration lists. */
+/* Account pages: Profile security sections, administration lists (glass tokens; the 2-step login screen is on auth.css). */
 .acct-gate {
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 24px 16px;
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--gx-bg, var(--bg));
+  color: var(--gx-text, var(--ink));
 }
 .acct-gate-card {
   width: min(100%, 420px);
   padding: 28px 24px;
 }
 .acct-gate-card h1 {
-  font: 28px Georgia, serif;
+  font: 800 26px/1.2 "Archivo", system-ui, sans-serif;
+  letter-spacing: -0.02em;
   margin: 18px 0 8px;
 }
 .acct-gate-card p,
@@ -33,10 +34,10 @@
   max-width: 220px;
   min-height: 44px;
   padding: 10px 12px;
-  background: var(--input-bg);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  background: var(--gx-field-strong);
+  color: var(--gx-text);
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
   font: 600 22px "JetBrains Mono", ui-monospace, monospace;
   letter-spacing: 0.3em;
 }
@@ -58,17 +59,17 @@
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--gx-border-strong);
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  background: var(--gold-tint-soft);
-  color: var(--gold-ink);
+  background: var(--gx-accent-soft);
+  color: var(--gx-accent);
   white-space: nowrap;
 }
 .acct-badge.is-off {
   background: transparent;
-  color: var(--ink);
+  color: var(--gx-text);
 }
 .acct-badge.is-warn {
   background: var(--danger-tint);
@@ -93,17 +94,17 @@
   gap: 8px;
   min-height: 42px;
   padding: 8px 14px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
   cursor: pointer;
   font-weight: 650;
 }
 .acct-views label:has(input:checked) {
-  border-color: var(--gold);
-  background: var(--gold-tint);
+  border-color: var(--gx-accent);
+  background: var(--gx-accent-soft);
 }
 .acct-views input:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--gx-accent);
   outline-offset: 2px;
 }
 .acct-qr {
@@ -118,7 +119,7 @@
   height: 180px;
   padding: 8px;
   background: #fff;
-  border-radius: 6px;
+  border-radius: 12px;
 }
 .acct-qr code {
   display: block;
@@ -127,8 +128,8 @@
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 13px;
   padding: 8px 10px;
-  background: var(--surface-2);
-  border-radius: 5px;
+  background: var(--gx-field);
+  border-radius: 8px;
 }
 .acct-qr-help {
   flex: 1 1 220px;
@@ -142,13 +143,13 @@
   gap: 8px 14px;
   margin-bottom: 16px;
   padding: 10px 14px;
-  border: 1px solid var(--gold-dim);
-  border-radius: 6px;
-  background: var(--gold-tint-soft);
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
+  background: var(--gx-accent-soft);
   font-size: 13.5px;
 }
 .acct-view-banner a {
-  color: var(--gold-ink);
+  color: var(--gx-accent);
   font-weight: 700;
 }
 .acct-table-wrap {
@@ -164,7 +165,7 @@
 .acct-table :is(th, td) {
   text-align: left;
   padding: 10px 8px;
-  border-bottom: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--gx-border);
   vertical-align: middle;
 }
 .acct-table th {
@@ -205,7 +206,7 @@
   width: 18px;
   height: 18px;
   margin-top: 2px;
-  accent-color: var(--gold);
+  accent-color: var(--gx-accent);
 }
 .acct-toggle small {
   display: block;
@@ -221,10 +222,10 @@
   width: 100%;
   min-height: 96px;
   padding: 12px;
-  background: var(--input-bg);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  background: var(--gx-field-strong);
+  color: var(--gx-text);
+  border: 1px solid var(--gx-border-strong);
+  border-radius: 12px;
   font: inherit;
   font-size: 16px;
   resize: vertical;

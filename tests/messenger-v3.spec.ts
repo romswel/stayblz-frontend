@@ -90,7 +90,7 @@ test("group chats: two faces for a group, 'Bo: …' previews, group photo upload
   await expect(item.locator(".mx-item-preview")).toHaveText("Bo: Who's driving?");
 });
 
-test("notifications: the pop-up turns them on, then a new message shows a card that opens the chat", async ({ page, context }) => {
+test("notifications: the guide turns them on, then new messages show as device notifications that open the chat", async ({ page, context }) => {
   const server = await fakeServer(page);
   server.notify = { enabled: false, chatMessages: true, chatRequests: true, previews: true, sound: false, promptedAt: null, devices: 0 };
   // Headless Chromium always says "denied", so stand in for the browser's permission question.
@@ -104,54 +104,99 @@ test("notifications: the pop-up turns them on, then a new message shows a card t
       onclick: (() => void) | null = null;
       constructor(title: string, options: NotificationOptions = {}) {
         (window as unknown as { __shown: unknown[] }).__shown = [...((window as unknown as { __shown?: unknown[] }).__shown ?? []), { title, body: options.body }];
+        (window as unknown as { __last: unknown }).__last = this;
       }
       close() {}
     }
     Object.defineProperty(window, "Notification", { value: FakeNotification, configurable: true });
   });
   await page.goto("/dashboard");
-  const ask = page.getByRole("dialog", { name: "Turn on notifications" });
+  const ask = page.getByRole("dialog", { name: "Set up notifications" });
   await expect(ask).toBeVisible({ timeout: 8000 });
+  await expect(ask.getByText("Mentions and replies to you")).toBeVisible();
   await ask.getByRole("button", { name: "Turn on" }).click();
-  await expect(ask.getByText("Notifications are on")).toBeVisible();
+  await expect(ask.getByRole("heading", { name: "You're all set" })).toBeVisible();
   await expect.poll(() => server.posts.filter((p) => p.path === "/api/notifications/settings").map((p) => p.body)).toEqual([{ enabled: true, prompted: true }]);
-  await ask.getByRole("button", { name: "Got it" }).click();
+  await ask.getByRole("button", { name: "Done" }).click();
+  await expect(ask).toHaveCount(0);
 
-  server.alerts.push({
-    chatId: ANN,
-    kind: "personal",
-    stableId: null,
-    stableName: null,
-    group: false,
-    title: null,
-    from: "Ann Ames",
-    fromId: "other-" + ANN,
-    body: "Track is fast today",
-    at: new Date().toISOString(),
-    request: false,
+  const alert = (extra: Record<string, unknown>) => ({
+    id: crypto.randomUUID(), kind: "message", chatKind: "personal", chatId: ANN, messageId: null, stableId: null,
+    actorId: "other-" + ANN, actorName: "Ann Ames", title: null, group: false, body: "", emoji: null, attachment: null,
+    count: 1, at: new Date().toISOString(), read: false, ...extra,
   });
+  // Stayblz open and in front: still a device notification (not a card inside the page).
+  server.alerts.push(alert({ body: "Track is fast today" }));
   await page.evaluate(() => window.dispatchEvent(new Event("stayblz:chats-changed")));
-  const card = page.locator(".nt-toast", { hasText: "Track is fast today" });
-  await expect(card).toBeVisible({ timeout: 8000 });
-  await card.getByRole("button", { name: /Ann Ames/ }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __shown?: unknown[] }).__shown ?? []), { timeout: 8000 }).toEqual([
+    { title: "Ann Ames", body: "Track is fast today" },
+  ]);
+  await expect(page.locator(".nt-toast")).toHaveCount(0);
+  // Clicking it opens that chat.
+  await page.evaluate(() => (window as unknown as { __last: { onclick: () => void } }).__last.onclick());
   await expect(page).toHaveURL(new RegExp(`/messages/${ANN}$`));
 
   // The bell remembers it.
   await page.getByRole("button", { name: /^Notifications/ }).click();
   await expect(page.getByRole("dialog", { name: "Notifications" }).getByText("Track is fast today")).toBeVisible();
+  await page.keyboard.press("Escape");
 
-  // Stayblz in the background: a system notification instead of a card.
-  server.alerts.push({
-    chatId: ANN, kind: "personal", stableId: null, stableName: null, group: false, title: null,
-    from: "Ann Ames", fromId: null, body: "📷 Photo", at: new Date(Date.now() + 1000).toISOString(), request: false,
-  });
+  // Stayblz in the background: a system notification instead of a card, saying what was sent.
+  server.alerts.push(alert({ body: "", attachment: { type: "image/png", name: "gate.png" }, at: new Date(Date.now() + 1000).toISOString() }));
   await page.evaluate(() => {
     Object.defineProperty(document, "hasFocus", { value: () => false, configurable: true });
     window.dispatchEvent(new Event("stayblz:chats-changed"));
   });
   await expect.poll(() => page.evaluate(() => (window as unknown as { __shown?: unknown[] }).__shown ?? []), { timeout: 8000 }).toEqual([
-    { title: "Ann Ames", body: "Sent a photo" },
+    { title: "Ann Ames", body: "Track is fast today" },
+    { title: "Ann Ames", body: "📷 Sent a photo" },
   ]);
+});
+
+test("where the browser blocks notifications, a mention shows as a card in Stayblz and opens the group at that message", async ({ page, context }) => {
+  const server = await fakeServer(page);
+  server.notify = { enabled: true, chatMessages: true, chatRequests: true, chatMentions: true, chatReactions: true, previews: true, sound: false, promptedAt: new Date().toISOString(), devices: 0 };
+  await context.addInitScript(() => {
+    class FakeNotification {
+      static permission: NotificationPermission = "denied";
+      static async requestPermission() {
+        return "denied" as NotificationPermission;
+      }
+      close() {}
+    }
+    Object.defineProperty(window, "Notification", { value: FakeNotification, configurable: true });
+  });
+  // The first check only sets the starting point (nothing from before you opened Stayblz pops up), so wait for it.
+  const firstCheck = page.waitForResponse((r) => r.url().includes("/api/messages/unread?since="));
+  await page.goto("/dashboard");
+  await firstCheck;
+  const target = server.threads[GRP].messages[0];
+  server.alerts.push({
+    id: crypto.randomUUID(), kind: "mention", chatKind: "personal", chatId: GRP, messageId: target.id, stableId: null,
+    actorId: "bo", actorName: "Bo Burke", title: "Saturday syndicate", group: true, body: "@Rae Rider who's driving?",
+    emoji: null, attachment: null, count: 1, at: new Date().toISOString(), read: false,
+  });
+  server.alerts.push({
+    id: crypto.randomUUID(), kind: "reaction", chatKind: "personal", chatId: ANN, messageId: null, stableId: null,
+    actorId: "x", actorName: "Ann Ames", title: null, group: false, body: "I'll be there",
+    emoji: "🎉", attachment: null, count: 1, at: new Date().toISOString(), read: false,
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("stayblz:chats-changed")));
+  await expect(page.locator(".nt-toast", { hasText: "Ann Ames reacted 🎉 to your message" })).toBeVisible({ timeout: 8000 });
+  const card = page.locator(".nt-toast", { hasText: "Bo Burke mentioned you in Saturday syndicate" });
+  await expect(card).toBeVisible();
+  await expect(card.locator(".nt-face-badge")).toHaveText("@");
+  await card.getByRole("button", { name: /mentioned you/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/messages/${GRP}$`), { timeout: 8000 });
+  await expect(page.locator(`#msg-${target.id}`)).toHaveClass(/is-flash/);
+  await expect.poll(() => server.posts.some((p) => p.path === "/api/notifications/alerts/read")).toBe(true);
+});
+
+test("a friend request notification opens People", async ({ page }) => {
+  await fakeServer(page);
+  await page.goto("/messages?people=1");
+  await expect(page.getByRole("tab", { name: "People" })).toHaveAttribute("aria-selected", "true");
+  await expect(page).toHaveURL(/\/messages$/);
 });
 
 test("notification settings page: account switch, chat choices, honest push status", async ({ page }) => {
@@ -160,12 +205,14 @@ test("notification settings page: account switch, chat choices, honest push stat
   await page.goto("/account/notifications");
   await expect(page.getByRole("heading", { name: "Notifications", exact: true, level: 1 })).toBeVisible();
   await expect(page.getByText("Not switched on for Stayblz yet", { exact: false })).toBeVisible();
+  await expect(page.getByLabel(/Mentions and replies/)).toBeChecked();
+  await expect(page.getByLabel(/Reactions/)).toBeChecked();
   await page.getByLabel(/Show message text/).uncheck();
   await expect.poll(() => server.posts.filter((p) => p.path === "/api/notifications/settings").map((p) => p.body)).toEqual([{ previews: false }]);
   await page.getByLabel(/Notify me/).uncheck();
   await expect(page.getByLabel(/New messages/)).toBeDisabled();
   // No pop-up when you've already been asked.
-  await expect(page.getByRole("dialog", { name: "Turn on notifications" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Set up notifications" })).toHaveCount(0);
 });
 
 test("group chats: @mentions suggest members and stand out; Stayblz links get a card", async ({ page }) => {

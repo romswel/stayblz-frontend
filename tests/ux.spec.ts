@@ -64,8 +64,8 @@ async function settle(page: Page) {
   );
 }
 
-/** Sign-up page 1: name, email and password. */
-async function fillStep1(page: Page) {
+/** The sign-up page: name, email and password. */
+async function fillSignup(page: Page) {
   await page.getByLabel("First name", { exact: true }).fill("Fia");
   await page.getByLabel("Last name", { exact: true }).fill("Farrier");
   await page.getByLabel("Email address", { exact: true }).fill("fia@example.test");
@@ -76,44 +76,33 @@ async function fillStep1(page: Page) {
 test("sign-up keeps what was typed after a reload, never the password, and can be cleared", async ({ page }) => {
   await api(page, null);
   await page.goto("/signup");
-  await fillStep1(page);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByLabel(/Town or city/).fill("Naas");
+  await fillSignup(page);
   await page.waitForTimeout(400); // drafts save shortly after typing stops
   await page.reload();
-  // A reload starts again on page 1 with the typed details kept.
   await expect(page.getByLabel("First name", { exact: true })).toHaveValue("Fia");
   await expect(page.getByLabel("Email address", { exact: true })).toHaveValue("fia@example.test");
   await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
-  await page.getByLabel("Password", { exact: true }).fill("TestOnlyPassword123");
-  await page.getByLabel("Confirm password", { exact: true }).fill("TestOnlyPassword123");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByLabel(/Town or city/)).toHaveValue("Naas");
-  await page.getByRole("button", { name: "Back", exact: true }).click();
   const stored = await page.evaluate(() => JSON.stringify(localStorage));
   expect(stored).not.toContain("TestOnlyPassword123");
-  await expect(page.getByText("We kept the details you typed earlier")).toBeVisible();
+  await expect(page.getByText("We kept what you typed earlier")).toBeVisible();
   // Moving to log in and back keeps it too.
-  await page.getByRole("button", { name: "Log in", exact: true }).first().click();
-  await page.getByRole("button", { name: "Sign up", exact: true }).first().click();
+  await page.getByRole("tab", { name: "Log in" }).click();
+  await page.getByRole("tab", { name: "Sign up" }).click();
   await expect(page.getByLabel("First name", { exact: true })).toHaveValue("Fia");
-  await page.getByRole("button", { name: "Clear form" }).click();
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
   await expect(page.getByLabel("First name", { exact: true })).toHaveValue("");
 });
 
-test("sign-up fields line up, even the ones marked Optional", async ({ page }) => {
+test("sign-up fields line up: first and last name side by side", async ({ page }) => {
   await api(page, null);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/signup");
-  await fillStep1(page);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByRole("combobox", { name: "Country", exact: true })).toBeVisible();
   await settle(page);
-  // Measured until the entrance animation has finished, so the check isn't timing-dependent.
   await expect
     .poll(async () => {
-      const country = await page.getByRole("combobox", { name: "Country", exact: true }).boundingBox();
-      const city = await page.getByLabel(/Town or city/).boundingBox();
-      return Math.max(Math.abs(country!.y - city!.y), Math.abs(country!.height - city!.height));
+      const first = await page.getByLabel("First name", { exact: true }).boundingBox();
+      const last = await page.getByLabel("Last name", { exact: true }).boundingBox();
+      return Math.max(Math.abs(first!.y - last!.y), Math.abs(first!.height - last!.height));
     })
     .toBeLessThanOrEqual(1);
 });
@@ -121,8 +110,7 @@ test("sign-up fields line up, even the ones marked Optional", async ({ page }) =
 test("Terms of Use and Privacy Notice open together, in place, and can be agreed to", async ({ page }) => {
   await api(page, null);
   await page.goto("/signup");
-  await fillStep1(page);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await fillSignup(page);
   await page.getByRole("button", { name: "Terms of Use and Privacy Notice" }).click();
   const dialog = page.getByRole("dialog", { name: "Terms of Use and Privacy Notice" });
   await expect(dialog.getByRole("heading", { name: "Terms of Use", exact: true })).toBeVisible();
@@ -131,14 +119,9 @@ test("Terms of Use and Privacy Notice open together, in place, and can be agreed
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("checkbox", { name: /I agree to the Terms of Use/ })).toBeChecked();
   await expect(page).toHaveURL(/\/signup$/);
-  // Still on page 2; Back sits under Create account and returns to page 1 with the details kept.
-  await expect(page.getByText("Step 2 of 2", { exact: false })).toBeVisible();
-  const create = (await page.getByRole("button", { name: "Create account", exact: true }).boundingBox())!;
-  const back = (await page.getByRole("button", { name: "Back", exact: true }).boundingBox())!;
-  expect(back.y).toBeGreaterThan(create.y + create.height - 1);
-  expect(Math.abs(back.width - create.width)).toBeLessThanOrEqual(1);
-  await page.getByRole("button", { name: "Back", exact: true }).click();
+  // Nothing typed was lost.
   await expect(page.getByLabel("First name", { exact: true })).toHaveValue("Fia");
+  await expect(page.getByLabel("Password", { exact: true })).toHaveValue("TestOnlyPassword123");
 
   await page.goto("/legal");
   await expect(page.getByRole("heading", { name: "Terms of Use & Privacy Notice", level: 1 })).toBeVisible();
@@ -213,7 +196,7 @@ test("logging out asks first; Escape or 'Stay signed in' keeps you signed in", a
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.getByRole("button", { name: "Log out", exact: true }).click();
   await sure.getByRole("button", { name: "Log out", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Log in", exact: true })).toBeVisible();
 });
 
 // The glass redesign (v0.12) dropped the clickable sidebar edge; the button and the "[" key remain.

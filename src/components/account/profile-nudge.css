@@ -1,0 +1,59 @@
+/* "Finish your profile" card on the dashboard (glass tokens, light + dark). */
+.pn {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 14px;
+  margin: 0 0 var(--gx-gap, 14px);
+  padding: 14px 16px;
+  border-radius: var(--gx-radius, 20px);
+}
+.pn-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--gx-accent-soft);
+  color: var(--gx-accent);
+  font-size: 18px;
+  font-weight: 800;
+}
+.pn p {
+  flex: 1 1 220px;
+  display: grid;
+  margin: 0;
+}
+.pn strong {
+  color: var(--gx-text);
+  font-size: 15px;
+}
+.pn p span {
+  color: var(--gx-muted);
+  font-size: 13.5px;
+}
+.pn-actions {
+  display: flex;
+  gap: 8px;
+}
+.pn-later,
+.pn-go {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font: 650 14px/1 "Archivo", system-ui, sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+}
+.pn-later {
+  border: 1px solid var(--gx-border-strong);
+  background: transparent;
+  color: var(--gx-text);
+}
+.pn-go {
+  border: 0;
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink);
+}

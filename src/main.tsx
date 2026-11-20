@@ -11,6 +11,10 @@ import ErrorBoundary from './components/status/ErrorBoundary';
 import ConnectionNotice from './components/status/ConnectionNotice';
 import { ConfirmProvider } from './components/ui/Confirm';
 import { registerServiceWorker } from './pwa';
+import { listenForInstall } from './install/installState';
+
+// Before React starts: the browser can offer "Install app" straight away.
+listenForInstall();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

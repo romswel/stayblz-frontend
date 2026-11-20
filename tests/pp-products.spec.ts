@@ -219,7 +219,7 @@ test("invalid stored cart entries are ignored and valid deep product links survi
     .getByLabel("Email", { exact: true })
     .fill("test@example.test");
   await page.getByLabel("Password", { exact: true }).fill("TestPassword123");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
   await expect(page).toHaveURL(/\/pps\/racecard\/sample$/);
 });
 test("product forms, features, samples and cart fit mobile and desktop in both themes", async ({
@@ -285,7 +285,7 @@ test("sign-in keeps the selected PP track and date", async ({ page }) => {
     .getByLabel("Email", { exact: true })
     .fill("test@example.test");
   await page.getByLabel("Password", { exact: true }).fill("TestPassword123");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
   await expect(page).toHaveURL(
     /\/pps\/racecard\?date=2026-11-05&track=Test%20Track%20A$/,
   );

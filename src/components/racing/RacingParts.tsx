@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../../api";
 import SectionNav from "../SectionNav";
-import { conditionLabels, odds, ordinal, payout, raceFacts, raceTitle, shiftDate, dateLabel, todayISO } from "./format";
+import { conditionLabels, currencySymbol, odds, ordinal, payout, raceFacts, raceTitle, shiftDate, dateLabel, todayISO } from "./format";
 import type { Race, Runner } from "./types";
 import "./racing.css";
 
@@ -254,7 +254,9 @@ export function RaceView({ race, compact = false }: { race: Race; compact?: bool
           </dl>
           {race.payouts.length > 0 && (
             <table className="data rc-payouts">
-              <caption>Payouts (per $2 unless stated)</caption>
+              <caption>
+                {race.currency && race.currency !== "USD" ? `Tote dividends (${currencySymbol(race.currency)})` : "Payouts (per $2 unless stated)"}
+              </caption>
               <tbody>
                 {race.payouts.map((line, n) => (
                   <tr key={n}>

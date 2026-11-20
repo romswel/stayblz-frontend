@@ -1,8 +1,9 @@
 import { Link, useParams } from "react-router-dom";
 import { Empty, LoadNotice, RacingHead, useRacing } from "../../components/racing/RacingParts";
-import { breedLabels, dateLabel, money, odds, ordinal, surfaceLabels, winPct } from "../../components/racing/format";
-import type { Horse, Start, Stats, Workout } from "../../components/racing/types";
+import { breedLabels, dateLabel, earnings, money, odds, ordinal, surfaceLabels, winPct } from "../../components/racing/format";
+import { sourceLabels, type HistoryStart, type Horse, type Start, type Stats, type Workout } from "../../components/racing/types";
 import StatusPage from "../../components/status/StatusPage";
+import FollowButtons from "../../components/racing/FollowButtons";
 
 function StatTiles({ stats }: { stats: Stats }) {
   const tiles = [
@@ -11,7 +12,7 @@ function StatTiles({ stats }: { stats: Stats }) {
     ["2nd", stats.places],
     ["3rd", stats.shows],
     ["Win rate", winPct(stats.wins, stats.starts)],
-    ["Earnings", money(stats.earnings)],
+    ["Earnings", earnings(stats.earnings, stats.currency)],
   ] as const;
   return (
     <dl className="rc-stats">
@@ -75,7 +76,7 @@ function StartsTable({ starts, show }: { starts: Start[]; show: "horse" | "perso
               <td>{odds(start.odds)}</td>
               {show === "horse" && <td>{start.jockey ? <Link to={`/racing/people/${start.jockey.id}`}>{start.jockey.name}</Link> : "—"}</td>}
               <td>{start.trainer ? <Link to={`/racing/people/${start.trainer.id}`}>{start.trainer.name}</Link> : "—"}</td>
-              <td>{start.earnings != null ? money(start.earnings) : "—"}</td>
+              <td>{start.earnings != null ? money(start.earnings, start.currency) : "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -99,7 +100,7 @@ const notPublished = (what: string) => (
 
 export function HorsePage() {
   const { id = "" } = useParams();
-  const { data, loading, error, missing, retry } = useRacing<{ horse: Horse; stats: Stats; starts: Start[]; workouts: Workout[] }>(
+  const { data, loading, error, missing, retry } = useRacing<{ horse: Horse; stats: Stats; starts: Start[]; workouts: Workout[]; history?: HistoryStart[] }>(
     `/api/public/racing/horses/${encodeURIComponent(id)}`,
   );
   if (missing) return notPublished("horse");
@@ -119,6 +120,7 @@ export function HorsePage() {
         eyebrow="Horse"
         title={horse ? `${horse.name}${horse.country ? ` (${horse.country})` : ""}` : "Horse"}
         sub={facts.join(" · ")}
+        actions={horse ? <FollowButtons target="horse" id={horse.id} name={horse.name} /> : undefined}
       />
       <LoadNotice loading={loading && !data} error={error} retry={retry} />
       {data && horse && (
@@ -151,6 +153,7 @@ export function HorsePage() {
             ) : (
               <p className="rc-muted">No published workouts yet.</p>
             )}
+            {!!data.history?.length && <EarlierStarts history={data.history} />}
           </section>
         </div>
       )}
@@ -176,6 +179,7 @@ export function PersonPage() {
         eyebrow={kind ? kind.charAt(0).toUpperCase() + kind.slice(1) : "Connections"}
         title={data?.person.name ?? "Profile"}
         sub={data?.person.country}
+        actions={data ? <FollowButtons target="person" id={data.person.id} name={data.person.name} /> : undefined}
       />
       <LoadNotice loading={loading && !data} error={error} retry={retry} />
       {data && (
@@ -206,7 +210,7 @@ export function PersonPage() {
                       <td>{row.places}</td>
                       <td>{row.shows}</td>
                       <td>{winPct(row.wins, row.starts)}</td>
-                      <td>{money(row.earnings)}</td>
+                      <td>{earnings(row.earnings, row.currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -220,6 +224,53 @@ export function PersonPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Earlier starts as the data provider lists them (races that aren't full cards on Stayblz). */
+function EarlierStarts({ history }: { history: HistoryStart[] }) {
+  const sources = [...new Set(history.map((h) => sourceLabels[h.source] ?? h.source))].join(", ");
+  const wins = history.filter((h) => h.finish === 1).length;
+  // Some providers give distance, odds and rider for each start; the columns only show when there is something in them.
+  const more = { distance: history.some((h) => h.distance), odds: history.some((h) => h.odds != null), rider: history.some((h) => h.rider) };
+  return (
+    <>
+      <h2 className="rc-section-title">Earlier starts</h2>
+      <p className="rc-muted">
+        {history.length} start{history.length === 1 ? "" : "s"} · {wins} win{wins === 1 ? "" : "s"} · from {sources}. Full charts aren't on Stayblz for
+        these races.
+      </p>
+      <div className="table-wrap rc-table-wrap">
+        <table className="data rc-table">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Track</th>
+              <th scope="col">Race</th>
+              <th scope="col">Type</th>
+              {more.distance && <th scope="col">Distance</th>}
+              <th scope="col">Fin</th>
+              {more.odds && <th scope="col">Odds</th>}
+              {more.rider && <th scope="col">Rider</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {history.map((h) => (
+              <tr key={`${h.date}-${h.trackCode}`} className={h.finish === 1 ? "is-winner" : undefined}>
+                <td>{dateLabel(h.date, "short")}</td>
+                <td title={h.trackCode}>{h.track || h.trackCode}</td>
+                <td className="rc-history-race">{h.name || (h.race ? `R${h.race}` : "—")}</td>
+                <td>{h.type || "—"}</td>
+                {more.distance && <td>{[h.distance, h.surface ? surfaceLabels[h.surface as keyof typeof surfaceLabels] : ""].filter(Boolean).join(" · ") || "—"}</td>}
+                <td>{h.finish ? `${ordinal(h.finish)}${h.fieldSize ? ` of ${h.fieldSize}` : ""}` : "—"}</td>
+                {more.odds && <td>{odds(h.odds)}</td>}
+                {more.rider && <td>{h.rider || "—"}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

@@ -84,9 +84,30 @@ export interface RaceDay {
   status?: "draft" | "published";
   publishedAt?: string | null;
   notes: string;
+  /** Where the card came from: '' = entered by hand, 'equibase' = a data feed (shown as a credit). */
+  source?: string;
   track: Track;
   races: Race[];
 }
+/** A horse's earlier start as a data provider lists it (no ratings). */
+export interface HistoryStart {
+  date: string;
+  trackCode: string;
+  track: string;
+  race: number | null;
+  name?: string;
+  type: string;
+  breed: string;
+  distance?: string;
+  surface?: string;
+  fieldSize?: number | null;
+  finish: number | null;
+  /** Final odds to 1. */
+  odds?: number | null;
+  rider?: string;
+  source: string;
+}
+export const sourceLabels: Record<string, string> = { equibase: "Equibase", theracingapi: "The Racing API" };
 export interface DaySummary {
   id: string;
   date: string;
@@ -122,6 +143,8 @@ export interface Start {
   lengths: number | null;
   odds: number | null;
   earnings: number | null;
+  /** The race's prize money currency. */
+  currency?: string;
   field: number;
 }
 export interface Stats {
@@ -130,6 +153,8 @@ export interface Stats {
   places: number;
   shows: number;
   earnings: number;
+  /** Prize money currency; null = won in several currencies (no meaningful total). Absent on older API answers. */
+  currency?: string | null;
 }
 export interface Workout {
   id: string;

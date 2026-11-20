@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import LookupField, { type Picked } from "../../components/racing/admin/LookupField";
+import FeedPanel from "../../components/racing/admin/FeedPanel";
 import { breedLabels, dateLabel, shiftDate, surfaceLabels, todayISO } from "../../components/racing/format";
 import type { RaceDay, Track, Workout } from "../../components/racing/types";
 import { useConfirm } from "../../components/ui/Confirm";
@@ -453,7 +454,7 @@ function WorkoutsTab({ tracks }: { tracks: Track[] }) {
 /** Publishing tool home: race days, tracks and workouts. Admins only (the API checks again). */
 export default function RacingAdmin() {
   const [search, setSearch] = useSearchParams();
-  const tab = (["days", "tracks", "workouts"] as const).find((t) => t === search.get("tab")) ?? "days";
+  const tab = (["days", "tracks", "workouts", "feed"] as const).find((t) => t === search.get("tab")) ?? "days";
   const tracks = useList<{ tracks: Track[] }>("/api/admin/racing/tracks");
   return (
     <div className="up-admin rca-page">
@@ -473,6 +474,7 @@ export default function RacingAdmin() {
             ["days", "Race days"],
             ["tracks", `Tracks (${tracks.data?.tracks.length ?? 0})`],
             ["workouts", "Workouts"],
+            ["feed", "Data feed"],
           ] as const
         ).map(([key, label]) => (
           <button key={key} type="button" className="up-chip" aria-pressed={tab === key} onClick={() => setSearch({ tab: key }, { replace: true })}>
@@ -484,6 +486,7 @@ export default function RacingAdmin() {
       {tab === "days" && <DaysTab tracks={tracks.data?.tracks ?? []} />}
       {tab === "tracks" && <TracksTab tracks={tracks.data?.tracks ?? []} reload={tracks.reload} />}
       {tab === "workouts" && <WorkoutsTab tracks={tracks.data?.tracks ?? []} />}
+      {tab === "feed" && <FeedPanel />}
     </div>
   );
 }

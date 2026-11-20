@@ -39,6 +39,7 @@ import { canUse } from "./components/account/roles";
 import StatusPage from "./components/status/StatusPage";
 import Legal from "./pages/Legal";
 import NotMe from "./pages/NotMe";
+import Welcome from "./pages/Welcome";
 import Updates from "./pages/Updates";
 import UpdatePost from "./pages/UpdatePost";
 import UpdatesAdmin from "./pages/admin/UpdatesAdmin";
@@ -161,6 +162,7 @@ export default function App() {
       <Route path="/legal" element={<Legal kind="all" />} />
       <Route path="/auth/confirm" element={<AuthConfirm />} />
       <Route path="/auth/not-me" element={<NotMe />} />
+      <Route path="/welcome" element={<Welcome />} />
       <Route
         element={
           <WorkspaceProvider key={user.id}>

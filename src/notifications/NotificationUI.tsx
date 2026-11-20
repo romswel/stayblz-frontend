@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import Modal from "../components/Modal";
-import DialogHead from "../components/ui/DialogHead";
+import { API_BASE } from "../api";
 import { Avatar } from "../components/messenger/icons";
 import { useNotifications, type AppAlert } from "./NotificationsContext";
+import NotificationSetup from "./NotificationSetup";
 import "./notifications.css";
 
 const BellIcon = ({ size = 18 }: { size?: number }) => (
@@ -14,10 +14,35 @@ const BellIcon = ({ size = 18 }: { size?: number }) => (
 );
 const ago = (at: number) => {
   const m = Math.floor((Date.now() - at) / 60_000);
-  return m < 1 ? "now" : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h`;
+  if (m < 1) return "now";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  return h < 24 ? `${h}h` : `${Math.floor(h / 24)}d`;
 };
+const KIND_LABEL: Record<AppAlert["kind"], string> = { chat: "Stayblz Chat", call: "Stayblz Paddock", meeting: "Stayblz Paddock", racing: "Racing" };
 
-/** New-message cards in the corner while Stayblz is in front. Tap to open the chat; they leave on their own. */
+/** The face of who it's from, with a small badge for what happened (🎉, @, ↩…). */
+function AlertFace({ alert, size }: { alert: AppAlert; size: "sm" | "md" }) {
+  return (
+    <span className="nt-face">
+      <Avatar name={alert.fromName ?? alert.title} id={alert.group ? null : alert.fromId} group={alert.group} size={size} />
+      {alert.badge && (
+        <span className={`nt-face-badge${alert.alertKind === "reaction" ? " is-emoji" : ""}`} aria-hidden="true">
+          {alert.badge}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** A photo message's picture; hidden quietly if it can't load. */
+function AlertPicture({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return <img className="nt-pic" src={src.startsWith("/api/") ? API_BASE + src : src} alt="" loading="lazy" onError={() => setFailed(true)} />;
+}
+
+/** Cards in the corner while Stayblz is in front. Tap to open; they leave on their own (hover pauses). */
 export function NotificationToasts() {
   const { toasts, dismiss, openAlert } = useNotifications();
   return (
@@ -35,18 +60,28 @@ function ToastCard({ alert, onOpen, onClose }: { alert: AppAlert; onOpen: () => 
   closeRef.current = onClose;
   useEffect(() => {
     if (paused) return;
-    const t = window.setTimeout(() => closeRef.current(), 6500);
+    const t = window.setTimeout(() => closeRef.current(), 7000);
     return () => window.clearTimeout(t);
   }, [paused]);
   return (
-    <div className={`nt-toast is-${alert.kind}`} role="status" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <div
+      className={`nt-toast is-${alert.kind}${alert.alertKind ? ` is-${alert.alertKind}` : ""}`}
+      role="status"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
       <button type="button" className="nt-toast-main" onClick={onOpen}>
-        <Avatar name={alert.fromName ?? alert.title} id={alert.group ? null : alert.fromId} group={alert.group} size="md" />
+        <AlertFace alert={alert} size="md" />
         <span className="nt-toast-text">
+          <small className="nt-toast-kind">
+            {KIND_LABEL[alert.kind]} · now
+          </small>
           <strong>{alert.title}</strong>
           <span>{alert.body}</span>
         </span>
-        <small className="nt-toast-kind">{alert.kind === "chat" ? "Stayblz Chat" : "Stayblz Paddock"}</small>
+        {alert.image && <AlertPicture src={alert.image} />}
       </button>
       <button type="button" className="nt-toast-close" aria-label="Dismiss" onClick={onClose}>
         ×
@@ -57,105 +92,45 @@ function ToastCard({ alert, onOpen, onClose }: { alert: AppAlert; onOpen: () => 
 }
 
 /**
- * "Turn on notifications?" — asks once (again a week after "Not now"), a few seconds after you arrive, never
- * during a call. "Turn on" switches on the account setting and asks the browser for permission.
+ * The set-up guide: opens by itself a few seconds after you arrive when this device isn't set up yet (first time,
+ * a new phone, an iPhone in the browser), never during a call; "Not now" waits a week. Also opens from the bell,
+ * Notification settings and "Finish your profile".
  */
 export function NotificationPrompt() {
-  const { shouldPrompt, enable, dismissPrompt, permission, pushState } = useNotifications();
+  const { shouldPrompt, dismissPrompt, setupOpen, openSetup, closeSetup } = useNotifications();
   const { pathname } = useLocation();
-  const [ready, setReady] = useState(false);
-  const [step, setStep] = useState<"ask" | "busy" | "blocked" | "done">("ask");
-  useEffect(() => {
-    if (!shouldPrompt) return;
-    const t = window.setTimeout(() => setReady(true), 3500);
-    return () => window.clearTimeout(t);
-  }, [shouldPrompt]);
+  const [auto, setAuto] = useState(false);
   const inCall = /^\/paddock\/[a-z]{4}-[a-z]{4}$/.test(pathname);
-  if (!ready || inCall || (!shouldPrompt && step === "ask")) return null;
-  const close = () => {
-    setReady(false);
-    if (step === "ask") dismissPrompt();
-  };
-  const unsupported = permission === "unsupported";
-
+  const quiet = inCall || pathname === "/welcome";
+  useEffect(() => {
+    if (!shouldPrompt || quiet || setupOpen) return;
+    const t = window.setTimeout(() => {
+      setAuto(true);
+      openSetup();
+    }, 3500);
+    return () => window.clearTimeout(t);
+  }, [shouldPrompt, quiet, setupOpen, openSetup]);
+  if (!setupOpen) return null;
   return (
-    <Modal label="Turn on notifications" onClose={close} className="modal-sm nt-prompt gx-layer">
-      <DialogHead kicker="Stayblz" title={step === "done" ? "Notifications are on" : step === "blocked" ? "Your browser said no" : "Turn on notifications?"} onClose={close} />
-      <div className="dlg">
-        <div className="nt-prompt-art" aria-hidden="true">
-          <span className="nt-bell">
-            <BellIcon size={30} />
-          </span>
-        </div>
-        {step === "done" ? (
-          <p className="dlg-text">
-            You'll get a heads-up when someone messages or calls you on Stayblz
-            {pushState === "on" ? ", even when Stayblz is closed on this device." : " while Stayblz is open in any tab."} Change it any time in{" "}
-            <Link to="/account/notifications" onClick={() => setReady(false)}>
-              Notification settings
-            </Link>
-            .
-          </p>
-        ) : step === "blocked" ? (
-          <p className="dlg-text">
-            Notifications are on for your account, but this browser blocked them for Stayblz, so you'll only see alerts
-            while Stayblz is in front. To allow them, open the site settings (the lock or tune icon by the address)
-            and set Notifications to Allow.
-          </p>
-        ) : (
-          <div className="dlg-text">
-            <p>Get a heads-up when someone messages or calls you on Stayblz — even when you're on another page or tab.</p>
-            {unsupported && (
-              <p>
-                This browser can't show system notifications here. We'll show alerts inside Stayblz while it's open.
-                On iPhone, add Stayblz to your Home Screen to get notifications.
-              </p>
-            )}
-            <p className="nt-small">You choose what's included (message text, sounds, requests) in Notification settings. Mute any chat from its menu.</p>
-          </div>
-        )}
-        <div className="dlg-actions">
-          {step === "done" || step === "blocked" ? (
-            <button type="button" className="btn btn-primary" onClick={() => setReady(false)}>
-              Got it
-            </button>
-          ) : (
-            <>
-              <button type="button" className="btn btn-quiet" onClick={close} disabled={step === "busy"}>
-                Not now
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={step === "busy"}
-                onClick={async () => {
-                  setStep("busy");
-                  try {
-                    const answer = await enable();
-                    setStep(answer === "denied" ? "blocked" : "done");
-                  } catch {
-                    setStep("ask");
-                  }
-                }}
-              >
-                {step === "busy" ? "Turning on…" : "Turn on"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </Modal>
+    <NotificationSetup
+      auto={auto}
+      onClose={(later) => {
+        if (later) dismissPrompt();
+        setAuto(false);
+        closeSetup();
+      }}
+    />
   );
 }
 
-/** Header bell: recent alerts on this device, a quick "turn on", and the way to Notification settings. */
+/** Header bell: your Stayblz alerts (saved, on every device), a way to set up this device, and settings. */
 export function NotificationBell() {
-  const { settings, recent, openAlert, enable, counts } = useNotifications();
+  const { settings, bell, bellUnread, openAlert, openSetup, markAllRead, counts, deviceReady, pushState } = useNotifications();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const { pathname } = useLocation();
-  const unread = counts.personal + counts.requests + counts.team;
+  const chats = counts.personal + counts.requests + counts.team;
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
     if (!open) return;
@@ -175,64 +150,95 @@ export function NotificationBell() {
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
-  const off = settings && !settings.enabled;
+  const off = !!settings && !settings.enabled;
+  const deviceOff = !!settings?.enabled && !deviceReady && pushState !== "unsupported";
+  const shown = bellUnread || 0;
   return (
     <div className="nt-bell-wrap">
       <button
         ref={button}
         type="button"
         className="gx-icon-btn"
-        aria-label={`Notifications${unread ? ` (${unread} unread chats)` : ""}`}
+        aria-label={`Notifications${shown ? ` (${shown} new)` : ""}`}
         aria-expanded={open}
         aria-haspopup="dialog"
         title="Notifications"
         onClick={() => setOpen((v) => !v)}
       >
         <BellIcon />
-        {off ? <span className="nt-off-dot" aria-hidden="true" /> : unread > 0 && <span className="gx-dot-count" aria-hidden="true">{unread > 9 ? "9+" : unread}</span>}
+        {shown > 0 ? (
+          <span className="gx-dot-count" aria-hidden="true">
+            {shown > 9 ? "9+" : shown}
+          </span>
+        ) : (
+          (off || deviceOff) && <span className="nt-off-dot" aria-hidden="true" />
+        )}
       </button>
       {open && (
         <div ref={box} className="nt-panel" role="dialog" aria-label="Notifications">
           <div className="nt-panel-head">
             <strong>Notifications</strong>
-            <Link to="/account/notifications">Settings</Link>
+            <span className="nt-panel-tools">
+              {shown > 0 && (
+                <button type="button" className="nt-text-btn" onClick={markAllRead}>
+                  Mark all as read
+                </button>
+              )}
+              <Link to="/account/notifications">Settings</Link>
+            </span>
           </div>
-          {off && (
+          {(off || deviceOff) && (
             <div className="nt-panel-off">
-              <p>Notifications are off. Turn them on to hear about new messages.</p>
-              <button type="button" className="btn btn-primary" onClick={() => void enable().catch(() => undefined)}>
-                Turn on
+              <p>
+                {off
+                  ? "Notifications are off, so you won't hear about new messages, mentions, calls or racing you follow."
+                  : pushState === "needs-install"
+                    ? "On iPhone, notifications need the Stayblz app on your Home Screen."
+                    : "This device isn't set up for notifications yet."}
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setOpen(false);
+                  openSetup();
+                }}
+              >
+                {off ? "Turn on" : "Set up this device"}
               </button>
             </div>
           )}
-          {unread > 0 && (
+          {chats > 0 && (
             <Link className="nt-panel-row is-summary" to="/messages">
-              <span className="nt-panel-icon" aria-hidden="true">💬</span>
+              <span className="nt-panel-icon" aria-hidden="true">
+                💬
+              </span>
               <span>
                 <strong>
-                  {unread} unread {unread === 1 ? "chat" : "chats"}
+                  {chats} unread {chats === 1 ? "chat" : "chats"}
                 </strong>
                 <small>Open Stayblz Chat</small>
               </span>
             </Link>
           )}
-          {recent.length ? (
-            <ul className="nt-panel-list" aria-label="Recent alerts on this device">
-              {recent.map((a) => (
+          {bell.length ? (
+            <ul className="nt-panel-list" aria-label="Recent notifications">
+              {bell.map((a) => (
                 <li key={a.id}>
-                  <button type="button" className="nt-panel-row" onClick={() => openAlert(a)}>
-                    <Avatar name={a.fromName ?? a.title} id={a.group ? null : a.fromId} group={a.group} size="sm" />
+                  <button type="button" className={`nt-panel-row${a.read ? "" : " is-unread"}`} onClick={() => openAlert(a)}>
+                    <AlertFace alert={a} size="sm" />
                     <span>
                       <strong>{a.title}</strong>
                       <small>{a.body}</small>
                     </span>
-                    <em>{ago(a.at)}</em>
+                    {a.image ? <AlertPicture src={a.image} /> : <em>{ago(a.at)}</em>}
+                    {!a.read && <i className="nt-unread-dot" aria-label="New" />}
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            !unread && <p className="nt-panel-empty">You're all caught up. New messages, missed calls and meetings show here while Stayblz is open.</p>
+            !chats && <p className="nt-panel-empty">You're all caught up. Messages, mentions, reactions, requests, calls, meetings and racing you follow show here.</p>
           )}
         </div>
       )}

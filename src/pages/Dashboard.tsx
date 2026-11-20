@@ -11,6 +11,7 @@ import {
   sectionNames,
 } from "../components/overview/RacingSections";
 import MyRacingPanel from "../components/overview/MyRacingPanel";
+import ProfileNudge from "../components/account/ProfileNudge";
 import { useAuth } from "../auth";
 import "../components/overview/overview.css";
 import "../components/overview/overview-glass.css";
@@ -178,6 +179,7 @@ export default function Dashboard() {
 
   return (
     <div className="gd">
+      <ProfileNudge />
       {/* ---------- Hero ---------- */}
       <header className="gd-hero gx-glass">
         <div className="gd-hero-main">

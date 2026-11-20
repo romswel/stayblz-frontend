@@ -48,6 +48,7 @@ export default function ChatSidebar({
   onSettings,
   onNewFolder,
   onAction,
+  openPeople = 0,
 }: {
   mode: ChatMode;
   title: string;
@@ -67,8 +68,14 @@ export default function ChatSidebar({
   /** Pass a chat id to put that chat in the new folder. */
   onNewFolder: (assignTo?: string) => void;
   onAction: (c: ChatPreview, action: ChatAction) => void;
+  /** Bumped to show the People tab (a friend-request notification was tapped). */
+  openPeople?: number;
 }) {
   const [tab, setTab] = useState<"chats" | "people">("chats");
+  const hasPeople = !!people;
+  useEffect(() => {
+    if (openPeople && hasPeople) setTab("people");
+  }, [openPeople, hasPeople]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   useEffect(() => {

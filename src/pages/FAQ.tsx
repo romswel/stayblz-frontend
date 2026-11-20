@@ -37,7 +37,7 @@ const topics = [
       {
         question: "How do I create an account?",
         answer:
-          "Choose Sign up, enter your name, country, connection to racing, and email address, then set a password. Open the confirmation email before logging in. Your connection to racing is profile information. It does not change what you can access.",
+          "Choose Sign up, enter your name and email address, set a password and agree to the Terms. We email you a link: open it to verify your account. Then add your country and your part in racing on “Finish your profile” (you can skip it and do it later from your profile). Your part in racing is profile information. It does not change what you can access.",
       },
       {
         question: "Why hasn’t my confirmation email arrived?",
@@ -89,7 +89,17 @@ const topics = [
       {
         question: "Can I use Stayblz on my phone?",
         answer:
-          "The pages adjust to smaller screens. Wide racing tables scroll sideways within their panels so the rest of the page stays in place.",
+          "Yes. The pages adjust to smaller screens, and you can install Stayblz like an app (see below). Wide racing tables scroll sideways within their panels so the rest of the page stays in place.",
+      },
+      {
+        question: "How do I install Stayblz as an app?",
+        answer:
+          "Tap “Get the app” (on the log in page, in the menu on phones, or the phone icon at the top on computers) and follow the steps for your device. On iPhone and iPad: tap Share, then Add to Home Screen, then Add. On Android: open the browser menu and tap Install app. On a computer in Chrome or Edge: click the install icon at the right of the address bar. Stayblz then opens in one tap, in its own window.",
+      },
+      {
+        question: "Why don’t I get notifications on my iPhone?",
+        answer:
+          "On iPhone and iPad, websites can only send notifications from the Stayblz app on your Home Screen (iOS 16.4 or newer). Add Stayblz to your Home Screen, open it from there, log in and tap Turn on when it asks. If you still see nothing, check Settings → Notifications → Stayblz, and turn off Focus. On any device you can send yourself a test from My account → Notifications.",
       },
       {
         question: "How do I change the theme?",

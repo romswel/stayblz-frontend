@@ -76,20 +76,21 @@
 }
 
 /* Dark dialog used on the sign-up panel (the landing is always dark). */
+/* The Terms dialog on sign-up (portalled with .gx-layer): the glass palette, light and dark. */
 .modal.modal-landing {
-  --surface: #16251d;
-  --surface-2: #1f3023;
-  --line: #35483b;
-  --ink: #f4f0e6;
-  --ink-soft: #abb7a5;
-  --gold: #c5a468;
-  --gold-bright: #d9bc79;
-  --gold-dim: #9c8150;
-  --gold-ink: #e3cb8f;
-  --gold-tint: rgba(197, 164, 104, 0.15);
-  --on-accent: #0f1e19;
-  background: var(--surface);
-  color: var(--ink);
+  --surface: var(--gx-surface-solid);
+  --surface-2: var(--gx-field);
+  --line: var(--gx-border-strong);
+  --ink: var(--gx-text);
+  --ink-soft: var(--gx-text-2);
+  --gold: var(--gx-accent);
+  --gold-bright: var(--gx-accent);
+  --gold-dim: var(--gx-muted);
+  --gold-ink: var(--gx-accent);
+  --gold-tint: var(--gx-accent-soft);
+  --on-accent: var(--gx-accent-ink);
+  background: var(--gx-surface-solid);
+  color: var(--gx-text);
   display: flex;
   flex-direction: column;
   overflow: hidden;
