@@ -303,11 +303,6 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
                       onError={h.onError}
                     />
                   )}
-<<<<<<< HEAD
-                  {m.body && <span className="mx-text">{linkify(m.body, highlight, mentions)}</span>}
-                  {m.body && <LinkCards text={m.body} />}
-                  {m.listing && <ListingMessageCard listing={m.listing} />}
-=======
                   {gif ? (
                     <button type="button" className="mx-gif" aria-label="GIF. Open larger" onClick={() => h.onOpenImage(m, gif)}>
                       <img src={gif} alt="GIF" loading="lazy" decoding="async" referrerPolicy="no-referrer" draggable={false} />
@@ -328,7 +323,7 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
                     )
                   )}
                   {m.body && !gif && <LinkCards text={m.body} />}
->>>>>>> main
+                  {m.listing && <ListingMessageCard listing={m.listing} />}
                   {m.edited && <span className="mx-edited">Edited</span>}
                 </>
               )}

@@ -104,3 +104,5 @@ test("the locked superadmin profile has no picture controls", async ({ page }) =
   await expect(page.getByRole("complementary", { name: "Profile preview" })).toBeVisible();
   await expect(page.getByRole("group", { name: "Profile picture" })).toHaveCount(0);
 });
+
+// -
