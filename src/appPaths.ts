@@ -26,6 +26,7 @@ const prefixes = [
   "/betting",
   "/marketplace",
   "/tv",
+  "/stayblz-data",
   "/subscription",
 ];
 

@@ -115,6 +115,13 @@ const TvIcon = () => (
     <path d="M8 2.5l4 3.5 4-3.5" />
   </svg>
 );
+/** Stacked database: Stayblz Data. */
+const DataIcon = () => (
+  <svg {...ICON_PROPS}>
+    <ellipse cx="12" cy="5.5" rx="7.5" ry="3" />
+    <path d="M4.5 5.5v13c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-13M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3" />
+  </svg>
+);
 const FeedIcon = () => (
   <svg {...ICON_PROPS}>
     <rect x="3" y="3" width="18" height="7" rx="2" />
@@ -237,6 +244,7 @@ const GROUPS = [
       { to: "/community", label: "Feeds", icon: <FeedIcon /> },
       { to: "/marketplace", label: "Marketplace", icon: <MarketIcon /> },
       { to: "/tv", label: TV_NAME, icon: <TvIcon /> },
+      { to: "/stayblz-data", label: "Stayblz Data", icon: <DataIcon /> },
     ],
   },
   {
