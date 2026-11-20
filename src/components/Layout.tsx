@@ -75,6 +75,12 @@ const InventoryIcon = () => (
     <path d="M12 11v10" />
   </svg>
 );
+const VirtualIcon = () => (
+  <svg {...ICON_PROPS}>
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
 const TrackerIcon = () => (
   <svg {...ICON_PROPS}>
     <circle cx="12" cy="12" r="9" />
@@ -263,6 +269,7 @@ const WORKSPACE_ITEMS = [
   { to: "/workspace", label: "Workspace overview", icon: <DashboardIcon /> },
   { to: "/inventory", label: "Inventory", icon: <InventoryIcon /> },
   { to: "/tracker", label: "Horse Tracker", icon: <TrackerIcon /> },
+  { to: "/workspace/virtual", label: "Virtual Stayblz", icon: <VirtualIcon /> },
   { to: "/team-messages", label: TEAM_CHAT_NAME, icon: <MessagesIcon /> },
   { to: "/stables", label: "My stables & team", icon: <StableIcon /> },
 ];
@@ -501,6 +508,7 @@ export default function Layout() {
               key={item.to}
               className={itemClass}
               to={item.to}
+              end={item.to === "/workspace"}
               aria-label={navBadge[item.to] ? `${item.label} (${navBadge[item.to]} unread)` : item.label}
               title={item.label}
               onClick={closeMenu}

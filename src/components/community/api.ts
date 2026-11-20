@@ -108,6 +108,19 @@ export type HorseDetail = Horse & {
   owner: { id: string; name: string; headline: string; isFollowing: boolean; me: boolean };
 };
 
+/** A horse in the Public horses list, with its owner. */
+export type PublicHorse = Horse & { owner: { id: string; name: string } };
+/** Public horses filters; empty = any. */
+export type PublicHorseFilters = {
+  q?: string;
+  breed?: string;
+  sex?: string;
+  status?: string;
+  foaledFrom?: string;
+  foaledTo?: string;
+  raced?: boolean;
+};
+
 export type PostKind = "update" | "horse_update" | "new_horse" | "result" | "achievement" | "announcement" | "horse_share";
 export type Post = {
   id: string;
@@ -211,6 +224,13 @@ export const community = {
     api.post<{ isFollowing: boolean; followers: number }>(`${BASE}/people/${id}/${on ? "follow" : "unfollow"}`, {}),
 
   horse: (id: string) => api.get<{ horse: HorseDetail }>(`${BASE}/horses/${id}`),
+  /** Horses every member can see (not your own), by name; `next` pages on. */
+  publicHorses: (filters: PublicHorseFilters, before?: string | null, signal?: AbortSignal) =>
+    api.get<{ horses: PublicHorse[]; next: string | null }>(
+      `${BASE}/public-horses${q({ ...filters, raced: filters.raced ? "1" : undefined, before })}`,
+      { signal },
+    ),
+  publicHorseBreeds: (signal?: AbortSignal) => api.get<{ breeds: string[] }>(`${BASE}/public-horses/breeds`, { signal }),
   horsePosts: (id: string, before?: string | null) => api.get<FeedPage>(`${BASE}/horses/${id}/posts${q({ before })}`),
   createHorse: (input: HorseInput & { share?: boolean; shareText?: string }) =>
     api.post<{ horse: Horse; shared: boolean }>(`${BASE}/horses`, input),

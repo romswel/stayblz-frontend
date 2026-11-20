@@ -21,6 +21,7 @@ import Inventory from "./pages/Inventory";
 import HorseTracker from "./pages/HorseTracker";
 import MyRacing from "./pages/MyRacing";
 import StableWorkspace from "./pages/StableWorkspace";
+import StableVirtualStayblz from "./pages/StableVirtualStayblz";
 import InvitationEntry from "./pages/InvitationEntry";
 import AuthConfirm from "./pages/AuthConfirm";
 import Profile from "./pages/Profile";
@@ -270,6 +271,14 @@ export default function App() {
         <Route path="/tv" element={<StayblzTV />} />
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/workspace" element={<StableWorkspace />} />
+        <Route
+          path="/workspace/virtual"
+          element={
+            <StableGate>
+              <StableVirtualStayblz />
+            </StableGate>
+          }
+        />
         <Route
           path="/inventory"
           element={

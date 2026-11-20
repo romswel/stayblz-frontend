@@ -4,8 +4,9 @@ import { breedLabels, dateLabel, earnings, money, odds, ordinal, surfaceLabels, 
 import { sourceLabels, type HistoryStart, type Horse, type Start, type Stats, type Workout } from "../../components/racing/types";
 import StatusPage from "../../components/status/StatusPage";
 import FollowButtons from "../../components/racing/FollowButtons";
+import AddToVirtualButton from "../../components/virtual/AddToVirtualButton";
 
-function StatTiles({ stats }: { stats: Stats }) {
+export function StatTiles({ stats }: { stats: Stats }) {
   const tiles = [
     ["Starts", stats.starts],
     ["Wins", stats.wins],
@@ -26,7 +27,7 @@ function StatTiles({ stats }: { stats: Stats }) {
   );
 }
 
-function StartsTable({ starts, show }: { starts: Start[]; show: "horse" | "person" }) {
+export function StartsTable({ starts, show }: { starts: Start[]; show: "horse" | "person" }) {
   if (!starts.length) return <p className="rc-muted">No published starts yet.</p>;
   return (
     <div className="table-wrap rc-table-wrap">
@@ -120,7 +121,14 @@ export function HorsePage() {
         eyebrow="Horse"
         title={horse ? `${horse.name}${horse.country ? ` (${horse.country})` : ""}` : "Horse"}
         sub={facts.join(" · ")}
-        actions={horse ? <FollowButtons target="horse" id={horse.id} name={horse.name} /> : undefined}
+        actions={
+          horse ? (
+            <>
+              <FollowButtons target="horse" id={horse.id} name={horse.name} />
+              <AddToVirtualButton target={{ racingHorseId: horse.id }} name={horse.name} />
+            </>
+          ) : undefined
+        }
       />
       <LoadNotice loading={loading && !data} error={error} retry={retry} />
       {data && horse && (
@@ -228,7 +236,7 @@ export function PersonPage() {
 }
 
 /** Earlier starts as the data provider lists them (races that aren't full cards on Stayblz). */
-function EarlierStarts({ history }: { history: HistoryStart[] }) {
+export function EarlierStarts({ history }: { history: HistoryStart[] }) {
   const sources = [...new Set(history.map((h) => sourceLabels[h.source] ?? h.source))].join(", ");
   const wins = history.filter((h) => h.finish === 1).length;
   // Some providers give distance, odds and rider for each start; the columns only show when there is something in them.

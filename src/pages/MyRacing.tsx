@@ -2,6 +2,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import FollowingPanel from "../components/my-racing/FollowingPanel";
 import NotesPanel from "../components/my-racing/NotesPanel";
 import PreferencesPanel from "../components/my-racing/PreferencesPanel";
+import VirtualStayblz from "../components/virtual/VirtualStayblz";
 import "../components/overview/overview.css";
 import "../components/my-racing/my-racing.css";
 import "../components/my-racing/my-racing-glass.css";
@@ -20,6 +21,7 @@ const I = {
 const StarIcon = () => (<svg {...I}><path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.8l-5.8 3 1.1-6.4L2.6 9.8l6.5-.9z" /></svg>);
 const NoteIcon = () => (<svg {...I}><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5M9 13h7M9 17h5" /></svg>);
 const BellIcon = () => (<svg {...I}><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4z" /><path d="M10 21h4" /></svg>);
+const EyeIcon = () => (<svg {...I}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>);
 const ChatIcon = () => (<svg {...I}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>);
 const UserIcon = () => (<svg {...I} width={16} height={16}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>);
 const Arrow = () => (<svg {...I} width={14} height={14} strokeWidth={2.2}><path d="M7 17 17 7M8 7h9v9" /></svg>);
@@ -29,6 +31,7 @@ const TeamIcon = () => (<svg {...I} width={16} height={16}><circle cx="9" cy="8"
 
 const TABS = [
   { key: "following", label: "Following", hint: "Horses, families & people", icon: <StarIcon /> },
+  { key: "virtual", label: "Virtual Stayblz", hint: "Horses you track, only you can see", icon: <EyeIcon /> },
   { key: "notes", label: "My notes", hint: "Private, only you can see", icon: <NoteIcon /> },
   { key: "alerts", label: "Alert settings", hint: "Choose your updates", icon: <BellIcon /> },
 ] as const;
@@ -36,7 +39,7 @@ const TABS = [
 export default function MyRacing() {
   const [params, setParams] = useSearchParams();
   const selected = params.get("tab");
-  const tab = selected === "notes" || selected === "alerts" ? selected : "following";
+  const tab = selected === "virtual" || selected === "notes" || selected === "alerts" ? selected : "following";
   const current = TABS.find((t) => t.key === tab)!;
 
   return (
@@ -50,7 +53,7 @@ export default function MyRacing() {
           <h1>
             My racing<span>.</span>
           </h1>
-          <p>Manage your followed horses, notes, messages, and alert settings.</p>
+          <p>Manage your followed horses, Virtual Stayblz, notes, messages, and alert settings.</p>
         </div>
         <Link className="mrg-btn" to="/account">
           <UserIcon /> My account <Arrow />
@@ -94,7 +97,15 @@ export default function MyRacing() {
           </div>
         </header>
         <div className="mrg-panel-body" key={tab}>
-          {tab === "following" ? <FollowingPanel /> : tab === "notes" ? <NotesPanel /> : <PreferencesPanel />}
+          {tab === "following" ? (
+            <FollowingPanel />
+          ) : tab === "virtual" ? (
+            <VirtualStayblz mode="personal" />
+          ) : tab === "notes" ? (
+            <NotesPanel />
+          ) : (
+            <PreferencesPanel />
+          )}
         </div>
       </section>
 
