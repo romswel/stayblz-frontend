@@ -28,6 +28,7 @@ const prefixes = [
   "/tv",
   "/stayblz-data",
   "/subscription",
+  "/billing",
 ];
 
 export const isAppPath = (pathname: string) =>

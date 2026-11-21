@@ -6,6 +6,13 @@ export function parentOf(pathname: string, signedIn = true): { to: string; label
   if (/^\/updates\/manage\/.+/.test(pathname)) return { to: "/updates/manage", label: "Manage posts" };
   if (pathname.startsWith("/updates/")) return { to: "/updates", label: "Updates" };
   if (pathname.startsWith("/admin/racing/")) return { to: "/admin/racing", label: "Publish racing" };
+  if (pathname.startsWith("/admin/billing")) return { to: "/administration", label: "Administration" };
+  if (pathname.startsWith("/billing/invoices/")) return { to: "/billing/history", label: "Invoices & receipts" };
+  if (pathname.startsWith("/billing/")) return { to: "/billing", label: "Billing" };
+  if (/^\/workspace\/billing\/invoices\/.+/.test(pathname)) return { to: "/workspace/billing/invoices", label: "Invoices" };
+  if (/^\/workspace\/billing\/clients\/.+/.test(pathname)) return { to: "/workspace/billing/clients", label: "Clients" };
+  if (pathname.startsWith("/workspace/billing/")) return { to: "/workspace/billing", label: "Barn office" };
+  if (pathname === "/workspace/billing") return { to: "/workspace", label: "Workspace overview" };
   if (pathname.startsWith("/racing/")) return { to: "/entries", label: "Entries" };
   if (pathname.startsWith("/messages/")) return { to: "/messages", label: "Stayblz Chat" };
   if (pathname.startsWith("/team-messages/")) return { to: "/team-messages", label: "Team chat" };

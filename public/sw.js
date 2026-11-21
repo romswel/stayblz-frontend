@@ -61,11 +61,11 @@ self.addEventListener("push", (event) => {
         isApplePush(),
       ]);
       const front = windows.filter((w) => w.visibilityState === "visible" && w.focused);
-      // Stayblz Chat and racing alerts: a device notification every time, unless you're looking at that very chat.
+      // Stayblz Chat, racing and billing alerts: a device notification every time, unless you're looking at that very chat.
       // Calls and meetings: an open Stayblz shows its own ringing card instead. Apple: always (see isApplePush).
       let skip = false;
       if (front.length && !apple && data.kind !== "test") {
-        if (data.kind === "chat" || data.kind === "racing") {
+        if (data.kind === "chat" || data.kind === "racing" || data.kind === "billing") {
           const target = new URL(data.url || "/messages", self.location.origin).pathname;
           const inChat = ["message", "request", "mention", "reply"].includes(data.alert);
           skip = inChat && front.some((w) => new URL(w.url).pathname === target);
@@ -93,7 +93,7 @@ self.addEventListener("push", (event) => {
       });
       windows.forEach((w) => w.postMessage({ type: "stayblz:push", alertId: data.alertId || null, shown: true }));
       // A dot on the installed app's icon until Stayblz is opened (the page then shows the real count).
-      if ((data.kind === "chat" || data.kind === "racing") && !front.length && self.navigator.setAppBadge) await self.navigator.setAppBadge().catch(() => undefined);
+      if ((data.kind === "chat" || data.kind === "racing" || data.kind === "billing") && !front.length && self.navigator.setAppBadge) await self.navigator.setAppBadge().catch(() => undefined);
     })().catch(() =>
       // Whatever went wrong, still show something: a push must never pass silently.
       self.registration.showNotification(data.title || "Stayblz", {

@@ -272,6 +272,8 @@ const WORKSPACE_ITEMS = [
   { to: "/workspace/virtual", label: "Virtual Stayblz", icon: <VirtualIcon /> },
   { to: "/team-messages", label: TEAM_CHAT_NAME, icon: <MessagesIcon /> },
   { to: "/stables", label: "My stables & team", icon: <StableIcon /> },
+  // Stable billing: only the stable's owner and managers see it (the API checks it too).
+  { to: "/workspace/billing", label: "Barn office", icon: <SubscriptionIcon />, staffOnly: true },
 ];
 /** Thumb-reach destinations for the mobile tab bar (the fifth slot opens the full menu). */
 const MOBILE_TABS = [
@@ -473,7 +475,7 @@ export default function Layout() {
       ))}
       <details
         className="gx-workspace"
-        open={WORKSPACE_ITEMS.some((item) => item.to === path) || undefined}
+        open={WORKSPACE_ITEMS.some((item) => item.to === path || (item.to === "/workspace/billing" && path.startsWith("/workspace/billing/"))) || undefined}
       >
         <summary title="Stable workspace (optional)">
           <span className="gx-nav-icon gx-workspace-icon">
@@ -503,7 +505,7 @@ export default function Layout() {
               </select>
             </label>
           )}
-          {WORKSPACE_ITEMS.map((item) => (
+          {WORKSPACE_ITEMS.filter((item) => !("staffOnly" in item) || stable?.role === "owner" || stable?.role === "manager").map((item) => (
             <NavLink
               key={item.to}
               className={itemClass}
@@ -540,13 +542,13 @@ export default function Layout() {
       </NavLink>
       <NavLink
         className={itemClass}
-        to="/subscription"
-        aria-label="Subscription"
-        title="Subscription"
+        to="/billing"
+        aria-label="Billing"
+        title="Billing: plans, bills and receipts"
         onClick={closeMenu}
       >
         <span className="gx-nav-icon"><SubscriptionIcon /></span>
-        <span className="gx-label">Subscription</span>
+        <span className="gx-label">Billing</span>
       </NavLink>
       {canUse(user, "admin") && (
         <>

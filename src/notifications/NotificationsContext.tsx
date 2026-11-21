@@ -24,7 +24,7 @@ import { onPresenceChange, presenceState } from "./presence";
  */
 export interface AppAlert {
   id: string;
-  kind: "chat" | "call" | "meeting" | "racing";
+  kind: "chat" | "call" | "meeting" | "racing" | "billing";
   title: string;
   body: string;
   url: string;
@@ -126,7 +126,7 @@ function chatAppAlert(a: ChatAlert, previews: boolean): AppAlert {
     id: `${a.id}:${a.at}`,
     chatAlertId: a.id,
     alertKind: a.kind,
-    kind: isRacingAlert(a.kind) ? "racing" : "chat",
+    kind: a.kind === "billing" ? "billing" : isRacingAlert(a.kind) ? "racing" : "chat",
     title: view.title,
     body: view.body,
     url: view.url,

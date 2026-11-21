@@ -798,6 +798,7 @@ function ListingCard({
         )}
         <span className="mp-type">{labelOf(TYPES, l.type)}</span>
         {l.mine && <span className="mp-mine">Your listing</span>}
+        {l.featured && <span className="mp-featured">Featured</span>}
         {(media > 0 || l.documentCount > 0) && (
           <span className="mkm-card-counts" aria-hidden="true">
             {l.photoCount > 0 && (

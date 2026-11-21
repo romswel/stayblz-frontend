@@ -19,7 +19,7 @@ const ago = (at: number) => {
   const h = Math.floor(m / 60);
   return h < 24 ? `${h}h` : `${Math.floor(h / 24)}d`;
 };
-const KIND_LABEL: Record<AppAlert["kind"], string> = { chat: "Stayblz Chat", call: "Stayblz Paddock", meeting: "Stayblz Paddock", racing: "Racing" };
+const KIND_LABEL: Record<AppAlert["kind"], string> = { chat: "Stayblz Chat", call: "Stayblz Paddock", meeting: "Stayblz Paddock", racing: "Racing", billing: "Billing" };
 
 /** The face of who it's from, with a small badge for what happened (🎉, @, ↩…). */
 function AlertFace({ alert, size }: { alert: AppAlert; size: "sm" | "md" }) {

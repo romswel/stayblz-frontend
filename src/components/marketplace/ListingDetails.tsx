@@ -19,6 +19,7 @@ import {
 import { getListing, mediaUrl, messageSeller, pictureUrl, posterUrl } from "./media";
 import { createRequestId } from "../../requestId";
 import { PlayIcon } from "./ListingMedia";
+import FeatureListing from "../billing/FeatureListing";
 import "./marketplace-media.css";
 
 const I = {
@@ -226,6 +227,15 @@ export default function ListingDetails({
             <button type="button" className="btn btn-primary mkm-edit" onClick={() => onEdit(l)}>
               Edit listing
             </button>
+          )}
+          {l.mine && !state.error && (
+            <FeatureListing
+              listingId={l.id}
+              listingName={l.name}
+              featuredUntil={l.featuredUntil}
+              // Read the listing again for the real end date from the server.
+              onFeatured={() => setReload((n) => n + 1)}
+            />
           )}
         </section>
       </div>

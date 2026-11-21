@@ -55,7 +55,8 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
         playback = await api.get<Playback>("/api/tv/playback", { signal: controller.signal });
       } catch (error) {
         if (controller.signal.aborted) return;
-        if (error instanceof ApiError && error.code === "off_air") return onOffAir();
+        // Off air, or the TV Pass is needed (paid access just switched on): the page re-checks what to show.
+        if (error instanceof ApiError && (error.code === "off_air" || error.code === "subscription_required")) return onOffAir();
         return fail(error instanceof ApiError ? error.message : "The broadcast couldn't be opened.");
       }
       if (stopped) return;

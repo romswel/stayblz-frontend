@@ -17,6 +17,13 @@ const GuestPaddock = lazy(() => import("./pages/Paddock").then((m) => ({ default
 const StayblzData = lazy(() => import("./pages/StayblzData"));
 const dataLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Loading Stayblz Data…</p>;
 const paddockLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Opening Stayblz Paddock…</p>;
+// Stayblz Billing (plans, bills, the stable's Barn office, admin) is its own download too.
+const Billing = lazy(() => import("./pages/Billing"));
+const BillingInvoice = lazy(() => import("./pages/BillingInvoice"));
+const PayLink = lazy(() => import("./pages/PayLink"));
+const StableBilling = lazy(() => import("./pages/StableBilling"));
+const BillingAdmin = lazy(() => import("./pages/admin/BillingAdmin"));
+const billingLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Opening Billing…</p>;
 import Inventory from "./pages/Inventory";
 import HorseTracker from "./pages/HorseTracker";
 import MyRacing from "./pages/MyRacing";
@@ -33,7 +40,6 @@ import Stables from "./pages/Stables";
 import Administration from "./pages/Administration";
 import Marketplace from "./pages/Marketplace";
 import StayblzTV from "./pages/StayblzTV";
-import Subscription from "./pages/Subscription";
 import { WorkspaceProvider, StableGate } from "./workspace";
 import MfaChallenge from "./components/account/MfaChallenge";
 import { canUse } from "./components/account/roles";
@@ -133,6 +139,15 @@ export default function App() {
         <Route path="/bulletin" element={<Navigate to="/updates" replace />} />
         <Route path="/auth/confirm" element={<AuthConfirm />} />
         <Route path="/auth/not-me" element={<NotMe />} />
+        {/* A stable's pay link: anyone with it can pay that one bill, no account needed. */}
+        <Route
+          path="/pay/:token"
+          element={
+            <Suspense fallback={billingLoading}>
+              <PayLink standalone />
+            </Suspense>
+          }
+        />
         <Route path="/pps/*" element={<PPLoginRedirect />} />
         {/* Meeting links work for guests: they ask to join with a name. */}
         <Route
@@ -269,7 +284,21 @@ export default function App() {
         <Route path="/my-racing" element={<MyRacing />} />
         <Route path="/marketplace" element={<Marketplace />} />
         <Route path="/tv" element={<StayblzTV />} />
-        <Route path="/subscription" element={<Subscription />} />
+        {/* Billing replaced the old "Subscription" page; its address still works. */}
+        <Route path="/subscription" element={<Navigate to="/billing/plans" replace />} />
+        <Route path="/billing/invoices/:id" element={<Suspense fallback={billingLoading}><BillingInvoice /></Suspense>} />
+        <Route path="/billing/:section?" element={<Suspense fallback={billingLoading}><Billing /></Suspense>} />
+        <Route path="/pay/:token" element={<Suspense fallback={billingLoading}><PayLink /></Suspense>} />
+        <Route
+          path="/workspace/billing/*"
+          element={
+            <StableGate>
+              <Suspense fallback={billingLoading}>
+                <StableBilling />
+              </Suspense>
+            </StableGate>
+          }
+        />
         <Route path="/workspace" element={<StableWorkspace />} />
         <Route
           path="/workspace/virtual"
@@ -330,6 +359,7 @@ export default function App() {
             <Route path="/admin/updates/:id" element={<OldUpdatesAdminLink />} />
             <Route path="/admin/racing" element={<RacingAdmin />} />
             <Route path="/admin/racing/days/:id" element={<RaceDayEditor />} />
+            <Route path="/admin/billing/:section?" element={<Suspense fallback={billingLoading}><BillingAdmin /></Suspense>} />
           </>
         )}
         <Route

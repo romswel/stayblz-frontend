@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import TvPlayer from "../components/tv/TvPlayer";
+import TvPassOffer from "../components/billing/TvPassOffer";
 import { TV_NAME } from "../components/tv/brand";
 import {
   formatDuration,
@@ -31,6 +32,8 @@ type TvStatus = {
   title: string | null;
   startsAt: string | null;
   runners?: string[];
+  /** Paid access (Stayblz Billing): allowed is false when live races need the TV Pass and you don't have it. */
+  access?: { allowed: boolean; reason: string; plan: string };
 };
 
 /** How often the page re-checks what's on, so it switches to live (or back) without a reload. */
@@ -154,6 +157,7 @@ export default function StayblzTV() {
   }, [load]);
 
   const live = status?.state === "live";
+  const locked = !!status?.access && !status.access.allowed;
   const upcoming = status?.state === "upcoming" && !!status.startsAt;
   const badge = live ? "Live" : status?.state === "upcoming" ? "Coming up" : status ? "Off air" : null;
   const now = useClock(upcoming);
@@ -339,7 +343,7 @@ export default function StayblzTV() {
                   referrerPolicy="strict-origin-when-cross-origin"
                 />
               </div>
-          ) : live ? (
+          ) : live && !locked ? (
             <div className="tvg-player">
               <TvPlayer onOffAir={load} />
             </div>
@@ -359,7 +363,13 @@ export default function StayblzTV() {
                   </button>
                 </>
               )}
-              {status && (
+              {status && locked && (
+                <TvPassOffer
+                  heading={live ? `Live now${status.title ? `: ${status.title}` : ""}` : upcoming ? `Next: ${status.title ?? "the next broadcast"}` : "Live races need the TV Pass"}
+                  onUnlocked={load}
+                />
+              )}
+              {status && !locked && (
                 <>
                   <TvIcon />
                   {upcoming ? (

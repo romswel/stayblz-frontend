@@ -150,6 +150,10 @@ export interface Listing {
   location: string;
   sellerName: string;
   mine: boolean;
+  /** Featured through Stayblz Billing: shown first with a Featured tag. */
+  featured?: boolean;
+  /** Only for your own listings: when featuring ends. */
+  featuredUntil?: string | null;
   createdAt: string;
   updatedAt: string;
   /** The first photo or video (shown on cards), or null for older listings without any. */

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { canUse, roleLabel } from "../components/account/roles";
@@ -125,6 +126,14 @@ export default function Administration() {
           them.
         </p>
       </header>
+
+      <section className="panel team-card" aria-labelledby="admin-billing">
+        <h2 id="admin-billing">Billing</h2>
+        <p>Revenue, payments and refunds, plans and prices, promo codes, free access, and Stayblz's fees.</p>
+        <Link className="btn btn-primary" to="/admin/billing">
+          Open billing admin
+        </Link>
+      </section>
 
       {superadmin && (
         <section className="panel team-card" aria-labelledby="admin-accounts">

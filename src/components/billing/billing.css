@@ -1,0 +1,1110 @@
+/* Stayblz Billing: on the glass theme (--gx-* tokens from layout-glass.css), light and dark, 320px → 2560px. */
+.bl-page {
+  display: grid;
+  gap: var(--gx-gap, 14px);
+  min-width: 0;
+  max-width: 1180px;
+}
+.bl-page > * {
+  min-width: 0;
+}
+.bl-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bl-head h1 {
+  margin: 2px 0 4px;
+  font-size: clamp(26px, 4vw, 34px);
+  letter-spacing: -0.02em;
+  color: var(--gx-text);
+}
+.bl-head p {
+  margin: 0;
+  color: var(--gx-muted);
+  font-size: 14px;
+  max-width: 60ch;
+}
+.bl-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bl-kicker,
+.bl-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gx-accent);
+}
+.bl-label {
+  color: var(--gx-muted);
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+.bl-muted {
+  color: var(--gx-muted);
+  font-size: 13.5px;
+  margin: 0;
+}
+.bl-hint {
+  margin: 0;
+  color: var(--gx-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.bl-error {
+  margin: 0;
+  color: var(--gx-danger);
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.bl-ok {
+  margin: 0;
+  color: var(--gx-accent);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.bl-link {
+  min-height: 32px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--gx-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.bl-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Cards */
+.bl-card {
+  padding: 18px 20px;
+  border-radius: var(--gx-radius, 20px);
+  min-width: 0;
+}
+.bl-card > h2,
+.bl-card-head h2 {
+  margin: 0;
+  font-size: 17px;
+  color: var(--gx-text);
+}
+.bl-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.bl-card p {
+  overflow-wrap: anywhere;
+}
+.bl-grid {
+  display: grid;
+  gap: var(--gx-gap, 14px);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+.bl-two {
+  display: grid;
+  gap: var(--gx-gap, 14px);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+@media (max-width: 900px) {
+  .bl-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Test mode */
+.bl-testmode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px dashed color-mix(in srgb, var(--gx-warn) 60%, transparent);
+  border-radius: var(--gx-radius-sm, 12px);
+  background: color-mix(in srgb, var(--gx-warn) 10%, transparent);
+  color: var(--gx-text-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.bl-testmode.is-compact {
+  padding: 7px 10px;
+  font-size: 12.5px;
+}
+.bl-testmode-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gx-warn);
+  color: #1a1203;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Pills */
+.bl-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--gx-field);
+  color: var(--gx-text-2);
+  border: 1px solid var(--gx-border);
+}
+.bl-pill.is-ok {
+  background: var(--gx-accent-soft);
+  color: var(--gx-accent);
+  border-color: color-mix(in srgb, var(--gx-accent) 30%, transparent);
+}
+.bl-pill.is-warn {
+  background: color-mix(in srgb, var(--gx-warn) 14%, transparent);
+  color: color-mix(in srgb, var(--gx-warn) 80%, var(--gx-text));
+  border-color: color-mix(in srgb, var(--gx-warn) 35%, transparent);
+}
+.bl-pill.is-danger {
+  background: color-mix(in srgb, var(--gx-danger) 12%, transparent);
+  color: var(--gx-danger);
+  border-color: color-mix(in srgb, var(--gx-danger) 32%, transparent);
+}
+.bl-pill.is-info {
+  background: color-mix(in srgb, var(--gx-accent-2) 12%, transparent);
+  color: var(--gx-accent-2);
+  border-color: color-mix(in srgb, var(--gx-accent-2) 32%, transparent);
+}
+.bl-pill.is-test {
+  border-style: dashed;
+  color: var(--gx-muted);
+}
+
+/* Stats */
+.bl-stats {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+}
+.bl-stat {
+  padding: 14px 16px;
+  border-radius: var(--gx-radius-sm, 12px);
+  background: var(--gx-field);
+  border: 1px solid var(--gx-border);
+  min-width: 0;
+}
+.bl-stat span {
+  display: block;
+  font-size: 12px;
+  color: var(--gx-muted);
+}
+.bl-stat strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+  color: var(--gx-text);
+  overflow-wrap: anywhere;
+}
+.bl-stat small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--gx-muted);
+}
+.bl-stat.is-warn strong {
+  color: var(--gx-danger);
+}
+
+/* Plan cards */
+.bl-plan {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.bl-plan-price {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--gx-text);
+  font-variant-numeric: tabular-nums;
+}
+.bl-plan-price span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gx-muted);
+}
+.bl-plan ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--gx-text-2);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.bl-plan.is-current {
+  outline: 2px solid color-mix(in srgb, var(--gx-accent) 55%, transparent);
+  outline-offset: -2px;
+}
+.bl-sub-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--gx-border);
+}
+.bl-sub-row:first-of-type {
+  border-top: 0;
+  padding-top: 4px;
+}
+.bl-sub-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.bl-sub-main strong {
+  font-size: 15.5px;
+  color: var(--gx-text);
+}
+.bl-sub-main span {
+  font-size: 13px;
+  color: var(--gx-muted);
+}
+.bl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bl-actions .btn,
+.bl-head-actions .btn,
+.bl-invoice-actions .btn {
+  width: auto;
+}
+
+/* Lists and tables */
+.bl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.bl-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--gx-border);
+  min-width: 0;
+}
+.bl-list > li:first-child {
+  border-top: 0;
+}
+.bl-list-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+.bl-list-main strong,
+.bl-list-main a {
+  color: var(--gx-text);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.bl-list-main small {
+  color: var(--gx-muted);
+  font-size: 12.5px;
+}
+.bl-amount {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--gx-text);
+  white-space: nowrap;
+}
+.bl-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+.bl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  color: var(--gx-text-2);
+}
+.bl-table th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gx-muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--gx-border-strong);
+  white-space: nowrap;
+}
+.bl-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--gx-border);
+  vertical-align: top;
+}
+.bl-table td a {
+  color: var(--gx-text);
+  font-weight: 650;
+}
+.bl-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bl-table tr.is-flag td {
+  background: color-mix(in srgb, var(--gx-danger) 6%, transparent);
+}
+.bl-line-desc {
+  display: block;
+  color: var(--gx-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.bl-table td small {
+  display: block;
+  color: var(--gx-muted);
+  font-size: 12px;
+}
+.bl-table caption.sr-only,
+.bl-page .sr-only,
+.bl-dialog .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.bl-empty {
+  padding: 22px 6px;
+  text-align: center;
+  color: var(--gx-muted);
+  font-size: 14px;
+}
+.bl-empty strong {
+  display: block;
+  color: var(--gx-text);
+  margin-bottom: 4px;
+}
+
+/* Filters */
+.bl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bl-chips button,
+.bl-seg button {
+  min-height: 36px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid var(--gx-border-strong);
+  background: var(--gx-field);
+  color: var(--gx-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s var(--gx-ease), color 0.15s var(--gx-ease);
+}
+.bl-chips button[aria-pressed="true"],
+.bl-seg button.is-on {
+  background: var(--gx-accent);
+  border-color: var(--gx-accent);
+  color: var(--gx-accent-ink);
+}
+.bl-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bl-seg-sm button {
+  min-height: 32px;
+  font-size: 12.5px;
+}
+
+/* Forms */
+.bl-form {
+  display: grid;
+  gap: 12px;
+}
+.bl-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--gx-text-2);
+}
+.bl-field input,
+.bl-field select,
+.bl-field textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--gx-border-strong);
+  background: var(--gx-field-strong);
+  color: var(--gx-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+.bl-field textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.bl-field input:focus-visible,
+.bl-field select:focus-visible,
+.bl-field textarea:focus-visible {
+  outline: 2px solid var(--gx-accent);
+  outline-offset: 1px;
+}
+.bl-field input[aria-invalid="true"] {
+  border-color: var(--gx-danger);
+}
+.bl-field .ld-label em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--gx-muted);
+  margin-left: 6px;
+}
+.bl-input-with {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  position: relative;
+}
+.bl-input-with input {
+  flex: 1;
+}
+.bl-input-with .btn {
+  width: auto;
+  flex: none;
+}
+.bl-brand {
+  position: absolute;
+  right: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gx-muted);
+  pointer-events: none;
+}
+.bl-row2,
+.bl-row3 {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.bl-row3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 520px) {
+  .bl-row2,
+  .bl-row3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.bl-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 40px;
+  padding-top: 6px;
+  font-size: 13.5px;
+  color: var(--gx-text-2);
+  cursor: pointer;
+}
+.bl-check input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--gx-accent);
+  flex: none;
+}
+.bl-card-fields {
+  display: grid;
+  gap: 10px;
+}
+.bl-testbox {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+.bl-testlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+.bl-testlist button {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-field);
+  color: var(--gx-text-2);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.bl-testlist code {
+  font-family: var(--gx-mono);
+  color: var(--gx-text);
+}
+.bl-testlist span {
+  color: var(--gx-muted);
+}
+
+/* Method picker */
+.bl-picker {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.bl-picker legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gx-text-2);
+}
+.bl-pick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--gx-border-strong);
+  background: var(--gx-field);
+  cursor: pointer;
+}
+.bl-pick.is-on {
+  border-color: var(--gx-accent);
+  background: var(--gx-accent-soft);
+}
+.bl-pick.is-expired {
+  opacity: 0.7;
+}
+.bl-pick input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gx-accent);
+  flex: none;
+}
+.bl-pick-main {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.bl-pick-main strong {
+  font-size: 14px;
+  color: var(--gx-text);
+}
+.bl-pick-main small {
+  font-size: 12px;
+  color: var(--gx-muted);
+}
+.bl-pick-new {
+  padding: 4px 2px 2px;
+}
+
+/* Checkout */
+.bl-dialog .dlg {
+  max-width: 100%;
+}
+.bl-checkout {
+  display: grid;
+  gap: 14px;
+}
+.bl-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--gx-field);
+  border: 1px solid var(--gx-border);
+}
+.bl-summary > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+.bl-summary strong {
+  color: var(--gx-text);
+}
+.bl-summary p,
+.bl-summary small {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--gx-muted);
+}
+.bl-summary-price {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+.bl-summary-price strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.bl-summary-price strong span {
+  font-size: 13px;
+  color: var(--gx-muted);
+  font-weight: 600;
+}
+.bl-coupon {
+  display: grid;
+  gap: 6px;
+}
+.bl-terms {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--gx-muted);
+}
+.bl-done {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.bl-done p {
+  margin: 0;
+  color: var(--gx-text-2);
+  max-width: 44ch;
+}
+.bl-done .dlg-actions {
+  width: 100%;
+}
+.bl-done-mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--gx-accent);
+  color: var(--gx-accent-ink);
+  font-size: 26px;
+  font-weight: 800;
+  animation: bl-pop 0.26s var(--gx-ease) both;
+}
+@keyframes bl-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* Invoice */
+.bl-invoice {
+  display: grid;
+  gap: 16px;
+  padding: clamp(16px, 3vw, 28px);
+  border-radius: var(--gx-radius, 20px);
+  min-width: 0;
+}
+.bl-invoice-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bl-invoice-head h2 {
+  margin: 4px 0 8px;
+  font-size: clamp(22px, 3.6vw, 28px);
+  color: var(--gx-text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.bl-invoice-head .bl-pill {
+  margin-right: 6px;
+}
+.bl-invoice-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  margin: 0;
+}
+.bl-invoice-dates dt,
+.bl-totals dt {
+  font-size: 12px;
+  color: var(--gx-muted);
+}
+.bl-invoice-dates dd {
+  margin: 2px 0 0;
+  font-weight: 650;
+  color: var(--gx-text);
+}
+.bl-invoice-parties {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+.bl-invoice-parties > div {
+  display: grid;
+  gap: 2px;
+  font-size: 13.5px;
+  color: var(--gx-text-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.bl-invoice-parties strong {
+  color: var(--gx-text);
+}
+.bl-totals {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 0 auto;
+  width: min(100%, 340px);
+}
+.bl-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bl-totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--gx-text);
+}
+.bl-totals .is-total,
+.bl-totals .is-due {
+  padding-top: 8px;
+  border-top: 1px solid var(--gx-border-strong);
+  font-weight: 750;
+}
+.bl-totals .is-due dd {
+  font-size: 20px;
+  color: var(--gx-accent);
+}
+.bl-memo {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--gx-field);
+  color: var(--gx-text-2);
+  white-space: pre-wrap;
+  font-size: 13.5px;
+}
+.bl-invoice-payments h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--gx-text);
+}
+.bl-invoice-payments ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.bl-invoice-payments li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--gx-text-2);
+}
+.bl-invoice-payments li strong {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.bl-invoice-payments li small {
+  flex-basis: 100%;
+  color: var(--gx-muted);
+}
+.bl-pay-status.is-failed {
+  color: var(--gx-danger);
+}
+.bl-pay-status.is-processing {
+  color: var(--gx-accent-2);
+}
+.bl-invoice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bl-fineprint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--gx-muted);
+}
+
+/* Margin check (admin settings) */
+.bl-fees-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+}
+.bl-fee-box {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-field);
+}
+.bl-fee-box h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--gx-text);
+}
+.bl-neg {
+  color: var(--gx-danger);
+  font-weight: 700;
+}
+.bl-pos {
+  color: var(--gx-accent);
+  font-weight: 700;
+}
+
+/* Pay link (public) */
+.bl-pay-page {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 8px 16px 56px;
+  display: grid;
+  gap: 14px;
+  box-sizing: border-box;
+}
+.bl-pay-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .bl-pay-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.bl-pay-box {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--gx-radius, 20px);
+  position: sticky;
+  top: 12px;
+}
+@media (max-width: 860px) {
+  .bl-pay-box {
+    position: static;
+  }
+}
+
+/* Compact buttons on billing pages (the shared .btn is full width); the main Pay button and plan cards stay wide. */
+.bl-page .btn {
+  width: auto;
+}
+.bl-list > li > .btn,
+.bl-list > li > .bl-actions {
+  flex: none;
+}
+.bl-pay-box .bl-checkout > .btn-primary,
+.bl-plan > .btn {
+  width: 100%;
+}
+
+/* Bits used by several billing pages */
+.bl-plain {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--gx-text-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.bl-subhead {
+  margin: 18px 0 4px;
+  font-size: 15px;
+  color: var(--gx-text);
+}
+.bl-ended {
+  margin-top: 10px;
+  color: var(--gx-muted);
+  font-size: 13.5px;
+}
+.bl-ended summary,
+details.bl-card summary {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--gx-text-2);
+}
+.bl-table th small {
+  display: block;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.bl-table tfoot td {
+  border-bottom: 0;
+  font-weight: 650;
+  color: var(--gx-text);
+}
+.bl-export {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gx-border);
+  align-items: center;
+}
+.bl-row-remove {
+  align-self: end;
+}
+
+/* Invoice editor lines */
+.bl-lines-edit {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.bl-lines-edit legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gx-text-2);
+}
+.bl-line-row {
+  display: grid;
+  gap: 8px 10px;
+  grid-template-columns: minmax(130px, 1fr) minmax(180px, 2fr) minmax(120px, 1fr) 80px 110px 110px auto auto;
+  align-items: end;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--gx-border);
+  background: var(--gx-field);
+  min-width: 0;
+}
+.bl-line-total {
+  display: grid;
+  gap: 2px;
+  align-self: center;
+  min-width: 0;
+}
+.bl-line-total strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--gx-text);
+}
+.bl-line-total small {
+  color: var(--gx-muted);
+  font-size: 11.5px;
+}
+.bl-line-tax {
+  padding-top: 0;
+  align-self: center;
+}
+.bl-line-remove {
+  width: auto;
+}
+@media (max-width: 1100px) {
+  .bl-line-row {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .bl-line-row > :nth-child(1),
+  .bl-line-row > :nth-child(3) {
+    grid-column: span 2;
+  }
+  .bl-line-desc-field {
+    grid-column: span 4;
+  }
+  .bl-line-qty,
+  .bl-line-price {
+    grid-column: span 1;
+  }
+  .bl-line-total {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 560px) {
+  .bl-line-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .bl-line-row > *,
+  .bl-line-desc-field,
+  .bl-line-row > :nth-child(1),
+  .bl-line-row > :nth-child(3),
+  .bl-line-total {
+    grid-column: span 2;
+  }
+  .bl-line-qty,
+  .bl-line-price,
+  .bl-line-tax,
+  .bl-line-remove {
+    grid-column: span 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bl-done-mark {
+    animation: none;
+  }
+  .bl-chips button,
+  .bl-seg button {
+    transition: none;
+  }
+}
+
+/* Printing an invoice or receipt: only the document (this stylesheet is on every page once TV loads it,
+   so the app chrome is hidden only when the page shows an invoice). */
+@media print {
+  :root:has(.bl-invoice) :is(.gx-sidebar, .gx-header, .gx-tabbar, .gx-pagebar, .gx-footer, .gx-ambient, .gx-grid, .section-nav),
+  .bl-no-print,
+  .bl-invoice-actions,
+  .bl-page .bl-testmode {
+    display: none !important;
+  }
+  .bl-invoice {
+    box-shadow: none !important;
+    border: 1px solid #ccc;
+    background: #fff !important;
+    color: #000;
+    backdrop-filter: none !important;
+  }
+}

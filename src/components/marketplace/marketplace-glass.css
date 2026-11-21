@@ -722,3 +722,38 @@
   gap: 6px;
   font-size: 0.82rem;
 }
+
+/* Featured listings (bought through Stayblz Billing) */
+.mp-featured {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--gx-accent-3);
+  color: #1b1405;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mkm-feature {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gx-border);
+}
+.mkm-featured-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gx-muted);
+}
+.mkm-feature-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mkm-feature-actions .btn {
+  width: auto;
+}

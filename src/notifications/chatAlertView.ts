@@ -1,6 +1,6 @@
 import { firstName } from "../components/messenger/format";
 import { plainText } from "../components/messenger/chatMarkdown";
-import { isRacingAlert, type ChatAlert, type ChatAlertKind, type IncomingChat, type NotificationSettings } from "./notifyApi";
+import { isRacingAlert, isServerWordedAlert, type ChatAlert, type ChatAlertKind, type IncomingChat, type NotificationSettings } from "./notifyApi";
 
 /**
  * How a Stayblz Chat alert reads on screen (corner card, bell list, system notification). Same words as the
@@ -44,6 +44,8 @@ const RACING_BADGE: Record<string, string> = { race_entry: "🏇", race_scratch:
 const sameSitePath = (link: string | null | undefined) => (link && /^\/[A-Za-z0-9]/.test(link) ? link : "/my-racing");
 
 export function viewOf(a: ChatAlert, previews: boolean): AlertView {
+  if (a.kind === "billing")
+    return { title: a.title || "Stayblz Billing", body: a.body, url: a.link && /^\/[A-Za-z0-9]/.test(a.link) ? a.link : "/billing", badge: "$" };
   if (isRacingAlert(a.kind))
     return { title: a.title || a.actorName || "Racing update", body: a.body, url: sameSitePath(a.link), badge: RACING_BADGE[a.kind] };
   const who = a.actorName || "Stayblz member";
@@ -88,7 +90,7 @@ export function viewOf(a: ChatAlert, previews: boolean): AlertView {
 /** Which notification switch an alert kind follows (matches SQL chat_alert_allowed). */
 export function allowedBy(settings: NotificationSettings, kind: ChatAlertKind) {
   if (!settings.enabled) return false;
-  if (isRacingAlert(kind)) return true; // which racing alerts are saved at all: My racing → Alert settings
+  if (isServerWordedAlert(kind)) return true; // racing: My racing → Alert settings; billing: always (money matters)
   if (kind === "message" || kind === "group_added") return settings.chatMessages;
   if (kind === "mention" || kind === "reply") return settings.chatMentions !== false;
   if (kind === "reaction") return settings.chatReactions !== false;

@@ -37,10 +37,14 @@ export type ChatAlertKind =
   | "friend_accepted"
   | "request_accepted"
   // Racing you follow (My racing → Following): a published entry, a scratch, an official result, a workout.
-  | RacingAlertKind;
+  | RacingAlertKind
+  // Stayblz Billing: a new bill, a payment received, a failed charge, a payout (words written by the server).
+  | "billing";
 export type RacingAlertKind = "race_entry" | "race_scratch" | "race_result" | "workout";
 export const RACING_ALERT_KINDS: readonly string[] = ["race_entry", "race_scratch", "race_result", "workout"];
 export const isRacingAlert = (kind: string): kind is RacingAlertKind => RACING_ALERT_KINDS.includes(kind);
+/** Alerts whose title and words come from the server (racing and billing), with a link to open. */
+export const isServerWordedAlert = (kind: string) => isRacingAlert(kind) || kind === "billing";
 
 /** One saved Stayblz Chat alert (backend chat_alerts; the bell list and on-screen alerts). */
 export interface ChatAlert {
