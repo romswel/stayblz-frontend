@@ -24,6 +24,9 @@ const PayLink = lazy(() => import("./pages/PayLink"));
 const StableBilling = lazy(() => import("./pages/StableBilling"));
 const BillingAdmin = lazy(() => import("./pages/admin/BillingAdmin"));
 const billingLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Opening Billing…</p>;
+// Stayblz Stallions (directory, stallion pages, mating check, listing) is its own download.
+const Stallions = lazy(() => import("./pages/Stallions"));
+const stallionsLoading = <p className="ws-loading" role="status" style={{ padding: 24 }}>Opening Stayblz Stallions…</p>;
 import Inventory from "./pages/Inventory";
 import HorseTracker from "./pages/HorseTracker";
 import MyRacing from "./pages/MyRacing";
@@ -149,6 +152,15 @@ export default function App() {
           }
         />
         <Route path="/pps/*" element={<PPLoginRedirect />} />
+        {/* Stallion pages are public, so owners can share them; listing and requests ask to log in. */}
+        <Route
+          path="/stallions/*"
+          element={
+            <Suspense fallback={stallionsLoading}>
+              <Stallions standalone />
+            </Suspense>
+          }
+        />
         {/* Meeting links work for guests: they ask to join with a name. */}
         <Route
           path="/paddock/:code"
@@ -283,6 +295,7 @@ export default function App() {
         />
         <Route path="/my-racing" element={<MyRacing />} />
         <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/stallions/*" element={<Suspense fallback={stallionsLoading}><Stallions /></Suspense>} />
         <Route path="/tv" element={<StayblzTV />} />
         {/* Billing replaced the old "Subscription" page; its address still works. */}
         <Route path="/subscription" element={<Navigate to="/billing/plans" replace />} />

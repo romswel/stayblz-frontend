@@ -116,6 +116,13 @@ const MarketIcon = () => (
     <circle cx="7.5" cy="7.5" r="1.5" />
   </svg>
 );
+/** A horse's head (Stayblz Stallions). */
+const StallionIcon = () => (
+  <svg {...ICON_PROPS}>
+    <path d="M7 21c.4-4.3 2-6.6 4.4-8.6L8 11.2 6.3 13 4 11.4l4.6-6.2L9.4 2l3.4 3.1C17.7 7.6 20 12.4 19.3 21" />
+    <path d="M10.6 7.4h.01" />
+  </svg>
+);
 const TvIcon = () => (
   <svg {...ICON_PROPS}>
     <rect x="2.5" y="6" width="19" height="13" rx="2" />
@@ -250,6 +257,7 @@ const GROUPS = [
     items: [
       { to: "/community", label: "Feeds", icon: <FeedIcon /> },
       { to: "/marketplace", label: "Marketplace", icon: <MarketIcon /> },
+      { to: "/stallions", label: "Stallions", icon: <StallionIcon /> },
       { to: "/tv", label: TV_NAME, icon: <TvIcon /> },
       { to: "/stayblz-data", label: "Stayblz Data", icon: <DataIcon /> },
     ],

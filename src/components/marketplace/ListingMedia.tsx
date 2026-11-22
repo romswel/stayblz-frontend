@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { MAX_DOCUMENTS, MAX_PHOTOS, MAX_VIDEOS, formatBytes, formatDuration, type ListingMedia } from "./options";
 import {
+  MARKETPLACE_MEDIA,
   MAX_VIDEO_BYTES,
   megabytes,
   mediaUrl,
@@ -10,19 +11,20 @@ import {
   uploadPhoto,
   uploadVideo,
   videoType,
+  type MediaApi,
   type UploadedFile,
 } from "./media";
 
 /** The biggest video the server takes right now (50 MB until files move to R2, then 100 MB). */
-function useVideoLimit() {
+function useVideoLimit(api: MediaApi) {
   const [bytes, setBytes] = useState(MAX_VIDEO_BYTES);
   useEffect(() => {
     let live = true;
-    void uploadLimits().then((l) => live && setBytes(l.videoBytes));
+    void uploadLimits(api).then((l) => live && setBytes(l.videoBytes));
     return () => {
       live = false;
     };
-  }, []);
+  }, [api]);
   return bytes;
 }
 
@@ -51,12 +53,14 @@ let counter = 0;
 const left = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const nextKey = () => `m${Date.now().toString(36)}${(counter++).toString(36)}`;
 
-export const savedMedia = (m: ListingMedia): MediaItem => ({
+export const savedMedia = (m: ListingMedia): MediaItem => savedMediaFrom(m, MARKETPLACE_MEDIA);
+/** A saved photo or video served by another feature's API (e.g. Stayblz Stallions). */
+export const savedMediaFrom = (m: ListingMedia, api: MediaApi): MediaItem => ({
   key: m.id,
   id: m.id,
   kind: m.kind,
   status: "ready",
-  preview: pictureUrl(m) ?? undefined,
+  preview: pictureUrl(m, api) ?? undefined,
   duration: m.duration ?? null,
   name: "",
   size: 0,
@@ -92,7 +96,7 @@ export const PlayIcon = ({ size = 16 }: { size?: number }) => (
   <svg {...I} width={size} height={size} fill="currentColor" stroke="none"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>
 );
 
-function useUploader(items: MediaItem[], setItems: (update: (items: MediaItem[]) => MediaItem[]) => void) {
+function useUploader(items: MediaItem[], setItems: (update: (items: MediaItem[]) => MediaItem[]) => void, api: MediaApi) {
   // Object URLs are freed when an item leaves the list or the form closes.
   const urls = useRef(new Map<string, string[]>());
   useEffect(() => {
@@ -118,7 +122,7 @@ function useUploader(items: MediaItem[], setItems: (update: (items: MediaItem[])
     setItems((list) => [...list, { key, kind, status: "uploading", progress: 0, preview, localVideo, name: file.name, size: file.size }]);
     const onProgress = (p: number) => patch(key, { progress: p });
     const upload: Promise<UploadedFile> =
-      kind === "photo" ? uploadPhoto(file, onProgress) : kind === "video" ? uploadVideo(file, onProgress) : uploadDocument(file, onProgress);
+      kind === "photo" ? uploadPhoto(file, onProgress, api) : kind === "video" ? uploadVideo(file, onProgress, api) : uploadDocument(file, onProgress, api);
     upload.then(
       (done) =>
         patch(key, {
@@ -129,7 +133,7 @@ function useUploader(items: MediaItem[], setItems: (update: (items: MediaItem[])
           size: done.size,
           duration: done.duration ?? null,
           fresh: true,
-          ...(kind === "video" && done.poster ? { preview: `${mediaUrl(done.id)}/poster` } : {}),
+          ...(kind === "video" && done.poster ? { preview: `${mediaUrl(done.id, api)}/poster` } : {}),
         }),
       (reason) => patch(key, { status: "error", error: reason instanceof Error ? reason.message : "Upload failed." }),
     );
@@ -142,17 +146,23 @@ export function MediaManager({
   setItems,
   disabled,
   invalid = false,
+  api = MARKETPLACE_MEDIA,
+  audience = "buyers",
 }: {
   items: MediaItem[];
   setItems: (update: (items: MediaItem[]) => MediaItem[]) => void;
   disabled: boolean;
   invalid?: boolean;
+  /** Where files go (the Marketplace unless given). */
+  api?: MediaApi;
+  /** Who sees the cover first ("buyers", "breeders"). */
+  audience?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [note, setNote] = useState("");
-  const add = useUploader(items, setItems);
-  const videoBytes = useVideoLimit();
+  const add = useUploader(items, setItems, api);
+  const videoBytes = useVideoLimit(api);
   const photos = items.filter((i) => i.kind === "photo").length;
   const videos = items.filter((i) => i.kind === "video").length;
   const full = photos >= MAX_PHOTOS && videos >= MAX_VIDEOS;
@@ -195,7 +205,7 @@ export function MediaManager({
       </legend>
       <p id="mkm-media-help" className="mkm-help">
         Up to {MAX_PHOTOS} photos (JPG, PNG, WebP) and {MAX_VIDEOS} videos (MP4, MOV or WebM, up to 3 minutes and{" "}
-        {megabytes(videoBytes)} each). The first one is the cover buyers see first. You can also publish without any.
+        {megabytes(videoBytes)} each). The first one is the cover {audience} see first. You can also publish without any.
       </p>
       <div className="mkm-photos">
         {items.map((item, index) => {
@@ -207,7 +217,7 @@ export function MediaManager({
               ) : item.localVideo ? (
                 <video src={item.localVideo} muted playsInline preload="metadata" aria-label={label} />
               ) : item.kind === "video" && item.id ? (
-                <video src={mediaUrl(item.id)} muted playsInline preload="metadata" aria-label={label} />
+                <video src={mediaUrl(item.id, api)} muted playsInline preload="metadata" aria-label={label} />
               ) : (
                 <span className="mkm-photo-blank" />
               )}
@@ -296,14 +306,19 @@ export function DocumentManager({
   items,
   setItems,
   disabled,
+  api = MARKETPLACE_MEDIA,
+  help,
 }: {
   items: MediaItem[];
   setItems: (update: (items: MediaItem[]) => MediaItem[]) => void;
   disabled: boolean;
+  api?: MediaApi;
+  /** Replaces the default line about what to add. */
+  help?: ReactNode;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
-  const add = useUploader(items, setItems);
+  const add = useUploader(items, setItems, api);
   const room = MAX_DOCUMENTS - items.length;
 
   function pick(files: File[]) {
@@ -320,8 +335,12 @@ export function DocumentManager({
         Documents <span className="mkm-opt">Optional</span>
       </legend>
       <p className="mkm-help">
-        Vet records, registration papers, X-ray reports or a pedigree, as PDF (up to 10 MB each, {MAX_DOCUMENTS} in all).
-        Signed-in members can download them from the listing.
+        {help ?? (
+          <>
+            Vet records, registration papers, X-ray reports or a pedigree, as PDF (up to 10 MB each, {MAX_DOCUMENTS} in all).
+            Signed-in members can download them from the listing.
+          </>
+        )}
       </p>
       {items.length > 0 && (
         <ul className="mkm-docs">

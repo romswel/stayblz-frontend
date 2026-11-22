@@ -11,11 +11,18 @@ import { MAX_VIDEO_SECONDS, type Listing, type ListingMedia } from "./options";
  */
 const BASE = "/api/marketplace";
 
-export const mediaUrl = (fileId: string) => `${BASE}/media/${fileId}`;
-export const posterUrl = (fileId: string) => `${BASE}/media/${fileId}/poster`;
+/**
+ * Where a feature's files go and are read from. The Marketplace uses /api/marketplace for both; Stayblz Stallions
+ * uploads to /api/stallions and serves its pages' files from /api/public/stallions (same file rules).
+ */
+export type MediaApi = { uploads: string; media: string };
+export const MARKETPLACE_MEDIA: MediaApi = { uploads: BASE, media: BASE };
+
+export const mediaUrl = (fileId: string, api: MediaApi = MARKETPLACE_MEDIA) => `${api.media}/media/${fileId}`;
+export const posterUrl = (fileId: string, api: MediaApi = MARKETPLACE_MEDIA) => `${api.media}/media/${fileId}/poster`;
 /** The picture for a photo or video (a video without a poster has none). */
-export const pictureUrl = (m: Pick<ListingMedia, "id" | "kind" | "poster">) =>
-  m.kind === "photo" ? mediaUrl(m.id) : m.poster ? posterUrl(m.id) : null;
+export const pictureUrl = (m: Pick<ListingMedia, "id" | "kind" | "poster">, api: MediaApi = MARKETPLACE_MEDIA) =>
+  m.kind === "photo" ? mediaUrl(m.id, api) : m.poster ? posterUrl(m.id, api) : null;
 
 export type UploadedFile = {
   id: string;
@@ -84,23 +91,26 @@ function send(query: Record<string, string>, body: Blob, type: string, onProgres
 
 /* ---------- Today's limits ---------- */
 
-let limits: Promise<{ videoBytes: number; videoSeconds: number }> | null = null;
+const limitsByBase = new Map<string, Promise<{ videoBytes: number; videoSeconds: number }>>();
 /**
  * The biggest video the server takes right now: 100 MB once files are stored in R2, 50 MB while
  * they're kept in Supabase Storage. Asked once per page load; quietly falls back to 100 MB (the
  * server still checks every upload).
  */
-export function uploadLimits() {
-  limits ??= apiRaw(`${BASE}/limits`)
+export function uploadLimits(api: MediaApi = MARKETPLACE_MEDIA) {
+  const known = limitsByBase.get(api.uploads);
+  if (known) return known;
+  const limits = apiRaw(`${api.uploads}/limits`)
     .then((r) => r.json())
     .then((d: { videoBytes?: unknown; videoSeconds?: unknown }) => ({
       videoBytes: typeof d.videoBytes === "number" && d.videoBytes > 0 ? d.videoBytes : MAX_VIDEO_BYTES,
       videoSeconds: typeof d.videoSeconds === "number" && d.videoSeconds > 0 ? d.videoSeconds : MAX_VIDEO_SECONDS,
     }))
     .catch(() => {
-      limits = null; // ask again next time
+      limitsByBase.delete(api.uploads); // ask again next time
       return { videoBytes: MAX_VIDEO_BYTES, videoSeconds: MAX_VIDEO_SECONDS };
     });
+  limitsByBase.set(api.uploads, limits);
   return limits;
 }
 export const megabytes = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
@@ -142,9 +152,9 @@ export async function preparePhoto(file: File): Promise<{ blob: Blob; type: stri
   return { blob, type, width: w, height: h };
 }
 
-export async function uploadPhoto(file: File, onProgress?: Progress) {
+export async function uploadPhoto(file: File, onProgress?: Progress, api: MediaApi = MARKETPLACE_MEDIA) {
   const photo = await preparePhoto(file);
-  return fileOf(await send({ kind: "photo", width: String(photo.width), height: String(photo.height) }, photo.blob, photo.type, onProgress));
+  return fileOf(await send({ kind: "photo", width: String(photo.width), height: String(photo.height) }, photo.blob, photo.type, onProgress, `${api.uploads}/uploads`));
 }
 
 /* ---------- Videos ---------- */
@@ -220,10 +230,10 @@ export function inspectVideo(file: File): Promise<{ duration: number; width: num
   });
 }
 
-export async function uploadVideo(file: File, onProgress?: Progress) {
+export async function uploadVideo(file: File, onProgress?: Progress, api: MediaApi = MARKETPLACE_MEDIA) {
   const type = videoType(file);
   if (!type) throw new Error(`${file.name}: videos must be MP4, MOV or WebM.`);
-  const limit = await uploadLimits();
+  const limit = await uploadLimits(api);
   if (file.size > limit.videoBytes)
     throw new Error(`${file.name} is too big (videos up to ${megabytes(limit.videoBytes)} for now). Trim the clip, or record at 1080p instead of 4K.`);
   const info = await inspectVideo(file);
@@ -232,10 +242,10 @@ export async function uploadVideo(file: File, onProgress?: Progress) {
   if (info.duration) query.duration = String(Math.round(info.duration));
   if (info.width) query.width = String(info.width);
   if (info.height) query.height = String(info.height);
-  const uploaded = fileOf(await send(query, file, type, onProgress));
+  const uploaded = fileOf(await send(query, file, type, onProgress, `${api.uploads}/uploads`));
   if (info.poster) {
     // The video is already saved; a missing poster only means cards show a play icon instead.
-    await send({}, info.poster, "image/jpeg", undefined, `${BASE}/uploads/${uploaded.id}/poster`)
+    await send({}, info.poster, "image/jpeg", undefined, `${api.uploads}/uploads/${uploaded.id}/poster`)
       .then(() => (uploaded.poster = true))
       .catch(() => undefined);
   }
@@ -244,15 +254,15 @@ export async function uploadVideo(file: File, onProgress?: Progress) {
 
 /* ---------- Documents ---------- */
 
-export async function uploadDocument(file: File, onProgress?: Progress) {
+export async function uploadDocument(file: File, onProgress?: Progress, api: MediaApi = MARKETPLACE_MEDIA) {
   const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
   if (!isPdf) throw new Error(`${file.name} isn't a PDF.`);
   if (file.size > MAX_DOCUMENT_BYTES) throw new Error(`${file.name} is too big (documents up to 10 MB).`);
-  return fileOf(await send({ kind: "document", name: file.name.slice(0, 160) }, file, "application/pdf", onProgress));
+  return fileOf(await send({ kind: "document", name: file.name.slice(0, 160) }, file, "application/pdf", onProgress, `${api.uploads}/uploads`));
 }
 
 /** Drop an upload that hasn't been saved with the listing (Cancel, or removed before saving). */
-export const removeUpload = (id: string) => api.post(`${BASE}/uploads/${id}/remove`, {}).catch(() => undefined);
+export const removeUpload = (id: string, base: MediaApi = MARKETPLACE_MEDIA) => api.post(`${base.uploads}/uploads/${id}/remove`, {}).catch(() => undefined);
 
 export const getListing = (id: string, signal?: AbortSignal) =>
   api.get<{ listing: Listing }>(`${BASE}/listings/${id}`, { signal }).then((d) => {

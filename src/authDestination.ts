@@ -28,6 +28,9 @@ export const allowedDestination = (value: unknown): value is string =>
     /^\/updates(\/[a-z0-9-]{1,80})?$/.test(value) ||
     /^\/racing\/(days|races|horses|people)\/[0-9a-f-]{36}$/.test(value) ||
     /^\/paddock\/[a-z]{4}-[a-z]{4}$/.test(value) ||
+    // Stayblz Stallions: every section, a stallion's page (optionally opening "Ask about a breeding") and its edit form,
+    // with the query strings those pages use.
+    /^\/stallions(\/(mares|manage(\/(new|[0-9a-f-]{36}))?|requests(\?side=(received|sent))?|mating(\?stallion=[0-9a-f-]{36})?|compare(\?ids=[0-9a-f,-]{36,120})?|[0-9a-f-]{36}(\?ask=1)?))?$/.test(value) ||
     isPPDestination(value));
 
 /** Where a signed-in visitor goes from the home, log in or sign up address. */

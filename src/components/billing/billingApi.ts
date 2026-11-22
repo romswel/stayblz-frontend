@@ -267,7 +267,7 @@ export const billingApi = {
   change: (id: string, body: { planId?: string; methodId?: string }) => api.post<{ subscription: Subscription }>(`/api/billing/subscriptions/${id}/change`, body),
   paySubscription: (id: string, body: { methodId: string; key: string }) => api.post<{ subscription: Subscription; payment: Payment }>(`/api/billing/subscriptions/${id}/pay`, body),
   checkCoupon: (code: string, planId: string) => api.post<{ code: string; discount: number; firstTotal: number; duration: string; durationMonths: number | null; percentOff: number | null; amountOff: number | null }>("/api/billing/coupons/check", { code, planId }),
-  purchase: (body: { productId: string; listingId: string; methodId: string; key: string }) => api.post<{ payment: Payment; invoice: Invoice; paid: boolean }>("/api/billing/purchases", body),
+  purchase: (body: { productId: string; listingId?: string; stallionId?: string; methodId: string; key: string }) => api.post<{ payment: Payment; invoice: Invoice; paid: boolean }>("/api/billing/purchases", body),
   invoices: (before?: string) => api.get<{ invoices: Invoice[] }>(`/api/billing/invoices${before ? `?before=${encodeURIComponent(before)}` : ""}`),
   invoice: (id: string, signal?: AbortSignal) => api.get<{ invoice: Invoice }>(`/api/billing/invoices/${id}`, { signal }),
   payInvoice: (id: string, body: { methodId: string; key: string }) => api.post<{ payment: Payment; invoice: Invoice; paid: boolean }>(`/api/billing/invoices/${id}/pay`, body),

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { pictureUrl } from "../marketplace/media";
+import { stallionPicture } from "../stallions/api";
 import { formatPrice } from "../marketplace/options";
 import type { ChatListing } from "./types";
 
@@ -10,12 +11,19 @@ import type { ChatListing } from "./types";
  */
 export default function ListingMessageCard({ listing: l }: { listing: ChatListing }) {
   const [broken, setBroken] = useState(false);
-  const picture = l.cover && !broken ? pictureUrl({ id: l.cover.id, kind: l.cover.kind, poster: l.cover.poster }) : null;
+  const stallion = l.kind === "stallion";
+  const picture =
+    l.cover && !broken
+      ? stallion
+        ? stallionPicture(l.cover)
+        : pictureUrl({ id: l.cover.id, kind: l.cover.kind, poster: l.cover.poster })
+      : null;
+  const price = stallion ? (l.fee ?? "") : formatPrice(l.price);
   return (
     <Link
-      to={`/marketplace?listing=${encodeURIComponent(l.id)}`}
+      to={stallion ? `/stallions/${encodeURIComponent(l.id)}` : `/marketplace?listing=${encodeURIComponent(l.id)}`}
       className="mx-listingcard"
-      aria-label={`Marketplace listing: ${l.name}, ${formatPrice(l.price)}, ${l.location}. Open listing`}
+      aria-label={`${stallion ? "Stayblz Stallions" : "Marketplace listing"}: ${l.name}, ${price}, ${l.location}. Open ${stallion ? "his page" : "listing"}`}
     >
       <span className="mx-listingcard-media">
         {picture ? (
@@ -27,12 +35,12 @@ export default function ListingMessageCard({ listing: l }: { listing: ChatListin
         )}
       </span>
       <span className="mx-listingcard-text">
-        <small>Marketplace</small>
+        <small>{stallion ? "Breeding request · Stayblz Stallions" : "Marketplace"}</small>
         <strong>{l.name}</strong>
-        <span className="mx-listingcard-price">{formatPrice(l.price)}</span>
+        <span className="mx-listingcard-price">{price}</span>
         <span className="mx-listingcard-loc">{l.location}</span>
       </span>
-      <span className="mx-listingcard-go">View listing</span>
+      <span className="mx-listingcard-go">{stallion ? "View stallion" : "View listing"}</span>
     </Link>
   );
 }

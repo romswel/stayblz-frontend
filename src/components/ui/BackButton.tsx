@@ -14,6 +14,8 @@ export function parentOf(pathname: string, signedIn = true): { to: string; label
   if (pathname.startsWith("/workspace/billing/")) return { to: "/workspace/billing", label: "Barn office" };
   if (pathname === "/workspace/billing") return { to: "/workspace", label: "Workspace overview" };
   if (pathname.startsWith("/racing/")) return { to: "/entries", label: "Entries" };
+  if (/^\/stallions\/manage\/.+/.test(pathname)) return signedIn ? { to: "/stallions/manage", label: "My stallions" } : { to: "/stallions", label: "Stallions" };
+  if (pathname.startsWith("/stallions/")) return { to: "/stallions", label: "Stallions" };
   if (pathname.startsWith("/messages/")) return { to: "/messages", label: "Stayblz Chat" };
   if (pathname.startsWith("/team-messages/")) return { to: "/team-messages", label: "Team chat" };
   if (pathname.startsWith("/paddock/")) return signedIn ? { to: "/paddock", label: "Stayblz Paddock" } : home;

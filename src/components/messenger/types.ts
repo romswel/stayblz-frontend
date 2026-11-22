@@ -44,6 +44,9 @@ export interface ChatListing {
   price: number;
   location: string;
   cover: { id: string; kind: "photo" | "video"; poster: boolean } | null;
+  /** "stallion" = a Stayblz Stallions breeding request (links to his page; `fee` is the fee line). */
+  kind?: "stallion";
+  fee?: string;
 }
 export interface ChatMessage {
   id: string;

@@ -23,7 +23,8 @@ export default function CheckoutDialog({
   onDone,
 }: {
   item: CatalogItem;
-  target?: { listingId: string; label?: string };
+  /** What a product is for: a Marketplace listing or a Stayblz Stallions stallion. */
+  target?: { listingId?: string; stallionId?: string; label?: string };
   onClose: () => void;
   onDone?: () => void;
 }) {
@@ -98,7 +99,7 @@ export default function CheckoutDialog({
                 : `You're subscribed. ${money(r.payment?.amount ?? 0)} was charged (test mode).`,
         });
       } else {
-        const r = await billingApi.purchase({ productId: item.id, listingId: target!.listingId, methodId, key: key.current });
+        const r = await billingApi.purchase({ productId: item.id, listingId: target?.listingId, stallionId: target?.stallionId, methodId, key: key.current });
         setDone({
           kind: "product",
           message: r.payment.status === "processing" ? "Your bank payment is on its way. It starts as soon as it clears." : `Paid ${money(r.payment.amount)} (test mode).`,
