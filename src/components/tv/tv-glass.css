@@ -87,7 +87,6 @@
 .tvg-chip.is-grade { color: var(--gx-accent-ink); background: linear-gradient(135deg, var(--gx-accent-3), var(--gx-warn)); border-color: transparent; }
 .tvg-chip.is-replay { color: var(--gx-accent-ink); background: linear-gradient(135deg, var(--gx-accent), var(--gx-accent-2)); border-color: transparent; }
 .tvg-chip.is-yt { color: #fff; background: #cc0000; border-color: transparent; }
-.tvg-chip.is-sample { color: var(--gx-warn); background: color-mix(in srgb, var(--gx-warn) 12%, transparent); border-color: color-mix(in srgb, var(--gx-warn) 30%, transparent); }
 .tvg-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
 
 /* ---------- Header ---------- */
@@ -325,6 +324,31 @@
 .tvg-now { font-size: 1.15rem; font-weight: 750; line-height: 1.25; }
 .tvg-side-time { font-family: var(--gx-mono); font-size: 0.82rem; color: var(--gx-accent); }
 .tvg-side-note { font-size: 0.84rem; color: var(--gx-text-2); line-height: 1.55; }
+/* Tracks live right now: pick which one plays. */
+.tvg-live-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; max-height: 280px; }
+.tvg-live-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: none;
+  color: var(--gx-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tvg-live-list button:hover { background: var(--gx-hover); }
+.tvg-live-list button[aria-pressed="true"] { background: var(--gx-accent-soft); border-color: color-mix(in srgb, var(--gx-accent) 40%, transparent); }
+.tvg-live-list .tvg-dot { flex: none; background: var(--tvg-live); }
+.tvg-live-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.tvg-live-text strong { font-size: 0.86rem; font-weight: 700; }
+.tvg-live-text small { font-size: 0.74rem; color: var(--gx-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tvg-live-viewers { flex: none; font-family: var(--gx-mono); font-size: 0.7rem; color: var(--gx-muted); }
+.tvg-latest-note { font-size: 0.8rem; color: var(--gx-muted); }
 .tvg-runners { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; max-height: 260px; }
 .tvg-runners li { display: flex; align-items: center; gap: 10px; padding: 4px; border-radius: 10px; }
 .tvg-runners li.is-hit { background: var(--gx-accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gx-accent) 40%, transparent); }
@@ -441,6 +465,9 @@
 
 /* ---------- Replays ---------- */
 .tvg-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.tvg-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
+.tvg-channel select { max-width: 260px; }
+.tvg-more { align-self: center; }
 .tvg-seg {
   display: inline-flex;
   max-width: 100%;
@@ -719,7 +746,7 @@
 @media (max-width: 1100px) {
   .tvg-stage { grid-template-columns: minmax(0, 1fr); }
   .tvg-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; column-gap: 20px; }
-  .tvg-side-head, .tvg-now, .tvg-side-time, .tvg-side-facts, .tvg-side-note { grid-column: 1; }
+  .tvg-side-head, .tvg-now, .tvg-side-time, .tvg-side-facts, .tvg-side-note, .tvg-side > .tvg-label, .tvg-live-list { grid-column: 1; }
   .tvg-side-foot { grid-column: 2; grid-row: 1 / span 4; margin-top: 0; padding-top: 0; border-top: 0; border-left: 1px solid var(--gx-border); padding-left: 20px; }
 }
 @media (max-width: 640px) {
@@ -742,7 +769,10 @@
   .tvg-seg { display: flex; flex-wrap: wrap; }
   .tvg-seg button { flex: 1 1 auto; }
   .tvg-seg-divider { display: none; }
-  .tvg-select select { flex: 1; }
+  /* width 0 + flex: the longest option (a channel name) must not widen the page. */
+  .tvg-select select { flex: 1 1 0; width: 0; min-width: 0; text-overflow: ellipsis; }
+  .tvg-filters { flex-direction: column; align-items: stretch; }
+  .tvg-channel select { max-width: none; }
   .tvg-finder-list { grid-template-columns: minmax(0, 1fr); }
   .tvg-grid { grid-template-columns: minmax(0, 1fr); }
   .tvg-dialog-wrap { padding: 0; place-items: end stretch; }
