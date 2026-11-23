@@ -5,23 +5,24 @@ import "../components/stayblz-data/stayblz-data.css";
 
 const FormFav = lazy(() => import("../components/stayblz-data/FormFav"));
 
-type Tab = "meeting" | "stats";
+type Tab = "meeting" | "horses" | "stats";
 
 /**
  * /stayblz-data (Explore → Stayblz Data): FormFav racing for the United States and Canada — Meeting (meetings, race
- * form, predictions, results) and Stats (jockeys, trainers, runners). components/stayblz-data/FormFav.tsx.
+ * form, predictions, results), Horses (A–Z) and Stats (jockeys and trainers A–Z). components/stayblz-data/FormFav.tsx.
  * The Equibase Races / Horses tabs are hidden (components/stayblz-data/EquibaseTabs.tsx).
  */
 export default function StayblzData() {
   const [params, setParams] = useSearchParams();
-  // Older links: ?tab=formfav&ff=stats, ?tab=races / horses (now Meeting).
-  const tab: Tab = params.get("tab") === "stats" || params.get("ff") === "stats" ? "stats" : "meeting";
+  // Older links: ?tab=formfav&ff=stats → Stats; ?tab=races / formfav → Meeting.
+  const raw = params.get("tab");
+  const tab: Tab = raw === "horses" ? "horses" : raw === "stats" || params.get("ff") === "stats" ? "stats" : "meeting";
 
   const show = (next: Tab) => {
     const p = new URLSearchParams(params);
     p.delete("ff");
-    if (next === "stats") p.set("tab", "stats");
-    else p.delete("tab");
+    if (next === "meeting") p.delete("tab");
+    else p.set("tab", next);
     setParams(p);
   };
 
@@ -36,13 +37,16 @@ export default function StayblzData() {
             Stayblz Data<span>.</span>
           </h1>
           <p>
-            Racing in the United States and Canada: meetings, race form, results and model predictions, plus jockey, trainer and runner
-            stats. Source: FormFav.
+            Racing in the United States and Canada: meetings, race form, results and model predictions, every horse A–Z, and jockey
+            and trainer stats. Source: FormFav.
           </p>
         </div>
         <nav className="cm-seg cm-hero-tabs" aria-label="Stayblz Data sections">
           <button type="button" aria-pressed={tab === "meeting"} onClick={() => show("meeting")}>
             <Icon.Flag /> Meeting
+          </button>
+          <button type="button" aria-pressed={tab === "horses"} onClick={() => show("horses")}>
+            <Icon.Horse /> Horses
           </button>
           <button type="button" aria-pressed={tab === "stats"} onClick={() => show("stats")}>
             <Icon.Search /> Stats
@@ -51,7 +55,7 @@ export default function StayblzData() {
       </header>
 
       <Suspense fallback={<Skeletons kind="card" count={6} />}>
-        <FormFav view={tab === "stats" ? "stats" : "meetings"} />
+        <FormFav view={tab === "meeting" ? "meetings" : tab} />
       </Suspense>
     </div>
   );

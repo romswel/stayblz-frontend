@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import HorsePortrait from "../HorsePortrait";
-import { Empty, Icon, Skeletons } from "../community/ui";
+import { Icon } from "../community/ui";
 import { dateLabel, money, ordinal } from "../racing/format";
-import { stayblzData, type HorseDetail, type HorseSummary, type Meta, type Page, type RaceSummary } from "./api";
-import { DetailShell, DetailState, errorText, useDetail } from "./detail";
+import { stayblzData, type HorseDetail, type HorseSummary, type Meta, type RaceSummary } from "./api";
+import { DetailShell, DetailState, useDetail } from "./detail";
+import PagedList from "./PagedList";
 
 const PAGE_SIZE = 20;
 
@@ -113,121 +114,6 @@ export default function EquibaseTabs({ tab }: { tab: "races" | "horses" }) {
         />
       )}
     </>
-  );
-}
-
-function PagedList<T>({
-  load,
-  idOf,
-  render,
-  noun,
-  empty,
-}: {
-  load: (offset: number, signal: AbortSignal) => Promise<Page<T>>;
-  idOf: (item: T) => string;
-  render: (item: T) => ReactNode;
-  noun: string;
-  empty: string;
-}) {
-  const [items, setItems] = useState<T[] | null>(null);
-  const [next, setNext] = useState<number | null>(null);
-  const [total, setTotal] = useState(0);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const sentinel = useRef<HTMLDivElement>(null);
-  const loadRef = useRef(load);
-  loadRef.current = load;
-  const busy = useRef(false);
-  const controller = useRef<AbortController | null>(null);
-
-  const fetchPage = useCallback(
-    async (offset: number) => {
-      if (busy.current) return;
-      busy.current = true;
-      setLoading(true);
-      const ctrl = new AbortController();
-      controller.current = ctrl;
-      try {
-        const page = await loadRef.current(offset, ctrl.signal);
-        if (ctrl.signal.aborted) return;
-        setItems((prev) => {
-          const base = offset === 0 ? [] : (prev ?? []);
-          const seen = new Set(base.map(idOf));
-          return [...base, ...page.records.filter((r) => !seen.has(idOf(r)))];
-        });
-        setNext(page.nextOffset);
-        setTotal(page.total);
-        setError("");
-      } catch (e) {
-        if (ctrl.signal.aborted) return;
-        setError(errorText(e, `The ${noun} couldn't be loaded.`));
-        setItems((prev) => prev ?? []);
-      } finally {
-        if (controller.current === ctrl) {
-          busy.current = false;
-          setLoading(false);
-        }
-      }
-    },
-    [idOf, noun],
-  );
-
-  useEffect(() => {
-    void fetchPage(0);
-    return () => {
-      controller.current?.abort();
-      controller.current = null;
-      busy.current = false;
-    };
-    // The list is remounted (by key) when the tab, track or search changes.
-  }, []);
-
-  useEffect(() => {
-    const el = sentinel.current;
-    if (!el || next === null || error) return;
-    const io = new IntersectionObserver((entries) => entries[0]?.isIntersecting && void fetchPage(next), { rootMargin: "600px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [next, error, fetchPage, items]);
-
-  if (items === null) return <Skeletons kind="card" count={6} />;
-  if (!items.length)
-    return error ? (
-      <div className="cm-error" role="alert">
-        {error}{" "}
-        <button type="button" className="cm-link" onClick={() => void fetchPage(0)}>
-          Try again
-        </button>
-      </div>
-    ) : (
-      <Empty title={empty}>
-        <p>Try another track or search.</p>
-      </Empty>
-    );
-
-  return (
-    <section className="sd-list" aria-label={noun}>
-      <p className="sd-count" role="status">
-        Showing {items.length} of {total} {noun}
-      </p>
-      <div className="cm-grid sd-grid">
-        {items.map((item) => (
-          <div key={idOf(item)}>{render(item)}</div>
-        ))}
-      </div>
-      {error && (
-        <p className="cm-error" role="alert">
-          {error}
-        </p>
-      )}
-      {next !== null && (
-        <div ref={sentinel} className="sd-more">
-          <button type="button" className="cm-btn cm-more" disabled={loading} onClick={() => void fetchPage(next)}>
-            {loading ? "Loading…" : error ? "Try again" : `Load more ${noun}`}
-          </button>
-        </div>
-      )}
-    </section>
   );
 }
 

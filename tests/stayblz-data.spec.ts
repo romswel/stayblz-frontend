@@ -94,6 +94,30 @@ const race = (date: string, withResult: boolean) => ({
     : null,
 });
 
+// A–Z lists (the server sorts; the fixtures are shuffled on purpose).
+const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
+const HORSES = [
+  ...Array.from({ length: 42 }, (_, i) => `Runner ${String.fromCharCode(90 - (i % 26))}${i}`),
+  "Zephyr",
+  "apple Pie",
+  "Bold Ruler",
+].map((name, i) => ({
+  name,
+  code: i % 9 === 0 ? "harness" : "gallops",
+  countries: [i % 4 === 0 ? "ca" : "us"],
+  starts: 3,
+  wins: name === "Zephyr" ? 2 : 0,
+  places: 1,
+  lastStart: { date: shift(today(), -2), track: "Del Mar", slug: "del-mar", position: 2 },
+  nextEntry: name === "Zephyr" ? { date: today(), track: "Del Mar", slug: "del-mar", country: "us", code: "gallops", timezone: "America/New_York", raceNumber: 1, startTime: `${today()}T20:00:00Z` } : null,
+  jockey: "Joel Rosario",
+  trainer: "Bob Baffert",
+}));
+const SURNAMES = ["Velazquez", "Rosario", "Prat", "Ortiz", "Castellano", "Saez", "Gaffalione", "Geroux", "Hernandez", "Smith", "Alvarado", "Franco", "Lanerie", "Leparoux", "Lezcano", "Rispoli", "Rocco", "Santana", "Torres", "Zayas", "Baird", "Cohen", "Davis", "Elliott", "Fresu"];
+const JOCKEY_ROWS = SURNAMES.map((s, i) => ({ kind: "jockey", name: `${String.fromCharCode(65 + (25 - i))}. ${s}`, rides: 10 + i, wins: i, places: i + 2, winRate: i / (10 + i), upcoming: i % 3, tracks: 2, lastRide: shift(today(), -1) }));
+const bySurname = (a: { name: string }, b: { name: string }) => collator.compare(a.name.split(" ").at(-1)!, b.name.split(" ").at(-1)!);
+const listMeta = { building: false, updatedAt: new Date().toISOString(), coverage: { from: shift(today(), -29), to: shift(today(), 2) } };
+
 async function mockFormFav(page: Page, opts: { enabled?: boolean; meetingsStatus?: number; withResult?: boolean; partial?: boolean } = {}) {
   const requests: string[] = [];
   await page.addInitScript(() => localStorage.setItem("stayblz.theme", "light"));
@@ -114,11 +138,42 @@ async function mockFormFav(page: Page, opts: { enabled?: boolean; meetingsStatus
         ? route.fulfill({ status: opts.meetingsStatus, json: { error: "FormFav data isn't available right now." } })
         : route.fulfill({ json: { ...meetings(url), partial: opts.partial ?? false } });
     if (path.endsWith("/race")) return route.fulfill({ json: race(date, opts.withResult ?? true) });
-    if (path.endsWith("/search")) {
-      const q = url.searchParams.get("q") ?? "";
-      return route.fulfill({ json: { query: q, results: q.startsWith("mcd") ? [{ name: "James McDonald", totalStarts: 3874, ambiguous: false }] : [] } });
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    const limit = Number(url.searchParams.get("limit") ?? 20);
+    const q = (url.searchParams.get("q") ?? "").toLowerCase();
+    const codes = (url.searchParams.get("codes") ?? "gallops,harness").split(",");
+    const countries = (url.searchParams.get("countries") ?? "us,ca").split(",");
+    const pageOf = <T,>(rows: T[]) => ({ ...listMeta, records: rows.slice(offset, offset + limit), nextOffset: offset + limit < rows.length ? offset + limit : null, total: rows.length });
+    if (path.endsWith("/horses"))
+      return route.fulfill({
+        json: pageOf(
+          HORSES.filter((h) => codes.includes(h.code) && h.countries.some((c) => countries.includes(c)) && h.name.toLowerCase().includes(q)).sort((a, b) =>
+            collator.compare(a.name, b.name),
+          ),
+        ),
+      });
+    if (path.endsWith("/horse")) {
+      const h = HORSES.find((x) => x.name === url.searchParams.get("name"));
+      if (!h) return route.fulfill({ status: 404, json: { error: "Not found." } });
+      const start = (date: string, status: string, position: number | null) => ({ date, code: "gallops", timezone: "America/New_York", track: "Del Mar", slug: "del-mar", country: "us", raceNumber: 1, raceName: "Del Mar Allowance", startTime: `${date}T20:00:00Z`, status, position, scratched: false, jockey: "Joel Rosario", trainer: "Bob Baffert" });
+      return route.fulfill({ json: { ...h, history: [start(today(), "pending", null), start(shift(today(), -2), "final", 1), { ...start(shift(today(), -9), "final", null), scratched: true }] } });
     }
-    if (path.endsWith("/jockey/James%20McDonald") || path.endsWith("/jockey/Ben%20Looker"))
+    if (path.endsWith("/people")) {
+      const kind = url.searchParams.get("kind");
+      const rows = kind === "trainer" ? [{ ...JOCKEY_ROWS[0], kind: "trainer", name: "Bob Baffert" }] : JOCKEY_ROWS.filter((p) => p.name.toLowerCase().includes(q)).sort(bySurname);
+      return route.fulfill({ json: pageOf(rows) });
+    }
+    if (path.endsWith("/search")) {
+      const sq = url.searchParams.get("q") ?? "";
+      if (url.searchParams.get("kind") === "runner")
+        return route.fulfill({ json: { query: sq, results: sq === "Zephyr" ? [{ id: 77, name: "Zephyr", country: "USA", totalStarts: 12, lastRaceDate: shift(today(), -2), sire: "Into Mischief", dam: "Breeze" }] : [] } });
+      return route.fulfill({ json: { query: sq, results: [] } });
+    }
+    if (path.endsWith("/runner/77"))
+      return route.fulfill({
+        json: { runner: { name: "Zephyr", country: "USA", age: 4, sex: "gelding", sire: "Into Mischief", dam: "Breeze" }, career: { totalStarts: 12, wins: 4, seconds: 2, thirds: 1, winRate: 0.33, placeRate: 0.58 }, distances: [], conditions: [], venues: [], spells: [], jockeys: [], classProfile: null, runningStyle: null, formTrend: null, trialForm: null, sire: null },
+      });
+    if (path.endsWith("/jockey/James%20McDonald") || path.endsWith("/jockey/Ben%20Looker") || /\/jockey\/[A-Z]\.%20/.test(path))
       return route.fulfill({
         json: {
           kind: "jockey",
@@ -164,7 +219,7 @@ test("FormFav tab lists US and Canada meetings, filters them and opens a race wi
   await expect(page.getByText("Racing in the United States and Canada")).toBeVisible();
   // Meeting is the first tab; the Equibase Races / Horses tabs are gone and never asked for.
   const tabs = page.getByRole("navigation", { name: "Stayblz Data sections" }).getByRole("button");
-  await expect(tabs).toHaveText(["Meeting", "Stats"]);
+  await expect(tabs).toHaveText(["Meeting", "Horses", "Stats"]);
   await expect(page.getByRole("button", { name: "Meeting", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("status").filter({ hasText: "3 meetings" })).toBeVisible();
   // Default: today only, every code, both zones, both countries.
@@ -279,16 +334,19 @@ test("FormFav race without a result yet says so; track bias opens", async ({ pag
   await expect(page.getByRole("dialog").getByText("+3.0 pts")).toBeVisible();
 });
 
-test("Stats tab and older links", async ({ page }) => {
+test("Horses and Stats tabs, and older links", async ({ page }) => {
   await mockFormFav(page);
   await page.goto("/stayblz-data");
+  await page.getByRole("button", { name: "Horses", exact: true }).click();
+  await expect(page).toHaveURL(/tab=horses/);
+  await expect(page.getByRole("status").filter({ hasText: "Showing 20 of 45 horses" })).toBeVisible();
   await page.getByRole("button", { name: "Stats", exact: true }).click();
   await expect(page).toHaveURL(/tab=stats/);
-  await expect(page.getByText("Type at least 3 letters")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Showing 20 of 25 jockeys" })).toBeVisible();
   await page.goBack();
-  await expect(page.getByRole("button", { name: "Meeting", exact: true })).toHaveAttribute("aria-pressed", "true");
-  // Links from before: the Equibase tabs and the old FormFav tab land on Meeting; ff=stats on Stats.
-  for (const old of ["?tab=races", "?tab=horses", "?tab=formfav"]) {
+  await expect(page.getByRole("button", { name: "Horses", exact: true })).toHaveAttribute("aria-pressed", "true");
+  // Links from before: the Equibase races tab and the old FormFav tab land on Meeting; ff=stats on Stats.
+  for (const old of ["?tab=races", "?tab=formfav"]) {
     await page.goto("/stayblz-data" + old);
     await expect(page.getByRole("button", { name: "Meeting", exact: true })).toHaveAttribute("aria-pressed", "true");
   }
@@ -296,24 +354,76 @@ test("Stats tab and older links", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Stats", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
-test("FormFav stats search finds a jockey and opens their stats", async ({ page }) => {
+test("Horses: every horse A–Z, 20 per scroll, with search and filters", async ({ page }) => {
+  const requests = await mockFormFav(page);
+  await page.goto("/stayblz-data?tab=horses");
+  await expect(page.getByRole("status").filter({ hasText: "Showing 20 of 45 horses" })).toBeVisible();
+  expect(requests).toContain("/api/stayblz-data/formfav/horses?offset=0&limit=20&codes=gallops%2Charness&countries=us%2Cca");
+  await expect(page.getByText(/Horses from US and Canada race cards/)).toBeVisible();
+  const names = await page.locator(".sd-ff-row .sd-title").allTextContents();
+  expect(names).toEqual([...HORSES.map((h) => h.name)].sort(collator.compare).slice(0, 20));
+  expect(names[0]).toBe("apple Pie");
+  // Only the first page until the end of the list comes near.
+  expect(requests.some((r) => r.includes("/horses?offset=20"))).toBe(false);
+  await page.getByRole("button", { name: "Load more horses" }).scrollIntoViewIfNeeded();
+  await expect(page.getByRole("status").filter({ hasText: "Showing 40 of 45 horses" })).toBeVisible();
+  await page.getByRole("button", { name: "Load more horses" }).scrollIntoViewIfNeeded();
+  await expect(page.getByRole("status").filter({ hasText: "Showing 45 of 45 horses" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Load more/ })).toHaveCount(0);
+
+  await page.getByLabel("Search horses").fill("zeph");
+  await expect(page.getByRole("status").filter({ hasText: "Showing 1 of 1 horses" })).toBeVisible();
+  await expect(page.getByText("Entered: Del Mar R1", { exact: false })).toBeVisible();
+  await page.getByLabel("Search horses").fill("");
+  await page.getByRole("button", { name: "Harness", exact: true }).click();
+  await expect(page).toHaveURL(/hcodes=gallops/);
+  await expect.poll(() => requests.at(-1)).toContain("codes=gallops&countries=us%2Cca");
+  await page.getByRole("button", { name: "United States", exact: true }).click();
+  await expect.poll(() => requests.at(-1)).toContain("codes=gallops&countries=ca");
+});
+
+test("A horse: starts, entries and FormFav career; its race opens", async ({ page }) => {
+  const requests = await mockFormFav(page);
+  await page.goto("/stayblz-data?tab=horses");
+  await page.getByLabel("Search horses").fill("zephyr");
+  await page.getByRole("button", { name: /Zephyr/ }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Zephyr", level: 2 }).first()).toBeVisible();
+  expect(requests).toContain("/api/stayblz-data/formfav/horse?name=Zephyr&code=gallops");
+  await expect(dialog.getByRole("row").nth(1)).toContainText("Entered");
+  await expect(dialog.getByRole("row").nth(2)).toContainText("1st");
+  await expect(dialog.getByRole("row").nth(3)).toHaveClass(/is-scratched/);
+  // Career from FormFav, found by name.
+  await expect(dialog.getByText("12 starts", { exact: false })).toBeVisible();
+  expect(requests.some((r) => r.startsWith("/api/stayblz-data/formfav/search?kind=runner&q=Zephyr"))).toBe(true);
+  // A race from the list opens the race.
+  await dialog.getByRole("row").nth(2).getByRole("button").click();
+  await expect(page.getByRole("dialog").getByRole("heading", { name: "Del Mar Allowance" })).toBeVisible();
+});
+
+test("Stats: jockeys A–Z by surname, 20 per scroll; trainers; a jockey opens", async ({ page }) => {
   const requests = await mockFormFav(page);
   await page.goto("/stayblz-data?tab=stats");
-  await expect(page.getByText("Type at least 3 letters")).toBeVisible();
-  await page.getByLabel("Search jockeys").fill("mc");
-  await page.waitForTimeout(400);
-  expect(requests.some((r) => r.includes("/search"))).toBe(false);
-  await page.getByLabel("Search jockeys").fill("mcdonald");
-  await page.getByRole("button", { name: /James McDonald/ }).click();
-  expect(requests).toContain("/api/stayblz-data/formfav/search?kind=jockey&q=mcdonald&race_code=gallops");
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("heading", { name: "James McDonald" })).toBeVisible();
-  await expect(dialog.getByText("24% win", { exact: false })).toBeVisible();
-  await expect(dialog.getByRole("row", { name: /Randwick/ })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Showing 20 of 25 jockeys" })).toBeVisible();
+  const names = await page.locator(".sd-ff-row .sd-title").allTextContents();
+  expect(names).toEqual([...JOCKEY_ROWS].sort(bySurname).slice(0, 20).map((p) => p.name));
+  expect(names[0]).toMatch(/Alvarado$/);
+  expect(requests).toContain("/api/stayblz-data/formfav/people?kind=jockey&offset=0&limit=20&codes=gallops%2Charness&countries=us%2Cca");
+  await page.getByRole("button", { name: "Load more jockeys" }).scrollIntoViewIfNeeded();
+  await expect(page.getByRole("status").filter({ hasText: "Showing 25 of 25 jockeys" })).toBeVisible();
 
+  await page.getByLabel("Search jockeys").fill("rosario");
+  await expect(page.getByRole("status").filter({ hasText: "Showing 1 of 1 jockeys" })).toBeVisible();
+  await page.getByRole("button", { name: /Rosario/ }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("US & Canada, last 30 days")).toBeVisible();
+  await expect(dialog.getByText("2,645 starts", { exact: false })).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.getByLabel("Search jockeys").fill("zzzz");
-  await expect(page.getByText("No matches")).toBeVisible();
+
+  await page.getByRole("button", { name: "Trainers", exact: true }).click();
+  await expect(page).toHaveURL(/kind=trainer/);
+  await expect(page.getByRole("status").filter({ hasText: "Showing 1 of 1 trainers" })).toBeVisible();
+  await expect(page.getByText("Bob Baffert")).toBeVisible();
 });
 
 test("FormFav errors and a missing key show friendly messages", async ({ page }) => {
@@ -347,4 +457,10 @@ test("FormFav tab fits a phone screen", async ({ page }) => {
   await expect(page.getByRole("dialog").getByText("Jewels Statement")).toBeVisible();
   overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+  for (const tab of ["horses", "stats"]) {
+    await page.goto("/stayblz-data?tab=" + tab);
+    await expect(page.getByRole("status").filter({ hasText: "Showing 20" })).toBeVisible();
+    overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, tab).toBeLessThanOrEqual(0);
+  }
 });

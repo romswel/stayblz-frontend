@@ -106,12 +106,6 @@ export interface RaceDetail {
   results: Results | null;
 }
 
-export type SearchKind = "jockey" | "trainer" | "runner";
-export interface PersonHit {
-  name: string | null;
-  totalStarts: number | null;
-  ambiguous: boolean;
-}
 export interface RunnerHit {
   id: number | null;
   name: string | null;
@@ -195,7 +189,82 @@ export interface RaceWhere {
   country: string;
 }
 
+// ── A–Z lists built from FormFav's US/Canada cards (about the last 30 days and the next 1–2) ─────────────────────────
+export type IndexCode = "gallops" | "harness";
+export interface ListMeta {
+  /** The first build since the server started is still running: the list may be short. */
+  building: boolean;
+  updatedAt: string | null;
+  coverage: { from: string; to: string };
+}
+export interface ListPage<T> extends ListMeta {
+  records: T[];
+  nextOffset: number | null;
+  total: number;
+}
+export interface ListParams {
+  offset: number;
+  limit?: number;
+  q?: string;
+  codes: IndexCode[];
+  countries: Country[];
+}
+export interface HorseRow {
+  name: string;
+  code: IndexCode;
+  countries: string[];
+  /** Runs in races that have been run (scratchings left out). */
+  starts: number;
+  wins: number;
+  places: number;
+  lastStart: { date: string; track: string | null; slug: string; position: number | null } | null;
+  nextEntry: {
+    date: string;
+    track: string | null;
+    slug: string;
+    country: string;
+    code: IndexCode;
+    timezone: string;
+    raceNumber: number | null;
+    startTime: string | null;
+  } | null;
+  jockey: string | null;
+  trainer: string | null;
+}
+export interface HorseStart {
+  date: string;
+  code: IndexCode;
+  timezone: string;
+  track: string | null;
+  slug: string;
+  country: string;
+  raceNumber: number | null;
+  raceName: string | null;
+  startTime: string | null;
+  status: string | null;
+  position: number | null;
+  scratched: boolean;
+  jockey: string | null;
+  trainer: string | null;
+}
+export interface HorseDetail extends HorseRow {
+  history: HorseStart[];
+}
+export interface PersonRow {
+  kind: "jockey" | "trainer";
+  name: string;
+  rides: number;
+  wins: number;
+  places: number;
+  winRate: number | null;
+  upcoming: number;
+  tracks: number;
+  lastRide: string | null;
+}
+
 const base = "/api/stayblz-data/formfav";
+const listQs = (p: ListParams) =>
+  qs({ offset: p.offset, limit: p.limit, q: p.q, codes: p.codes.join(","), countries: p.countries.join(",") });
 const qs = (o: Record<string, string | number | undefined>) => {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== "") p.set(k, String(v));
@@ -213,12 +282,14 @@ export const formFav = {
     api.get<RaceDetail>(
       `${base}/race?${qs({ date: w.date, track: w.track, race: w.race, race_code: w.code, country: w.country, timezone: w.tz })}`,
     ),
-  searchPeople: (kind: "jockey" | "trainer", q: string, code: RaceCode, signal?: AbortSignal) =>
-    api.get<SearchResults<PersonHit>>(`${base}/search?${qs({ kind, q, race_code: code })}`, { signal }),
   searchRunners: (q: string, code: RaceCode, signal?: AbortSignal) =>
     api.get<SearchResults<RunnerHit>>(`${base}/search?${qs({ kind: "runner", q, race_code: code })}`, { signal }),
   person: (kind: "jockey" | "trainer", name: string, code?: RaceCode) =>
     api.get<PersonStats>(`${base}/${kind}/${encodeURIComponent(name)}?${qs({ race_code: code })}`),
+  horses: (p: ListParams, signal?: AbortSignal) => api.get<ListPage<HorseRow>>(`${base}/horses?${listQs(p)}`, { signal }),
+  horse: (name: string, code: IndexCode) => api.get<HorseDetail>(`${base}/horse?${qs({ name, code })}`),
+  people: (kind: "jockey" | "trainer", p: ListParams, signal?: AbortSignal) =>
+    api.get<ListPage<PersonRow>>(`${base}/people?${qs({ kind })}&${listQs(p)}`, { signal }),
   runner: (id: number) => api.get<RunnerStats>(`${base}/runner/${id}`),
   trackBias: (slug: string, code?: RaceCode, country?: string) =>
     api.get<TrackBias>(`${base}/track-bias/${encodeURIComponent(slug)}?${qs({ race_code: code, country })}`),
