@@ -2,19 +2,32 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../../api";
 
 /* ==========================================================================
-   STAYBLZ TV — past broadcasts from YouTube channels (demo until a stream
-   provider is connected). The page reads GET /api/tv/youtube; the server
-   reads each channel's public feed. Race data is only what the channel
+   STAYBLZ TV — broadcasts and replays from the racetracks' own YouTube
+   channels. The page reads GET /api/tv/youtube; the server reads each
+   channel's public feed (plus length and livestream details from the
+   YouTube Data API when it has a key). Race data is only what the channel
    writes (race count, first post, highlights): no horse-by-horse results.
    ========================================================================== */
 
-export type YouTubeChannel = { id: string; name: string; url: string };
+export type Breed = "Thoroughbred" | "Quarter Horse" | "Harness";
+
+export type YouTubeChannel = {
+  id: string;
+  name: string;
+  url: string;
+  /** The track(s) the channel covers; null for channels the server only knows by id. */
+  track?: string | null;
+  breed?: Breed | null;
+  /** Streams live racing on YouTube (others post replays and highlights only). */
+  streamsCards?: boolean;
+};
 
 export type YouTubeVideo = {
   id: string;
   channelId: string;
   title: string;
-  kind: "card" | "preview" | "video";
+  /** "card" = a race-card broadcast, "race" = one race's replay, "preview" = a preview show. */
+  kind: "card" | "race" | "preview" | "video";
   heading: string;
   publishedAt: string;
   raceDay: string | null;
@@ -23,7 +36,23 @@ export type YouTubeVideo = {
   highlight: string | null;
   description: string;
   views: number | null;
+  /** Length in seconds, when the server knows it. */
+  durationSec?: number | null;
+  wasLive?: boolean | null;
 };
+
+/** Channel groups in the Channel menu, in this order; channels without a breed go last. */
+export const BREEDS: Breed[] = ["Thoroughbred", "Quarter Horse", "Harness"];
+
+/** "4:02:10" / "12:05". */
+export function videoLength(sec: number | null | undefined) {
+  if (!sec || sec <= 0) return null;
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  const mm = h ? String(m).padStart(2, "0") : String(m);
+  return `${h ? `${h}:` : ""}${mm}:${String(s).padStart(2, "0")}`;
+}
 
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 export const isVideoId = (id: string) => VIDEO_ID.test(id);

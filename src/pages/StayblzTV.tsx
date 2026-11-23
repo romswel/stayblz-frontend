@@ -13,18 +13,32 @@ import {
   type Replay,
 } from "../components/tv/replays";
 import {
+  BREEDS,
   broadcastDate,
   isVideoId,
   replayEmbedUrl,
   thumbnailUrl,
   useYouTubeReplays,
+  videoLength,
   viewCount,
   watchUrl,
+  type YouTubeChannel,
   type YouTubeVideo,
 } from "../components/tv/youtube";
 import "../components/overview/overview.css";
 import "../components/tv/tv.css";
 import "../components/tv/tv-glass.css";
+
+/** A track that is live on its YouTube channel right now. */
+type LiveTrack = {
+  channelId: string;
+  channelName: string;
+  track: string | null;
+  videoId?: string;
+  title: string;
+  startedAt: string | null;
+  viewers: number | null;
+};
 
 /** `runners` is optional: when the server lists the horses in the live race, search can find them. */
 type TvStatus = {
@@ -32,12 +46,27 @@ type TvStatus = {
   title: string | null;
   startsAt: string | null;
   runners?: string[];
-  /** Paid access (Stayblz Billing): allowed is false when live races need the TV Pass and you don't have it. */
+  /** Paid access (Stayblz Billing) to the featured broadcast: false when it needs the TV Pass and you don't have it. */
   access?: { allowed: boolean; reason: string; plan: string };
+  /** Our own featured broadcast is on air (the only thing behind the TV Pass). */
+  featured?: boolean;
+  /** Tracks live on YouTube, latest start first. Free to watch. */
+  live?: LiveTrack[];
+  /** The next scheduled track stream. */
+  upcoming?: { channelId: string; channelName: string; title: string; startsAt: string } | null;
+  /** The most recent finished track broadcast. */
+  latest?: { channelId: string; channelName: string; videoId: string; title: string; endedAt: string } | null;
 };
+
+/** What can play under Live: the featured broadcast and each live track. */
+type LiveSource = { id: string; name: string; title: string; track: string | null; viewers: number | null; videoId?: string; startedAt?: string | null };
+const FEATURED = "featured";
 
 /** How often the page re-checks what's on, so it switches to live (or back) without a reload. */
 const REFRESH_MS = 60_000;
+/** Broadcast cards shown at first, and added per "Show more". */
+const PAGE = 24;
+const watchers = (n: number | null) => (n === null ? null : `${new Intl.NumberFormat(undefined, { notation: n >= 10_000 ? "compact" : "standard" }).format(n)} watching`);
 
 const startTime = (iso: string) =>
   new Intl.DateTimeFormat(undefined, {
@@ -118,10 +147,12 @@ function Countdown({ to, now }: { to: string; now: number }) {
 }
 
 /**
- * Live race telecasts plus race replays. What's on comes from GET /api/tv/status; while live, the
- * player asks for the stream separately. Replays come from GET /api/tv/replays (see replays.ts).
+ * Live race telecasts plus replays. What's on comes from GET /api/tv/status: every track live on its
+ * YouTube channel (free), and the featured broadcast (behind the TV Pass) when it is on. `?live=<id>`
+ * picks which one plays; the player asks for the stream separately.
  * Past YouTube broadcasts (GET /api/tv/youtube, see youtube.ts) play in the main screen instead of
  * the live feed, marked "Replay", with a button back to live. `?watch=<video id>` keeps that in the address.
+ * Race replays with results (GET /api/tv/replays, see replays.ts) show only once the server has them.
  */
 export default function StayblzTV() {
   const [status, setStatus] = useState<TvStatus | null>(null);
@@ -163,7 +194,7 @@ export default function StayblzTV() {
   const now = useClock(upcoming);
 
   /* ---------- Replays, search & filters (kept in the address) ---------- */
-  const { loading: replaysLoading, error: replaysError, replays, source, reload } = useReplays();
+  const { loading: replaysLoading, error: replaysError, replays, reload } = useReplays();
   const [params, setParams] = useSearchParams();
   const urlHorse = (params.get("horse") ?? "").slice(0, 60);
   const [horse, setHorse] = useState(urlHorse);
@@ -175,8 +206,11 @@ export default function StayblzTV() {
   }, [horse]);
   const track = params.get("track") ?? "";
   const surface = params.get("surface") ?? "";
-  /** "" = race replays; "all" = every YouTube channel; otherwise one channel id. */
-  const yt = params.get("yt") ?? "";
+  const hasRaceReplays = replays.length > 0;
+  /** "" = race replays (only when there are any); "all" = every YouTube channel; otherwise one channel id. */
+  const yt = params.get("yt") || (hasRaceReplays ? "" : "all");
+  /** Broadcast type filter (?type=): "all" or a video kind. */
+  const typeParam = params.get("type");
   const watchId = params.get("watch") ?? "";
   function setParam(changes: Record<string, string>) {
     const next = new URLSearchParams(params);
@@ -225,11 +259,57 @@ export default function StayblzTV() {
   /* ---------- YouTube broadcasts ---------- */
   const youtube = useYouTubeReplays();
   const channelName = (id: string) => youtube.channels.find((c) => c.id === id)?.name ?? "YouTube";
+  // All channels together lead with race cards (single-race clips would bury them); one channel shows everything.
+  const typeValue = typeParam ?? (yt === "all" && youtube.videos.some((v) => v.kind === "card") ? "card" : "all");
+  const kind = typeValue === "all" ? "" : typeValue;
   const ytShown = youtube.videos.filter(
     (v) =>
       (yt === "all" || v.channelId === yt) &&
+      (!kind || v.kind === kind) &&
       (!q || normalize(`${v.title} ${v.description}`).includes(q)),
   );
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => setLimit(PAGE), [yt, kind, q]);
+  const liveIds = new Set((status?.live ?? []).map((l) => l.channelId));
+  /** The Channel menu: channels grouped by breed, A–Z. */
+  const groups = useMemo(() => {
+    const byBreed = new Map<string, YouTubeChannel[]>();
+    for (const c of youtube.channels) {
+      const key = c.breed ?? "Other channels";
+      byBreed.set(key, [...(byBreed.get(key) ?? []), c]);
+    }
+    return [...BREEDS, "Other channels"]
+      .filter((k) => byBreed.has(k))
+      .map((label) => ({ label, channels: byBreed.get(label)!.sort((a, b) => a.name.localeCompare(b.name)) }));
+  }, [youtube.channels]);
+
+  /* ---------- Live: the featured broadcast and every track live on YouTube ---------- */
+  // A server without track detection sends no `featured`/`live`: then "live" means the featured broadcast.
+  const featuredOn = status?.featured ?? (live && !status?.live?.length);
+  const sources: LiveSource[] = [
+    ...(status && featuredOn ? [{ id: FEATURED, name: TV_NAME, title: status.title ?? "Live broadcast", track: null, viewers: null }] : []),
+    ...(status?.live ?? []).map((l) => ({ id: l.channelId, name: l.channelName, title: l.title, track: l.track, viewers: l.viewers, videoId: l.videoId, startedAt: l.startedAt })),
+  ];
+  // The server lists tracks latest start first, so by default the newest live stream plays.
+  const current = sources.find((x) => x.id === params.get("live")) ?? sources[0] ?? null;
+  const tracksLive = sources.filter((x) => x.id !== FEATURED);
+  /** Plays a live track in the screen (runs on click, after screenRef is set). */
+  function playLive(id: string) {
+    setParam({ live: id, watch: "" });
+    screenRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  /** Only the featured broadcast is behind the TV Pass; tracks' YouTube streams are free. */
+  const passNeeded = locked && current?.id === FEATURED;
+
+  // When a track goes live or a broadcast ends, fetch the broadcast list again so it shows as a replay.
+  const liveKey = status ? `${[...liveIds].join(",")}|${status.latest?.videoId ?? ""}` : null;
+  const lastLiveKey = useRef<string | null>(null);
+  const reloadYouTube = youtube.reload;
+  useEffect(() => {
+    if (liveKey === null) return;
+    if (lastLiveKey.current !== null && lastLiveKey.current !== liveKey) reloadYouTube();
+    lastLiveKey.current = liveKey;
+  }, [liveKey, reloadYouTube]);
   const watching = isVideoId(watchId) ? youtube.videos.find((v) => v.id === watchId) ?? null : null;
   const screenRef = useRef<HTMLElement>(null);
   /** Pushes a history entry, so the browser's Back button also returns to live. */
@@ -314,7 +394,7 @@ export default function StayblzTV() {
                 </span>
               )}
               <span className="tvg-bar-title">
-                {watching ? `${watching.heading} · ${broadcastDate(watching)}` : status?.title ?? ""}
+                {watching ? `${watching.heading} · ${broadcastDate(watching)}` : current && current.id !== FEATURED ? `${current.name} · ${current.title}` : status?.title ?? ""}
               </span>
               {watching && (
                 <button type="button" className="tvg-btn tvg-btn-primary tvg-back-live" onClick={() => watch("")}>
@@ -343,9 +423,9 @@ export default function StayblzTV() {
                   referrerPolicy="strict-origin-when-cross-origin"
                 />
               </div>
-          ) : live && !locked ? (
+          ) : live && current && !passNeeded ? (
             <div className="tvg-player">
-              <TvPlayer onOffAir={load} />
+              <TvPlayer key={current.id} channel={current.id === FEATURED ? undefined : current.id} onOffAir={load} />
             </div>
           ) : (
             <div className="tvg-screen-inner">
@@ -363,13 +443,10 @@ export default function StayblzTV() {
                   </button>
                 </>
               )}
-              {status && locked && (
-                <TvPassOffer
-                  heading={live ? `Live now${status.title ? `: ${status.title}` : ""}` : upcoming ? `Next: ${status.title ?? "the next broadcast"}` : "Live races need the TV Pass"}
-                  onUnlocked={load}
-                />
+              {status && passNeeded && (
+                <TvPassOffer heading={`Live now${status.title ? `: ${status.title}` : ""}`} onUnlocked={load} />
               )}
-              {status && !locked && (
+              {status && !passNeeded && (
                 <>
                   <TvIcon />
                   {upcoming ? (
@@ -385,11 +462,22 @@ export default function StayblzTV() {
                   ) : (
                     <>
                       <h2>No live broadcast right now</h2>
-                      <p>When {TV_NAME} goes on air, races will play here and this screen will show what's live.</p>
-                      {latest && (
-                        <button type="button" className="tvg-btn tvg-btn-primary" onClick={() => setOpen(latest)}>
-                          <ReplayIcon /> Watch the latest replay
-                        </button>
+                      <p>When a track goes live on YouTube, its races play here. This screen checks every minute.</p>
+                      {status.latest ? (
+                        <>
+                          <button type="button" className="tvg-btn tvg-btn-primary" onClick={() => watch(status.latest!.videoId)}>
+                            <ReplayIcon /> Watch the latest broadcast
+                          </button>
+                          <p className="tvg-latest-note">
+                            {status.latest.channelName} · ended <time dateTime={status.latest.endedAt}>{startTime(status.latest.endedAt)}</time>
+                          </p>
+                        </>
+                      ) : (
+                        latest && (
+                          <button type="button" className="tvg-btn tvg-btn-primary" onClick={() => setOpen(latest)}>
+                            <ReplayIcon /> Watch the latest replay
+                          </button>
+                        )
                       )}
                     </>
                   )}
@@ -414,12 +502,38 @@ export default function StayblzTV() {
             {live && <span className="tvg-chip is-live">Live</span>}
           </div>
           <h2 className="tvg-now">
-            {status?.title ?? (live ? "Live race" : upcoming ? "Next broadcast" : "Nothing scheduled")}
+            {live && current ? current.title : status?.title ?? (live ? "Live race" : upcoming ? "Next broadcast" : "Nothing scheduled")}
           </h2>
+          {live && current && current.id !== FEATURED && (
+            <p className="tvg-side-time">
+              {current.track ?? current.name}
+              {current.viewers !== null && <> · {watchers(current.viewers)}</>}
+            </p>
+          )}
           {upcoming && status?.startsAt && (
             <p className="tvg-side-time">
               <time dateTime={status.startsAt}>{startTime(status.startsAt)}</time>
+              {status.upcoming?.startsAt === status.startsAt && <> · {status.upcoming.channelName}</>}
             </p>
+          )}
+          {sources.length > 1 && (
+            <>
+              <span className="tvg-label">Live now ({sources.length})</span>
+              <ul className="tvg-live-list" aria-label="Tracks live now">
+                {sources.map((x) => (
+                  <li key={x.id}>
+                    <button type="button" aria-pressed={x.id === current?.id} onClick={() => setParam({ live: x.id, watch: "" })}>
+                      <span className="tvg-dot" aria-hidden="true" />
+                      <span className="tvg-live-text">
+                        <strong>{x.name}</strong>
+                        <small>{x.track && x.track !== x.name ? x.track : x.title}</small>
+                      </span>
+                      {x.viewers !== null && <small className="tvg-live-viewers">{watchers(x.viewers)}</small>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
           {status?.runners?.length ? (
             <>
@@ -439,11 +553,15 @@ export default function StayblzTV() {
               </ol>
             </>
           ) : (
-            <p className="tvg-side-note">
-              {status?.state === "off_air" || !status
-                ? "Broadcast times appear here as soon as they're scheduled."
-                : "The field for this race will appear here when it's published."}
-            </p>
+            sources.length <= 1 && (
+              <p className="tvg-side-note">
+                {live && current && current.id !== FEATURED
+                  ? `Streaming live from ${current.name}'s YouTube channel. Free for every member.`
+                  : status?.state === "off_air" || !status
+                    ? "Track broadcasts appear here as soon as one is scheduled."
+                    : "The field for this race will appear here when it's published."}
+              </p>
+            )
           )}
           <div className="tvg-side-foot">
             <p>Follow Updates for news about {TV_NAME}.</p>
@@ -514,6 +632,54 @@ export default function StayblzTV() {
         </section>
       )}
 
+      {/* ---------- Live now: every track streaming on YouTube ---------- */}
+      {tracksLive.length > 0 && (
+        <section className="tvg-replays tvg-live-now gx-glass" aria-labelledby="tvg-live-title">
+          <header className="tvg-section-head">
+            <span className="tvg-num" aria-hidden="true"><LiveIcon /></span>
+            <div>
+              <h2 id="tvg-live-title">Live now</h2>
+              <p>
+                {tracksLive.length === 1 ? "1 track is" : `${tracksLive.length} tracks are`} racing live on YouTube. Pick one to watch it in the screen above.
+              </p>
+            </div>
+            <span className="tvg-chip is-live">Live</span>
+          </header>
+          <ul className="tvg-grid">
+            {tracksLive.map((x) => {
+              const on = !watching && current?.id === x.id;
+              return (
+                <li key={x.id}>
+                  <article className={`tvg-card${on ? " is-playing" : ""}`}>
+                    <button type="button" className="tvg-thumb" onClick={() => playLive(x.id)} aria-label={`Watch live: ${x.name}`} aria-current={on || undefined}>
+                      {x.videoId && isVideoId(x.videoId) && (
+                        <img className="tvg-thumb-img" src={`https://i.ytimg.com/vi/${x.videoId}/hqdefault_live.jpg`} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.hidden = true; }} />
+                      )}
+                      <span className="tvg-play" aria-hidden="true"><PlayIcon /></span>
+                      <span className="tvg-thumb-top" aria-hidden="true">
+                        <span className="tvg-chip">{x.name}</span>
+                        <span className="tvg-chip is-live">Live</span>
+                      </span>
+                      {on && <span className="tvg-duration is-playing" aria-hidden="true">Now playing</span>}
+                    </button>
+                    <div className="tvg-card-body">
+                      <div className="tvg-card-title">
+                        <h3>{x.title}</h3>
+                      </div>
+                      <p className="tvg-meta">
+                        {x.track ?? x.name}
+                        {x.startedAt && <> · started <time dateTime={x.startedAt}>{startTime(x.startedAt)}</time></>}
+                        {x.viewers !== null && <> · {watchers(x.viewers)}</>}
+                      </p>
+                    </div>
+                  </article>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* ---------- Replays ---------- */}
       <section className="tvg-replays gx-glass" aria-labelledby="tvg-replays-title">
         <header className="tvg-section-head">
@@ -522,49 +688,65 @@ export default function StayblzTV() {
             <h2 id="tvg-replays-title">Replays</h2>
             <p>
               {yt
-                ? `Past broadcasts from ${yt === "all" ? "YouTube" : channelName(yt)}. They play in the ${TV_NAME} screen above.`
-                : `Recent races with full results${source === "sample" ? "" : " and video"}.`}
+                ? `Race cards and replays from ${yt === "all" ? "the tracks' own YouTube channels" : channelName(yt)}. They play in the ${TV_NAME} screen above.`
+                : "Recent races with full results and video."}
             </p>
           </div>
           {yt && <span className="tvg-chip is-yt">YouTube</span>}
-          {!yt && source === "sample" && (
-            <span className="tvg-chip is-sample" title="Shown until /api/tv/replays returns real replays">
-              Sample data
-            </span>
-          )}
         </header>
 
         <div className="tvg-toolbar">
-          <div className="tvg-seg" role="group" aria-label="Surface or YouTube channel">
-            {["", "Dirt", "Turf", "Synthetic"].map((s) => (
-              <button type="button" key={s || "all"} aria-pressed={!yt && surface === s} onClick={() => setParam({ surface: s, yt: "" })}>
-                {s || "All surfaces"}
-              </button>
-            ))}
-            {(youtube.channels.length > 0 || (youtube.error && !youtube.loading)) && (
-              <>
-                <span className="tvg-seg-divider" aria-hidden="true" />
-                <button type="button" aria-pressed={yt === "all"} onClick={() => setParam({ yt: "all", surface: "", track: "" })}>
-                  All YouTube
-                </button>
-                {youtube.channels.map((c) => (
-                  <button type="button" key={c.id} aria-pressed={yt === c.id} onClick={() => setParam({ yt: c.id, surface: "", track: "" })}>
-                    {c.name}
-                  </button>
+          <div className="tvg-filters">
+            <label className="tvg-select tvg-channel">
+              <span>Channel</span>
+              <select value={yt} onChange={(e) => setParam({ yt: e.target.value, surface: "", track: "", type: "" })}>
+                {hasRaceReplays && <option value="">Race replays with results</option>}
+                <option value="all">All channels</option>
+                {groups.map((g) => (
+                  <optgroup key={g.label} label={g.label}>
+                    {g.channels.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                        {liveIds.has(c.id) ? " · Live" : ""}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
-              </>
+                {yt && yt !== "all" && !youtube.channels.some((c) => c.id === yt) && <option value={yt}>{channelName(yt)}</option>}
+              </select>
+            </label>
+            {yt && (
+              <label className="tvg-select">
+                <span>Show</span>
+                <select value={typeValue} onChange={(e) => setParam({ type: e.target.value })}>
+                  <option value="all">Everything</option>
+                  <option value="card">Race cards</option>
+                  <option value="race">Single races</option>
+                  <option value="preview">Preview shows</option>
+                  <option value="video">Other videos</option>
+                </select>
+              </label>
             )}
           </div>
           {!yt && (
-          <label className="tvg-select">
-            <span>Track</span>
-            <select value={track} onChange={(e) => setParam({ track: e.target.value })}>
-              <option value="">All tracks</option>
-              {tracks.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
-          </label>
+            <>
+              <div className="tvg-seg" role="group" aria-label="Surface">
+                {["", "Dirt", "Turf", "Synthetic"].map((s) => (
+                  <button type="button" key={s || "all"} aria-pressed={surface === s} onClick={() => setParam({ surface: s })}>
+                    {s || "All surfaces"}
+                  </button>
+                ))}
+              </div>
+              <label className="tvg-select">
+                <span>Track</span>
+                <select value={track} onChange={(e) => setParam({ track: e.target.value })}>
+                  <option value="">All tracks</option>
+                  {tracks.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
+            </>
           )}
         </div>
 
@@ -590,8 +772,8 @@ export default function StayblzTV() {
               <h3>{youtube.videos.length ? "No broadcasts match." : "No broadcasts yet."}</h3>
               <p>
                 {youtube.videos.length
-                  ? "Try all of YouTube, or clear the search."
-                  : "Past broadcasts from the channel will appear here."}
+                  ? "Try another channel or type, or clear the search."
+                  : "Past broadcasts from the tracks' channels will appear here."}
               </p>
               {youtube.videos.length > 0 && q && (
                 <button type="button" className="tvg-btn" onClick={() => { setHorse(""); setParam({ horse: "" }); }}>
@@ -602,12 +784,13 @@ export default function StayblzTV() {
           ) : (
             <>
               <p className="tvg-count">
-                <strong>{ytShown.length}</strong> {ytShown.length === 1 ? "broadcast" : "broadcasts"} from{" "}
-                {yt === "all" ? "YouTube" : channelName(yt)}
+                <strong>{ytShown.length}</strong>{" "}
+                {kind === "card" ? (ytShown.length === 1 ? "race card" : "race cards") : ytShown.length === 1 ? "video" : "videos"} from{" "}
+                {yt === "all" ? "all channels" : channelName(yt)}
                 {q && <> matching “{urlHorse}”</>}
               </p>
               <ul className="tvg-grid">
-                {ytShown.map((v) => (
+                {ytShown.slice(0, limit).map((v) => (
                   <li key={v.id}>
                     <YouTubeCard
                       video={v}
@@ -618,6 +801,11 @@ export default function StayblzTV() {
                   </li>
                 ))}
               </ul>
+              {ytShown.length > limit && (
+                <button type="button" className="tvg-btn tvg-more" onClick={() => setLimit((n) => n + PAGE)}>
+                  Show more ({ytShown.length - limit} left)
+                </button>
+              )}
             </>
           )
         ) : replaysLoading && !replays.length ? (
@@ -694,9 +882,14 @@ function YouTubeCard({ video: v, channel, playing, onWatch }: { video: YouTubeVi
         <span className="tvg-thumb-top" aria-hidden="true">
           <span className="tvg-chip">{channel}</span>
           {v.kind === "card" && <span className="tvg-chip is-grade">Full card</span>}
+          {v.kind === "race" && <span className="tvg-chip">Race replay</span>}
           {v.kind === "preview" && <span className="tvg-chip">Preview</span>}
         </span>
-        {playing && <span className="tvg-duration is-playing" aria-hidden="true">Now playing</span>}
+        {playing ? (
+          <span className="tvg-duration is-playing" aria-hidden="true">Now playing</span>
+        ) : (
+          videoLength(v.durationSec) && <span className="tvg-duration" aria-hidden="true">{videoLength(v.durationSec)}</span>
+        )}
       </button>
       <div className="tvg-card-body">
         <div className="tvg-card-title">
@@ -743,6 +936,7 @@ function WatchingPanel({ video: v, channel, backLabel, onBack }: { video: YouTub
         <div><dt>Channel</dt><dd>{channel}</dd></div>
         {v.races !== null && <div><dt>Races</dt><dd>{v.races}</dd></div>}
         {v.firstPost && <div><dt>First post</dt><dd>{v.firstPost}</dd></div>}
+        {videoLength(v.durationSec) && <div><dt>Length</dt><dd>{videoLength(v.durationSec)}</dd></div>}
         {views && <div><dt>Views</dt><dd>{views.replace(/ views?$/, "")}</dd></div>}
       </dl>
       {(v.highlight || v.kind !== "card") && <p className="tvg-side-note">{v.highlight ?? v.description}</p>}

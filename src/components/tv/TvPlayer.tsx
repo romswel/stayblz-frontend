@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type Hls from "hls.js";
 import { api, ApiError } from "../../api";
 
-/** `kind` "embed" (demo until a stream provider is connected) means `url` is a YouTube embed, shown in YouTube's own player. */
-type Playback = { url: string; title: string | null; kind?: "hls" | "embed" };
-type Phase = "connecting" | "playing" | "buffering" | "error" | "unsupported";
+/**
+ * `kind` "embed" means `url` is a YouTube embed, shown in YouTube's own player. A track's stream can
+ * have `embeddable: false` (the track allows it on YouTube only); then `watchUrl` opens it there.
+ */
+type Playback = { url: string; title: string | null; kind?: "hls" | "embed"; embeddable?: boolean; watchUrl?: string };
+type Phase = "connecting" | "playing" | "buffering" | "error" | "unsupported" | "youtube_only";
 
 /** How many times a dropped stream reconnects by itself before asking the viewer. */
 const AUTO_RETRIES = 3;
@@ -17,16 +20,20 @@ const AUTO_RETRIES = 3;
  * Starts muted because browsers block autoplay with sound; a button turns the sound on.
  * `onOffAir` tells the page the broadcast ended so it can refresh what's on.
  *
- * Demo: when playback says `kind: "embed"`, the server-built YouTube embed address is shown in an
- * iframe instead (YouTube's player, controls and sound button). The site CSP allows only YouTube frames.
+ * When playback says `kind: "embed"`, the server-built YouTube embed address is shown in an iframe
+ * instead (YouTube's player, controls and sound button). The site CSP allows only YouTube frames.
+ *
+ * `channel`: a track's YouTube channel id, to play that track's live stream
+ * (GET /api/tv/playback?channel=…, free). Without it: the featured broadcast (behind the TV Pass).
  */
-export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
+export default function TvPlayer({ channel, onOffAir }: { channel?: string; onOffAir: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
   const [phase, setPhase] = useState<Phase>("connecting");
   const [message, setMessage] = useState("");
   const [muted, setMuted] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [embed, setEmbed] = useState<{ url: string; title: string | null } | null>(null);
+  const [external, setExternal] = useState("");
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
@@ -48,11 +55,13 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
     element.addEventListener("playing", onPlaying);
     setPhase("connecting");
     setEmbed(null);
+    setExternal("");
 
     (async () => {
       let playback: Playback;
       try {
-        playback = await api.get<Playback>("/api/tv/playback", { signal: controller.signal });
+        const path = channel ? `/api/tv/playback?channel=${encodeURIComponent(channel)}` : "/api/tv/playback";
+        playback = await api.get<Playback>(path, { signal: controller.signal });
       } catch (error) {
         if (controller.signal.aborted) return;
         // Off air, or the TV Pass is needed (paid access just switched on): the page re-checks what to show.
@@ -61,6 +70,11 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
       }
       if (stopped) return;
 
+      if (playback.kind === "embed" && playback.embeddable === false) {
+        setExternal(playback.watchUrl ?? "");
+        setPhase("youtube_only");
+        return;
+      }
       if (playback.kind === "embed") {
         // "connecting" stays up until the iframe loads (onLoad below).
         setEmbed({ url: playback.url, title: playback.title });
@@ -116,7 +130,7 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
       element.removeAttribute("src");
       element.load();
     };
-  }, [attempt, onOffAir]);
+  }, [attempt, channel, onOffAir]);
 
   const unmute = () => {
     const element = video.current;
@@ -162,6 +176,16 @@ export default function TvPlayer({ onOffAir }: { onOffAir: () => void }) {
           <button type="button" className="tv-action" onClick={retry}>
             Try again
           </button>
+        </div>
+      )}
+      {phase === "youtube_only" && (
+        <div className="tv-overlay" role="status">
+          <p>This track only allows its live stream to play on YouTube.</p>
+          {external && (
+            <a className="tv-action" href={external} target="_blank" rel="noopener noreferrer">
+              Watch on YouTube
+            </a>
+          )}
         </div>
       )}
       {phase === "unsupported" && (
