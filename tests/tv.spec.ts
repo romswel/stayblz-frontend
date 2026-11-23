@@ -166,7 +166,12 @@ test("live demo embed: YouTube's player fills the screen, no HLS video or our so
   await page.route("https://www.youtube-nocookie.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<html></html>" }));
   await page.goto("/tv");
   const frame = page.locator("iframe.tv-embed");
-  await expect(frame).toHaveAttribute("src", url);
+  // The server's address plus YouTube's command switch for the volume control.
+  const src = new URL((await frame.getAttribute("src"))!);
+  expect(`${src.origin}${src.pathname}`).toBe("https://www.youtube-nocookie.com/embed/cJA4RJ5teuw");
+  expect(src.searchParams.get("enablejsapi")).toBe("1");
+  expect(src.searchParams.get("origin")).toBe(new URL(page.url()).origin);
+  expect(src.searchParams.get("autoplay")).toBe("1");
   await expect(frame).toHaveAttribute("referrerpolicy", "strict-origin-when-cross-origin");
   await expect(frame).toHaveAttribute("title", "Live race telecast: Los Alamitos Race Course");
   await expect(page.locator("video")).toBeHidden();
@@ -499,5 +504,99 @@ for (const width of [320, 375]) {
     await noOverflow(page);
     const pick = (await page.getByRole("list", { name: "Tracks live now" }).getByRole("button").first().boundingBox())!;
     expect(pick.height).toBeGreaterThanOrEqual(44);
+  });
+}
+
+/* ---------- Volume ---------- */
+
+// A stand-in for YouTube's player: answers the page's hello with its level and echoes volume commands.
+const FAKE_PLAYER = `<html><body><script>
+  let volume = 80, muted = false;
+  const tell = (event) => parent.postMessage(JSON.stringify({ event, info: { volume, muted } }), "*");
+  addEventListener("message", (e) => {
+    const d = JSON.parse(e.data);
+    if (d.event === "listening") tell("initialDelivery");
+    if (d.event === "command") {
+      if (d.func === "setVolume") volume = d.args[0];
+      if (d.func === "mute") muted = true;
+      if (d.func === "unMute") muted = false;
+      tell("infoDelivery");
+    }
+  });
+</script></body></html>`;
+
+async function fakePlayer(page: Page) {
+  await page.route("https://www.youtube-nocookie.com/**", (route) => route.fulfill({ contentType: "text/html", body: FAKE_PLAYER }));
+  await page.route("https://i.ytimg.com/**", (route) => route.fulfill({ status: 404, body: "" }));
+}
+
+test("volume: slider and mute in the strip control YouTube's player and follow its level; the level is remembered", async ({ page }) => {
+  await mockTv(page, { status: LIVE_TRACKS, playback: trackPlayback, youtube: YT });
+  await fakePlayer(page);
+  await page.goto("/tv");
+  const bar = page.locator(".tvg-screen-bar");
+  const slider = bar.getByRole("slider", { name: "Volume" });
+  // The player's own level (80) shows once it answers.
+  await expect(slider).toHaveValue("80");
+  await slider.fill("25");
+  await expect(slider).toHaveValue("25");
+  await expect(slider).toHaveAttribute("aria-valuetext", "25%");
+  await bar.getByRole("button", { name: "Mute" }).click();
+  await expect(slider).toHaveValue("0");
+  await expect(slider).toHaveAttribute("aria-valuetext", "Muted");
+  await bar.getByRole("button", { name: "Unmute" }).click();
+  await expect(slider).toHaveValue("25");
+  expect(await page.evaluate(() => localStorage.getItem("stayblz.tv.volume"))).toBe('{"volume":25,"muted":false}');
+
+  // The next stream gets the remembered level.
+  await page.getByRole("button", { name: "Watch live: Del Mar" }).click();
+  await expect(page.locator(".tvg-screen iframe")).toHaveAttribute("src", /DMlive00001/);
+  await expect(bar.getByRole("slider", { name: "Volume" })).toHaveValue("25");
+  // And a replay has the same control.
+  await page.goto(`/tv?yt=all&watch=cJA4RJ5teuw`);
+  await expect(page.locator(".tvg-onscreen")).toHaveText("Replay");
+  await expect(page.locator(".tvg-screen iframe")).toHaveAttribute("src", /enablejsapi=1/);
+  await expect(page.locator(".tvg-screen-bar").getByRole("slider", { name: "Volume" })).toHaveValue("25");
+});
+
+test("volume: where pages can't set volume (iPhone/iPad) only the mute button shows", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(HTMLMediaElement.prototype, "volume", { get: () => 1, set: () => undefined, configurable: true });
+  });
+  await mockTv(page, { status: LIVE_TRACKS, playback: trackPlayback });
+  await fakePlayer(page);
+  await page.goto("/tv");
+  const bar = page.locator(".tvg-screen-bar");
+  await expect(bar.getByRole("button", { name: "Mute" })).toBeVisible();
+  await expect(bar.getByRole("slider")).toHaveCount(0);
+});
+
+test("volume: no control while nothing plays", async ({ page }) => {
+  await mockTv(page);
+  await page.goto("/tv");
+  await expect(page.getByRole("heading", { name: "No live broadcast right now" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Volume" })).toHaveCount(0);
+});
+
+for (const width of [320, 375, 414]) {
+  test(`volume phone ${width}px: the control has its own row, 44px targets, no overflow`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await mockTv(page, { status: LIVE_TRACKS, playback: trackPlayback });
+    await fakePlayer(page);
+    await page.goto("/tv");
+    const bar = page.locator(".tvg-screen-bar");
+    const slider = bar.getByRole("slider", { name: "Volume" });
+    await expect(slider).toHaveValue("80");
+    await noOverflow(page);
+    const button = (await bar.getByRole("button", { name: "Mute" }).boundingBox())!;
+    const range = (await slider.boundingBox())!;
+    const badge = (await bar.locator(".tvg-onscreen").boundingBox())!;
+    expect(button.height).toBeGreaterThanOrEqual(44);
+    expect(range.height).toBeGreaterThanOrEqual(44);
+    expect(range.width).toBeGreaterThan(width / 2);
+    expect(button.y).toBeGreaterThan(badge.y + badge.height - 1);
+    // The video below the strip stays 16:9.
+    const video = (await page.locator(".tvg-player").boundingBox())!;
+    expect(Math.abs(video.height - (video.width * 9) / 16)).toBeLessThan(2);
   });
 }
