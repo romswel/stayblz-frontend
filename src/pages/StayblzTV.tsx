@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import TvPlayer from "../components/tv/TvPlayer";
 import TvPassOffer from "../components/billing/TvPassOffer";
+import VolumeControl, { withPlayerApi } from "../components/tv/VolumeControl";
 import { TV_NAME } from "../components/tv/brand";
 import {
   formatDuration,
@@ -396,6 +397,7 @@ export default function StayblzTV() {
               <span className="tvg-bar-title">
                 {watching ? `${watching.heading} · ${broadcastDate(watching)}` : current && current.id !== FEATURED ? `${current.name} · ${current.title}` : status?.title ?? ""}
               </span>
+              {(watching || (current && !passNeeded)) && <VolumeControl key={watching?.id ?? current?.id} screen={screenRef} />}
               {watching && (
                 <button type="button" className="tvg-btn tvg-btn-primary tvg-back-live" onClick={() => watch("")}>
                   {live ? <LiveIcon /> : <CloseIcon />} {backLabel}
@@ -415,7 +417,7 @@ export default function StayblzTV() {
                 <iframe
                   key={watching.id}
                   className="tv-video tv-embed"
-                  src={replayEmbedUrl(watching.id)}
+                  src={withPlayerApi(replayEmbedUrl(watching.id))}
                   title={`Replay: ${watching.heading}, ${broadcastDate(watching)}`}
                   allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                   allowFullScreen

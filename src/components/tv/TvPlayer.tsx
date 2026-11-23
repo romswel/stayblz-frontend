@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type Hls from "hls.js";
 import { api, ApiError } from "../../api";
+import { withPlayerApi } from "./VolumeControl";
 
 /**
  * `kind` "embed" means `url` is a YouTube embed, shown in YouTube's own player. A track's stream can
@@ -144,7 +145,8 @@ export default function TvPlayer({ channel, onOffAir }: { channel?: string; onOf
       {embed && (
         <iframe
           className="tv-video tv-embed"
-          src={embed.url}
+          // enablejsapi: the volume control above the screen talks to YouTube's player.
+          src={withPlayerApi(embed.url)}
           title={embed.title ? `Live race telecast: ${embed.title}` : "Live race telecast"}
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
