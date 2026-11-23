@@ -72,7 +72,75 @@
 .sd-source a { display: inline-flex; align-items: center; gap: 4px; color: var(--gx-accent); font-size: 0.86rem; font-weight: 650; text-decoration: none; }
 .sd-source a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
+/* FormFav tab (components/stayblz-data/FormFav.tsx) */
+.sd-ff { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sd-ff-toolbar .cm-seg { min-width: 0; }
+.sd-ff-grid { align-items: start; }
+.sd-ff-meeting .sd-card-top { flex-wrap: wrap; row-gap: 2px; }
+.sd-ff-meeting .sd-track { white-space: nowrap; }
+.sd-ff-days { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.sd-ff-filter { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.sd-ff-filter-label { flex: none; padding-left: 4px; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gx-muted); }
+.sd-ff-filter .cm-seg button { height: 32px; padding: 0 12px; }
+.sd-ff-filter .cm-seg { min-width: 0; }
+.sd-ff-days .cm-select { min-width: 0; }
+.cm-select input[type="date"] { height: 36px; padding: 0 8px; border: 0; background: transparent; color: var(--gx-text); font: inherit; font-size: 0.86rem; font-weight: 600; letter-spacing: normal; text-transform: none; color-scheme: light dark; min-width: 0; }
+.sd-ff-credit { margin: 0; font-size: 0.78rem; color: var(--gx-muted); }
+.sd-ff-credit a { color: var(--gx-accent); font-weight: 650; text-decoration: none; }
+.sd-ff-credit a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.sd-card.sd-ff-meeting { padding: 0; gap: 0; cursor: default; align-items: stretch; }
+.sd-card.sd-ff-meeting:hover { transform: none; }
+.sd-ff-meeting-head { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; padding: 16px 44px 16px 16px; border: 0; border-radius: 16px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.sd-ff-meeting-head:focus-visible { outline: 2px solid var(--gx-accent); outline-offset: -2px; }
+.sd-ff-chevron { position: absolute; top: 50%; right: 14px; display: inline-flex; color: var(--gx-muted); transform: translateY(-50%); transition: transform 140ms ease; }
+.sd-ff-meeting-head[aria-expanded="true"] .sd-ff-chevron { transform: translateY(-50%) rotate(90deg); }
+.sd-ff-races { display: flex; flex-direction: column; margin: 0; padding: 0 8px 8px; list-style: none; border-top: 1px solid var(--gx-border); }
+.sd-ff-races button { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding: 10px 8px; border: 0; border-bottom: 1px solid var(--gx-border); background: none; color: var(--gx-text); font: inherit; text-align: left; cursor: pointer; }
+.sd-ff-races li:last-child button { border-bottom: 0; }
+.sd-ff-races button:hover { background: var(--gx-hover); }
+.sd-ff-races button:focus-visible { outline: 2px solid var(--gx-accent); outline-offset: -2px; border-radius: 8px; }
+.sd-ff-rno { flex: none; min-width: 34px; padding: 3px 6px; border-radius: 8px; background: var(--gx-accent-soft); color: var(--gx-accent); font-size: 0.76rem; font-weight: 800; text-align: center; }
+.sd-ff-rmain { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 0.86rem; font-weight: 650; overflow-wrap: anywhere; }
+.sd-ff-rmain small { font-size: 0.76rem; font-weight: 500; color: var(--gx-muted); }
+
+/* Horses / Stats A–Z lists (FormFavLists.tsx) */
+.sd-ff-coverage { margin: 0; font-size: 0.8rem; color: var(--gx-muted); }
+.sd-card.sd-ff-row { gap: 4px; }
+.sd-pill.sd-ff-next { color: var(--gx-accent); background: var(--gx-accent-soft); }
+.sd-ff-career { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--gx-border); border-radius: 14px; }
+.sd-ff-career .sd-detail-head { padding-right: 0; }
+.sd-ff-career .sd-detail-head h2 { font-size: 1.05rem; }
+
+.sd-ff-actions { margin: 4px 0 0; }
+.sd-ff-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.sd-ff-badge { padding: 1px 7px; border-radius: 999px; font-size: 0.68rem; font-weight: 650; color: var(--gx-accent); background: var(--gx-accent-soft); }
+.sd-ff-badge.is-neg { color: var(--gx-danger); background: color-mix(in srgb, var(--gx-danger) 12%, transparent); }
+.sd-table code { font-family: var(--gx-mono, monospace); font-size: 0.8rem; }
+.sd-ff-bar { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.sd-ff-bar-track { display: inline-block; width: 72px; height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--gx-muted) 22%, transparent); overflow: hidden; }
+.sd-ff-bar-track > span { display: block; height: 100%; border-radius: inherit; background: var(--gx-accent); }
+
+.sd-ff-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 1px; margin: 0; border: 1px solid var(--gx-border); border-radius: 12px; overflow: hidden; background: var(--gx-border); }
+.sd-ff-facts > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: var(--gx-surface-solid, var(--surface)); min-width: 0; }
+.sd-ff-facts dt { font-size: 0.64rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gx-muted); }
+.sd-ff-facts dd { margin: 0; font-size: 0.9rem; font-weight: 650; overflow-wrap: anywhere; }
+
 @media (max-width: 560px) {
   .sd-modal-body { padding: 18px 14px; }
   .sd-horse-head { flex-direction: column; align-items: flex-start; }
+  .sd-ff-toolbar .cm-select { flex: 1 1 140px; }
+  .sd-ff-toolbar .cm-select select, .sd-ff-toolbar .cm-select input { flex: 1; }
+  .sd-ff-days { flex: 1 1 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .sd-ff-days .cm-select { gap: 4px; padding-left: 10px; }
+  .sd-ff-days .cm-select input { width: 100%; padding: 0 2px; font-size: 0.8rem; }
+  .sd-ff-days > button { grid-column: 1 / -1; }
+  .sd-ff-filter { flex: 1 1 100%; flex-direction: column; align-items: stretch; gap: 4px; }
+  .sd-ff-filter .cm-seg { display: flex; }
+  .sd-ff-filter .cm-seg button { flex: 1 1 auto; justify-content: center; padding: 0 8px; }
+}
+
+@media (max-width: 400px) {
+  .sd-ff-days { grid-template-columns: 1fr; }
+  .sd-ff-filter .cm-seg button { padding: 0 6px; font-size: 0.78rem; }
 }
