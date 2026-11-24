@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useWorkspace } from "../../workspace";
 import { horseImageUrl, money } from "../community/api";
 import PublicHorsesPanel from "./PublicHorsesPanel";
+// Race data (Stayblz Data's FormFav code) loads only when the tab is opened.
+const RacingHorsesPanel = lazy(() => import("./RacingHorsesPanel"));
 import AddVirtualHorseDialog, { initials } from "./AddVirtualHorseDialog";
 import VirtualHorseDetail from "./VirtualHorseDetail";
 import { SOURCE_LABELS, dayLabel, useVirtualApis, type VirtualApi, type VirtualListHorse, type VirtualMode } from "./api";
@@ -10,7 +12,8 @@ import "./virtual.css";
 
 /**
  * Virtual Stayblz: horses you (personal) or your stable (stable) track without owning them.
- * Search params: `vtab=public` for the Public horses tab, `horse=<id>` to open a tracked horse.
+ * Search params: `vtab=public` for the Public horses tab, `vtab=racing` for Racing horses (race-data horses, kept
+ * apart from the list), `horse=<id>` to open a tracked horse (in either the list or Racing horses).
  * Other params (like My racing's `tab`) are kept.
  */
 export default function VirtualStayblz({ mode }: { mode: VirtualMode }) {
@@ -18,7 +21,8 @@ export default function VirtualStayblz({ mode }: { mode: VirtualMode }) {
   const client = apis[mode];
   const { active } = useWorkspace();
   const [params, setParams] = useSearchParams();
-  const vtab = params.get("vtab") === "public" ? "public" : "tracked";
+  const rawTab = params.get("vtab");
+  const vtab = rawTab === "public" ? "public" : rawTab === "racing" ? "racing" : "tracked";
   const horseId = params.get("horse");
   const [listVersion, setListVersion] = useState(0);
 
@@ -62,10 +66,32 @@ export default function VirtualStayblz({ mode }: { mode: VirtualMode }) {
         <button type="button" role="tab" aria-selected={vtab === "public"} className="vs-seg-btn" onClick={() => update({ vtab: "public", horse: null })}>
           Public horses
         </button>
+        <button type="button" role="tab" aria-selected={vtab === "racing"} className="vs-seg-btn" onClick={() => update({ vtab: "racing", horse: null })}>
+          Racing horses
+        </button>
       </div>
 
       {vtab === "public" ? (
         <PublicHorsesPanel />
+      ) : vtab === "racing" && horseId ? (
+        <VirtualHorseDetail
+          key={`${stableId}:${horseId}`}
+          client={client}
+          mode={mode}
+          id={horseId}
+          backLabel="← Racing horses"
+          onBack={() => update({ horse: null })}
+          onChanged={() => setListVersion((v) => v + 1)}
+        />
+      ) : vtab === "racing" ? (
+        <Suspense fallback={<p className="vs-muted" aria-busy="true">Loading racing horses…</p>}>
+          <RacingHorsesPanel
+            key={mode === "stable" ? stableId ?? "none" : "me"}
+            client={client}
+            mode={mode}
+            onOpenTracked={(id) => update({ horse: id })}
+          />
+        </Suspense>
       ) : horseId ? (
         <VirtualHorseDetail
           key={`${stableId}:${horseId}`}
@@ -151,6 +177,7 @@ function VirtualHorseList({
           <h3>No horses tracked yet</h3>
           <p>
             Add a horse from the <strong>Public horses</strong> tab, from a horse shared in Feeds, from racing data, or type one in by hand.
+            Racehorses from US and Canada race cards are tracked in the <strong>Racing horses</strong> tab.
           </p>
         </div>
       ) : shown.length === 0 ? (

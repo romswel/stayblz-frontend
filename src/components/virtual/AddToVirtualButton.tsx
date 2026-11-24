@@ -3,9 +3,14 @@ import { Link } from "react-router-dom";
 import { ApiError } from "../../api";
 import { useWorkspace } from "../../workspace";
 import { useVirtualApis, virtualHorsePath, type VirtualApi, type VirtualMode } from "./api";
+import type { IndexCode } from "../stayblz-data/formfavApi";
 import "./virtual.css";
 
-type Target = { communityHorseId: string; racingHorseId?: undefined } | { racingHorseId: string; communityHorseId?: undefined };
+type Target =
+  | { communityHorseId: string; racingHorseId?: undefined; formfav?: undefined }
+  | { racingHorseId: string; communityHorseId?: undefined; formfav?: undefined }
+  /** A race-data horse (Stayblz Data → Horses): added to the list's Racing horses tab. */
+  | { formfav: { name: string; code: IndexCode }; communityHorseId?: undefined; racingHorseId?: undefined };
 type RowState = { status: "loading" | "ready" | "saving" | "error"; added: boolean; id: string | null; error: string };
 
 const fresh: RowState = { status: "loading", added: false, id: null, error: "" };
@@ -20,7 +25,7 @@ export default function AddToVirtualButton({ target, name, compact = false }: { 
   const { active } = useWorkspace();
   const [open, setOpen] = useState(false);
   const panelId = useId();
-  const targetKey = target.communityHorseId ?? target.racingHorseId;
+  const targetKey = target.communityHorseId ?? target.racingHorseId ?? (target.formfav ? `${target.formfav.code}|${target.formfav.name}` : "");
   const rows: { mode: VirtualMode; label: string; hint: string; client: VirtualApi }[] = [
     { mode: "personal", label: "My Virtual Stayblz", hint: "Only you can see it", client: apis.personal },
     ...(active
@@ -59,7 +64,9 @@ export default function AddToVirtualButton({ target, name, compact = false }: { 
       const r = await client.add(
         target.communityHorseId
           ? { source: "community", communityHorseId: target.communityHorseId }
-          : { source: "racing", racingHorseId: target.racingHorseId! },
+          : target.formfav
+            ? { source: "formfav", formfavName: target.formfav.name, formfavCode: target.formfav.code }
+            : { source: "racing", racingHorseId: target.racingHorseId! },
       );
       if (g === generation.current) setState((s) => ({ ...s, [mode]: { status: "ready", added: true, id: r.horse.id, error: "" } }));
     } catch (e) {
@@ -105,7 +112,7 @@ export default function AddToVirtualButton({ target, name, compact = false }: { 
                 ) : s.added ? (
                   <span className="vs-add-done">
                     <span aria-live="polite">Added ✓</span>
-                    {s.id && <Link to={virtualHorsePath(row.mode, s.id)}>Open</Link>}
+                    {s.id && <Link to={virtualHorsePath(row.mode, s.id, !!target.formfav)}>Open</Link>}
                   </span>
                 ) : (
                   <button type="button" className="vs-btn vs-btn-primary" disabled={s.status === "saving"} onClick={() => void add(row.mode, row.client)}>

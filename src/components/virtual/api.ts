@@ -3,6 +3,7 @@ import { api } from "../../api";
 import { useStableApi } from "../../workspace";
 import type { HorseDetail } from "../community/api";
 import type { HistoryStart, Horse as RacingHorse, Start, Stats, Workout } from "../racing/types";
+import type { Country, HorseDetail as RaceHorse, HorseRow, IndexCode, ListMeta, ListPage } from "../stayblz-data/formfavApi";
 
 /* ==========================================================================
    Virtual Stayblz — horses tracked without owning them, plus logged entries.
@@ -11,7 +12,10 @@ import type { HistoryStart, Horse as RacingHorse, Start, Stats, Workout } from "
    ========================================================================== */
 
 export type VirtualMode = "personal" | "stable";
-export type VirtualSource = "community" | "racing" | "manual";
+/** formfav: added from the Racing horses tab (race data); it lives in that tab, not in the list. */
+export type VirtualSource = "community" | "racing" | "manual" | "formfav";
+/** A link to a race-data horse (FormFav US/Canada race cards), on horses added from Racing horses or linked by hand. */
+export type RaceLink = { name: string; code: IndexCode; runnerId: number | null; linkedAt: string; syncedAt: string | null };
 export type EntryKind = "workout" | "race" | "sale" | "note";
 export type SaleResult = "entered" | "sold" | "rna" | "withdrawn" | "private";
 
@@ -34,6 +38,7 @@ export type VirtualHorse = {
   addedBy: string | null;
   addedByName?: string | null;
   canRemove: boolean;
+  formfav?: RaceLink | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -68,7 +73,10 @@ export type VirtualEntry = {
   amountCents: number | null;
   notes: string;
   author: { id: string; name: string } | null;
+  /** Added from race data: only the notes change, and it can't be removed while the horse is linked. */
+  fromRaceData?: boolean;
   canEdit: boolean;
+  canRemove?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -79,7 +87,21 @@ export type VirtualDetail = {
   entries: VirtualEntry[];
   live: { community: HorseDetail } | { racing: RacingLive } | null;
   liveUnavailable: boolean;
+  /** Linked horses: what race data has on it now (no runs in the window = horse null). */
+  raceData?:
+    | (RaceLink &
+        ListMeta & {
+          available: boolean;
+          horse: RaceHorse | null;
+          followers: number;
+          alertsOn: boolean;
+        })
+    | null;
 };
+
+/** One row of the Racing horses tab. */
+export type RacingHorseRow = HorseRow & { followers: number; trackingId: string | null; noRecentRuns?: boolean };
+export type RacingHorsesParams = { offset: number; limit?: number; q?: string; codes: IndexCode[]; countries: Country[]; tracking?: boolean };
 
 export type ManualInput = {
   name: string;
@@ -97,7 +119,9 @@ export type ManualInput = {
 export type AddInput =
   | { source: "community"; communityHorseId: string; notes?: string }
   | { source: "racing"; racingHorseId: string; notes?: string }
-  | ({ source: "manual" } & ManualInput);
+  | ({ source: "manual" } & ManualInput)
+  | { source: "formfav"; formfavName: string; formfavCode: IndexCode; notes?: string };
+export type StateTarget = { communityHorseId?: string; racingHorseId?: string; formfav?: { name: string; code: IndexCode } };
 
 export type EntryInput = {
   kind: EntryKind;
@@ -130,10 +154,12 @@ export function virtualApi(client: Client, base: string) {
   return {
     list: (signal?: AbortSignal) => client.get<{ horses: VirtualListHorse[]; limit: number }>(base, { signal }),
     get: (id: string, signal?: AbortSignal) => client.get<VirtualDetail>(`${base}/${id}`, { signal }),
-    state: (target: { communityHorseId?: string; racingHorseId?: string }, signal?: AbortSignal) => {
+    state: (target: StateTarget, signal?: AbortSignal) => {
       const query = target.communityHorseId
         ? `communityHorseId=${encodeURIComponent(target.communityHorseId)}`
-        : `racingHorseId=${encodeURIComponent(target.racingHorseId ?? "")}`;
+        : target.formfav
+          ? `formfavName=${encodeURIComponent(target.formfav.name)}&formfavCode=${encodeURIComponent(target.formfav.code)}`
+          : `racingHorseId=${encodeURIComponent(target.racingHorseId ?? "")}`;
       return client.get<{ added: boolean; id: string | null }>(`${base}/state?${query}`, { signal });
     },
     add: (input: AddInput) => client.post<{ horse: VirtualHorse }>(base, input),
@@ -142,6 +168,19 @@ export function virtualApi(client: Client, base: string) {
     addEntry: (id: string, input: EntryInput) => client.post<{ entry: VirtualEntry }>(`${base}/${id}/entries`, input),
     updateEntry: (id: string, input: EntryInput) => client.patch<{ entry: VirtualEntry }>(`${base}/entries/${id}`, input),
     removeEntry: (id: string) => client.post<{ ok: true }>(`${base}/entries/${id}/remove`, {}),
+    racingHorses: (p: RacingHorsesParams, signal?: AbortSignal) => {
+      const q = new URLSearchParams();
+      q.set("offset", String(p.offset));
+      if (p.limit) q.set("limit", String(p.limit));
+      if (p.q) q.set("q", p.q);
+      q.set("codes", p.codes.join(","));
+      q.set("countries", p.countries.join(","));
+      if (p.tracking) q.set("tracking", "1");
+      return client.get<ListPage<RacingHorseRow>>(`${base}/racing-horses?${q}`, { signal });
+    },
+    link: (id: string, target: { name: string; code: IndexCode }) => client.post<{ horse: VirtualHorse }>(`${base}/${id}/formfav`, target),
+    unlink: (id: string) => client.post<{ horse: VirtualHorse }>(`${base}/${id}/formfav/remove`, {}),
+    setAlerts: (id: string, on: boolean) => client.post<{ alertsOn: boolean }>(`${base}/${id}/alerts`, { on }),
   };
 }
 export type VirtualApi = ReturnType<typeof virtualApi>;
@@ -159,14 +198,17 @@ export function useVirtualApis() {
 }
 
 /** Where a tracked horse opens. */
-export const virtualHorsePath = (mode: VirtualMode, id: string) =>
-  mode === "personal" ? `/my-racing?tab=virtual&horse=${id}` : `/workspace/virtual?horse=${id}`;
+export const virtualHorsePath = (mode: VirtualMode, id: string, racing = false) =>
+  (mode === "personal" ? `/my-racing?tab=virtual&horse=${id}` : `/workspace/virtual?horse=${id}`) + (racing ? "&vtab=racing" : "");
 
 export const SOURCE_LABELS: Record<VirtualSource, string> = {
   community: "Stayblz member's horse",
   racing: "Racing data",
   manual: "Added by hand",
+  formfav: "Race data",
 };
+/** Details race data keeps up to date (and locks) while a horse is linked. */
+export const LOCKED_BY_RACE_DATA = "Trainer, sire, dam, sex, foaling year and breed come from race data while the horse is linked.";
 export const KIND_LABELS: Record<EntryKind, string> = { workout: "Workout", race: "Race", sale: "Sales entry", note: "Note" };
 export const SALE_LABELS: Record<SaleResult, string> = {
   entered: "Entered",

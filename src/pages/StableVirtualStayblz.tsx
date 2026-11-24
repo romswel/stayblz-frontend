@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useWorkspace } from "../workspace";
 import VirtualStayblz from "../components/virtual/VirtualStayblz";
 import "../components/overview/overview.css";
@@ -6,7 +7,17 @@ import "../components/stable-glass.css";
 
 /** The active stable's shared Virtual Stayblz (horses the team tracks without owning them). */
 export default function StableVirtualStayblz() {
-  const { active } = useWorkspace();
+  const { active, stables, select } = useWorkspace();
+  // Alert links carry ?stable=<id>: open that stable's list (when you're in it), then drop the parameter.
+  const [params, setParams] = useSearchParams();
+  const wanted = params.get("stable");
+  useEffect(() => {
+    if (!wanted) return;
+    if (stables.some((s) => s.id === wanted) && active?.id !== wanted) select(wanted);
+    const next = new URLSearchParams(params);
+    next.delete("stable");
+    setParams(next, { replace: true });
+  }, [wanted, stables]);
   return (
     <div className="overview sg-page vs-page">
       <header className="ov-heading">

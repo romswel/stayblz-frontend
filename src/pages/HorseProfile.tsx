@@ -14,6 +14,7 @@ import {
   type Post,
 } from "../components/community/api";
 import AddToVirtualButton from "../components/virtual/AddToVirtualButton";
+import RaceDataLink from "../components/community/RaceDataLink";
 import { Avatar, Composer, Empty, FollowButton, Icon, PostCard, Skeletons, StatusBadge } from "../components/community/ui";
 import { HorseViewer } from "../components/community/HorseShare";
 
@@ -196,7 +197,11 @@ export default function HorseProfile() {
                     {horse.records.map((r) => (
                       <tr key={r.id}>
                         <td className="is-mono">{new Date(`${r.raceDate}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" })}</td>
-                        <th scope="row">{r.raceName || "—"}{r.notes && <small>{r.notes}</small>}</th>
+                        <th scope="row">
+                          {r.raceName || "—"}
+                          {r.fromRaceData && <em className="cm-race-data-tag">Race data</em>}
+                          {r.notes && <small>{r.notes}</small>}
+                        </th>
                         <td>{r.track}</td>
                         <td>{r.distance || "—"}</td>
                         <td>{SURFACE_LABELS[r.surface]}</td>
@@ -217,6 +222,8 @@ export default function HorseProfile() {
               </p>
             )}
           </section>
+
+          <RaceDataLink horse={horse} onChange={(h) => setHorse((cur) => (cur ? { ...cur, ...h } : h))} />
 
           <section className="cm-stack" aria-labelledby="cm-horse-posts">
             <h2 id="cm-horse-posts" className="cm-section-title">Updates about {horse.name}</h2>

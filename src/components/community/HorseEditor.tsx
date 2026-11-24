@@ -354,8 +354,15 @@ function DetailsForm({
     }
   }
 
+  // Linked to race data: those details update from it (the server keeps them as they are).
+  const locked = !!horse?.raceData;
   return (
     <form className="cm-ed-form" onSubmit={submit} noValidate>
+      {locked && (
+        <p className="cm-muted cm-ed-locked" role="note">
+          Linked to race data ({horse!.raceData!.name}): breed, year foaled, sex, sire, dam and trainer update from it.
+        </p>
+      )}
       <Section n="01" title="Identity">
         <div className="cm-ed-grid">
           <label className="cm-field cm-span-all">
@@ -364,7 +371,7 @@ function DetailsForm({
           </label>
           <label className="cm-field">
             <span>Breed</span>
-            <input value={f.breed} maxLength={60} list="cm-breeds" onChange={(e) => set("breed", e.target.value)} placeholder="Thoroughbred" />
+            <input value={f.breed} maxLength={60} list="cm-breeds" disabled={locked} onChange={(e) => set("breed", e.target.value)} placeholder="Thoroughbred" />
             <datalist id="cm-breeds">
               {["Thoroughbred", "Quarter Horse", "Standardbred", "Arabian", "Appaloosa", "Paint", "Warmblood"].map((b) => <option key={b} value={b} />)}
             </datalist>
@@ -382,6 +389,7 @@ function DetailsForm({
                 min={1980}
                 max={thisYear}
                 value={f.foaledYear ?? ""}
+                disabled={locked}
                 onChange={(e) => set("foaledYear", e.target.value ? Number(e.target.value) : null)}
                 placeholder={String(thisYear - 3)}
               />
@@ -389,7 +397,7 @@ function DetailsForm({
             </div>
           </label>
         </div>
-        <div className="cm-field">
+        <fieldset className="cm-field cm-ed-fieldset" disabled={locked}>
           <span>Sex</span>
           <Chips
             name="Sex"
@@ -397,7 +405,7 @@ function DetailsForm({
             onChange={(v) => set("sex", v)}
             options={(Object.keys(SEX_LABELS) as HorseSex[]).map((s) => ({ value: s, label: s ? SEX_LABELS[s] : "Not set" }))}
           />
-        </div>
+        </fieldset>
       </Section>
 
       <Section n="02" title="Status">
@@ -414,15 +422,15 @@ function DetailsForm({
         <div className="cm-ed-grid">
           <label className="cm-field">
             <span>Sire</span>
-            <input value={f.sire} maxLength={80} onChange={(e) => set("sire", e.target.value)} />
+            <input value={f.sire} maxLength={80} disabled={locked} onChange={(e) => set("sire", e.target.value)} />
           </label>
           <label className="cm-field">
             <span>Dam</span>
-            <input value={f.dam} maxLength={80} onChange={(e) => set("dam", e.target.value)} />
+            <input value={f.dam} maxLength={80} disabled={locked} onChange={(e) => set("dam", e.target.value)} />
           </label>
           <label className="cm-field">
             <span>Trainer</span>
-            <input value={f.trainer} maxLength={80} onChange={(e) => set("trainer", e.target.value)} />
+            <input value={f.trainer} maxLength={80} disabled={locked} onChange={(e) => set("trainer", e.target.value)} />
           </label>
           <label className="cm-field">
             <span>Location</span>
@@ -723,12 +731,15 @@ function RecordsPanel({ horse, onChange }: { horse: HorseDetail; onChange: (h: H
                 </span>
                 <span className="cm-record-text">
                   <strong>{r.raceName || r.track}</strong>
+                  {r.fromRaceData && <em className="cm-race-data-tag">Race data</em>}
                   <small>{[r.raceName ? r.track : "", r.distance, r.surface ? SURFACE_LABELS[r.surface] : "", r.fieldSize ? `${r.fieldSize} ran` : ""].filter(Boolean).join(" · ")}</small>
                 </span>
                 <span className="cm-record-money">{r.earningsCents ? money(r.earningsCents) : ""}</span>
                 <span className="cm-ed-race-tools">
                   <button type="button" className="cm-icon-btn" aria-label={`Edit ${r.raceName || r.track}`} onClick={() => setEditing(r)}><Icon.Edit /></button>
-                  <button type="button" className="cm-icon-btn cm-danger" aria-label={`Remove ${r.raceName || r.track}`} onClick={() => remove(r)}><Icon.Trash /></button>
+                  {!(r.fromRaceData && horse.raceData) && (
+                    <button type="button" className="cm-icon-btn cm-danger" aria-label={`Remove ${r.raceName || r.track}`} onClick={() => remove(r)}><Icon.Trash /></button>
+                  )}
                 </span>
               </li>
             ))}
@@ -787,6 +798,9 @@ function RecordForm({
   return (
     <form className="cm-ed-form" onSubmit={submit} noValidate>
       <Section n={record ? "✎" : "+"} title={record ? "Edit race" : "New race"}>
+        {record?.fromRaceData && (
+          <p className="cm-muted" role="note">This race comes from race data: while the horse is linked, only earnings and notes change.</p>
+        )}
         <div className="cm-ed-grid">
           <label className="cm-field">
             <span>Date <em>*</em></span>

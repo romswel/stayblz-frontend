@@ -4,7 +4,7 @@ import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import { TopLayer } from "../community/HorseShare";
 import { community, horseImageUrl, type PublicHorse } from "../community/api";
-import type { AddInput, ManualInput, VirtualApi, VirtualHorse } from "./api";
+import { LOCKED_BY_RACE_DATA, type AddInput, type ManualInput, type VirtualApi, type VirtualHorse } from "./api";
 
 type Mode = "stayblz" | "racing" | "manual";
 type RacingHit = { id: string; name: string; country: string; sire: string; dam: string };
@@ -38,7 +38,13 @@ export default function AddVirtualHorseDialog({
     } catch (e) {
       if (e instanceof ApiError && e.code === "already_added" && input.source !== "manual") {
         const s = await client
-          .state(input.source === "community" ? { communityHorseId: input.communityHorseId } : { racingHorseId: input.racingHorseId })
+          .state(
+            input.source === "community"
+              ? { communityHorseId: input.communityHorseId }
+              : input.source === "formfav"
+                ? { formfav: { name: input.formfavName, code: input.formfavCode } }
+                : { racingHorseId: input.racingHorseId },
+          )
           .catch(() => null);
         if (s?.id) return onAdded({ id: s.id });
       }
@@ -194,11 +200,14 @@ export function ManualHorseForm({
   busy,
   submitLabel,
   onSubmit,
+  locked = false,
 }: {
   initial?: Partial<VirtualHorse>;
   busy: boolean;
   submitLabel: string;
   onSubmit: (input: ManualInput) => void;
+  /** Linked to race data: those details can't be changed here. */
+  locked?: boolean;
 }) {
   const [f, setF] = useState({
     name: initial?.name ?? "",
@@ -213,24 +222,28 @@ export function ManualHorseForm({
     location: initial?.location ?? "",
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((v) => ({ ...v, [k]: e.target.value }));
+  const isLocked = (k: string) => locked && RACE_DATA_FIELDS.includes(k);
   function submit(e: FormEvent) {
     e.preventDefault();
-    onSubmit({ ...f, foaledYear: f.foaledYear ? Number(f.foaledYear) : null });
+    const input: Record<string, unknown> = { ...f, foaledYear: f.foaledYear ? Number(f.foaledYear) : null };
+    if (locked) for (const k of RACE_DATA_FIELDS) delete input[k];
+    onSubmit(input as ManualInput);
   }
   const text = (k: keyof typeof f, label: string, max: number, extra: Record<string, unknown> = {}) => (
     <label className="vs-field">
       <span>{label}</span>
-      <input value={f[k]} onChange={set(k)} maxLength={max} {...extra} />
+      <input value={f[k]} onChange={set(k)} maxLength={max} disabled={isLocked(k)} {...extra} />
     </label>
   );
   return (
     <form className="vs-form" onSubmit={submit}>
+      {locked && <p className="vs-muted">{LOCKED_BY_RACE_DATA}</p>}
       <div className="vs-grid">
         {text("name", "Name *", 80, { required: true, "data-autofocus": true })}
         {text("breed", "Breed", 60, { placeholder: "Thoroughbred" })}
         <label className="vs-field">
           <span>Sex</span>
-          <select value={f.sex} onChange={set("sex")}>
+          <select value={f.sex} onChange={set("sex")} disabled={isLocked("sex")}>
             <option value="">—</option>
             {["colt", "filly", "mare", "stallion", "gelding", "ridgling"].map((s) => (
               <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -253,6 +266,9 @@ export function ManualHorseForm({
     </form>
   );
 }
+
+/** Kept up to date by race data while a horse is linked. */
+const RACE_DATA_FIELDS = ["breed", "sex", "foaledYear", "sire", "dam", "trainer"];
 
 export const initials = (name: string) =>
   name

@@ -1255,3 +1255,14 @@
 .cm-ed-video-tag { position: absolute; left: 8px; bottom: 44px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 650; color: #fff; background: rgba(0, 0, 0, 0.6); }
 .cm-gallery-main.is-video { cursor: default; background: #000; }
 .cm-gallery-main.is-video video { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* ---------- Race data link (horse profile / editor) ---------- */
+.cm-race-data { display: grid; gap: 10px; }
+.cm-race-data .cm-check { white-space: normal; align-items: flex-start; }
+.cm-race-data-tag {
+  display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid currentColor; border-radius: 999px;
+  font-size: 0.68rem; font-style: normal; font-weight: 700; color: var(--amber); vertical-align: middle;
+}
+.cm-ed-locked { margin: 0 0 8px; }
+.cm-ed-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.cm-ed-fieldset:disabled { opacity: 0.7; }

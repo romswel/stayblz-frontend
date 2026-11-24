@@ -40,7 +40,7 @@ export function alertUrl(a: Pick<ChatAlert, "kind" | "chatKind" | "chatId" | "me
 }
 
 /** A racing alert's words are written by the server (SQL racing_notify), same as its push. */
-const RACING_BADGE: Record<string, string> = { race_entry: "🏇", race_scratch: "✕", race_result: "🏁", workout: "⏱" };
+const RACING_BADGE: Record<string, string> = { race_entry: "🏇", race_scratch: "✕", race_result: "🏁", workout: "⏱", race_change: "⇄" };
 const sameSitePath = (link: string | null | undefined) => (link && /^\/[A-Za-z0-9]/.test(link) ? link : "/my-racing");
 
 export function viewOf(a: ChatAlert, previews: boolean): AlertView {

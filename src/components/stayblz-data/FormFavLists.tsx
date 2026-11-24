@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "../community/ui";
 import { dateLabel, ordinal } from "../racing/format";
 import { DetailShell, DetailState, useDetail } from "./detail";
@@ -6,6 +6,7 @@ import { formFav, type HorseRow, type HorseStart, type IndexCode, type ListMeta,
 import { RaceDialog, RunnerStatsView } from "./formfavDialogs";
 import { COUNTRIES, Table, Toggles, clock, listParam, listValue, n, pct, regionName, type StatsTarget } from "./formfavUi";
 import PagedList from "./PagedList";
+import AddToVirtualButton from "../virtual/AddToVirtualButton";
 
 /**
  * Stayblz Data → Horses and Stats: A–Z lists, 20 per scroll, built on our server from FormFav's US/Canada race cards
@@ -18,7 +19,7 @@ const LIST_CODES: { value: IndexCode; key: string; label: string }[] = [
   { value: "gallops", key: "gallops", label: "Thoroughbreds" },
   { value: "harness", key: "harness", label: "Harness" },
 ];
-const codeLabel = (c: string) => LIST_CODES.find((x) => x.value === c)?.label ?? c;
+export const codeLabel = (c: string) => LIST_CODES.find((x) => x.value === c)?.label ?? c;
 const shortDay = (iso: string) => dateLabel(iso, "short").replace(/,? \d{4}$/, "");
 type Set_ = (values: Record<string, string>) => void;
 
@@ -92,6 +93,7 @@ export function HorsesView({ params, set, onStats }: { params: URLSearchParams; 
             setOpen(null);
             setRace(where);
           }}
+          extra={<AddToVirtualButton target={{ formfav: { name: open.name, code: open.code } }} name={open.name} />}
         />
       )}
       {race && (
@@ -134,19 +136,23 @@ function HorseCard({ horse, onOpen }: { horse: HorseRow; onOpen: () => void }) {
   );
 }
 
-const whereOf = (s: HorseStart): RaceWhere | null =>
+export const whereOf = (s: HorseStart): RaceWhere | null =>
   s.raceNumber === null ? null : { date: s.date, code: s.code, tz: s.timezone, track: s.slug, race: s.raceNumber, country: s.country };
 
-function HorseDialog({
+/** One race-data horse: its US/Canada starts and entries in the window, and FormFav career stats. */
+export function HorseDialog({
   name,
   code,
   onClose,
   onRace,
+  extra,
 }: {
   name: string;
   code: IndexCode;
   onClose: () => void;
   onRace: (where: RaceWhere) => void;
+  /** Actions shown under the heading (e.g. Track in Virtual Stayblz). */
+  extra?: ReactNode;
 }) {
   const { data: horse, error, retry } = useDetail(() => formFav.horse(name, code));
   return (
@@ -166,6 +172,7 @@ function HorseDialog({
             {(horse.jockey || horse.trainer) && (
               <p className="sd-facts">{[horse.jockey && `Jockey ${horse.jockey}`, horse.trainer && `Trainer ${horse.trainer}`].filter(Boolean).join(" · ")}</p>
             )}
+            {extra}
           </header>
           <h3>Starts and entries</h3>
           <Table
@@ -202,7 +209,7 @@ function HorseDialog({
 }
 
 /** FormFav's career stats for a horse found by name (FormFav's search needs 3+ letters; North American matches first). */
-function Career({ name, code }: { name: string; code: IndexCode }) {
+export function Career({ name, code }: { name: string; code: IndexCode }) {
   const [state, setState] = useState<{ id: number | null; done: boolean; error: string }>({ id: null, done: false, error: "" });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {

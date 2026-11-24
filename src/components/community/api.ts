@@ -75,6 +75,16 @@ export type Horse = {
   imageCount?: number;
   stats: HorseStats;
   mine: boolean;
+  /** Linked by the owner to a race-data horse (US/Canada race cards): details and records update from it. */
+  raceData?: {
+    name: string;
+    code: "gallops" | "harness";
+    runnerId: number | null;
+    linkedAt: string;
+    syncedAt: string | null;
+    /** Only for the owner. */
+    alertsOn?: boolean;
+  } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -101,6 +111,8 @@ export type RaceRecord = {
   fieldSize: number | null;
   earningsCents: number | null;
   notes: string;
+  /** Added from race data: race details stay as race data has them while the horse is linked. */
+  fromRaceData?: boolean;
 };
 export type HorseDetail = Horse & {
   images: HorseImage[];
@@ -109,7 +121,11 @@ export type HorseDetail = Horse & {
 };
 
 /** A horse in the Public horses list, with its owner. */
-export type PublicHorse = Horse & { owner: { id: string; name: string } };
+export type PublicHorse = Horse & {
+  owner: { id: string; name: string };
+  /** Distinct people tracking it in Virtual Stayblz (newer servers). */
+  followers?: number;
+};
 /** Public horses filters; empty = any. */
 export type PublicHorseFilters = {
   q?: string;
@@ -248,6 +264,11 @@ export const community = {
     api.post<{ record: RaceRecord; stats: HorseStats; shared: boolean }>(`${BASE}/horses/${horseId}/records`, input),
   updateRecord: (id: string, input: RecordInput) => api.patch<{ record: RaceRecord; stats: HorseStats | null }>(`${BASE}/records/${id}`, input),
   removeRecord: (id: string) => api.post<{ ok: true; stats: HorseStats | null }>(`${BASE}/records/${id}/remove`, {}),
+  /** Race data: link your horse to a racing horse (one owner each), unlink it, or turn its alerts on/off. */
+  linkRaceData: (horseId: string, target: { name: string; code: "gallops" | "harness" }) =>
+    api.post<{ horse: HorseDetail }>(`${BASE}/horses/${horseId}/formfav`, target),
+  unlinkRaceData: (horseId: string) => api.post<{ horse: HorseDetail }>(`${BASE}/horses/${horseId}/formfav/remove`, {}),
+  setRaceAlerts: (horseId: string, on: boolean) => api.post<{ alertsOn: boolean }>(`${BASE}/horses/${horseId}/formfav/alerts`, { on }),
 
   feed: (scope: "all" | "following", before?: string | null, signal?: AbortSignal) =>
     api.get<FeedPage>(`${BASE}/feed${q({ scope, before })}`, { signal }),
