@@ -7,10 +7,10 @@ import { Avatar, Composer, Empty, FollowButton, Icon, PersonCard, PostCard, Skel
 
 type Scope = "all" | "following";
 const SORTS = [
+  { value: "followers", label: "Most followed" },
   { value: "active", label: "Recently active" },
   { value: "horses", label: "Most horses" },
   { value: "earnings", label: "Top earnings" },
-  { value: "followers", label: "Most followed" },
   { value: "new", label: "Newest members" },
 ];
 
@@ -268,7 +268,7 @@ function TopOwners({ title, sort, showEarnings }: { title: string; sort: string;
 
 function Members() {
   const [params, setParams] = useSearchParams();
-  const sort = SORTS.some((s) => s.value === params.get("sort")) ? params.get("sort")! : "active";
+  const sort = SORTS.some((s) => s.value === params.get("sort")) ? params.get("sort")! : "followers";
   const urlQ = params.get("q") ?? "";
   const rawPage = Number(params.get("page") ?? 1);
   const page = Number.isSafeInteger(rawPage) && rawPage >= 1 && rawPage <= 500 ? rawPage : 1;
