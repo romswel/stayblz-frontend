@@ -132,7 +132,7 @@ export const peopleApi = {
   block: (person: string, block: boolean) =>
     api.post<{ blocked: boolean }>(`/api/messages/people/blocks/${encodeURIComponent(person)}`, { block }),
   profile: (signal?: AbortSignal) =>
-    api.get<{ profile: ChatProfile; limits?: ChatLimits }>("/api/messages/people/profile", { signal }),
+    api.get<{ profile: ChatProfile; limits?: ChatLimits; scheduledUpdates?: boolean }>("/api/messages/people/profile", { signal }),
   saveProfile: (changes: Partial<Pick<ChatProfile, "discoverable" | "showActive">>) =>
     api.post<{ profile: ChatProfile }>("/api/messages/people/profile", changes),
   chatWith: (person: string) => api.post<ThreadResponse>(`/api/messages/people/${encodeURIComponent(person)}/chat`, {}),

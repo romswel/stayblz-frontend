@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { api, ApiError } from "../../api";
 import PasswordField from "../PasswordField";
@@ -265,7 +265,11 @@ export default function AuthForm({ mode, onModeChange, destination, intent }: Pr
             Log in or sign up to {intent.toLowerCase()}.
           </p>
         )}
-        {restoreError && <p className="au-msg is-error">{restoreError}</p>}
+        {restoreError && (
+          <p className="au-msg is-error">
+            {restoreError} <Link to="/status">Check Stayblz status</Link>
+          </p>
+        )}
         {error && (
           <p className="au-msg is-error" role="alert">
             {error}

@@ -1,0 +1,209 @@
+/* /status: live check card, message guide, "Still stuck?" steps. Glass tokens (the page carries gx-layer). */
+.svc-main {
+  width: min(100%, 880px);
+  margin: 0 auto;
+  padding: 0 var(--ld-gutter, 16px) clamp(40px, 6vw, 80px);
+  display: grid;
+  gap: 16px;
+}
+.svc-intro {
+  padding: clamp(24px, 4vw, 56px) 0 8px;
+}
+.svc-intro h1 {
+  margin: 8px 0 10px;
+  font: 800 clamp(30px, 5vw, 48px) / 1.1 Archivo, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  color: var(--gx-text);
+}
+.svc-intro p {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--gx-muted);
+  line-height: 1.6;
+}
+.svc-card {
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--gx-border);
+  border-radius: var(--gx-radius, 20px);
+  background: var(--gx-surface);
+  -webkit-backdrop-filter: var(--gx-blur);
+  backdrop-filter: var(--gx-blur);
+  box-shadow: var(--gx-shadow);
+  color: var(--gx-text);
+  min-width: 0;
+}
+.svc-card h2 {
+  margin: 0 0 12px;
+  font: 750 19px / 1.3 Archivo, system-ui, sans-serif;
+}
+.svc-verdict {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.svc-verdict h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+.svc-verdict p {
+  margin: 0;
+  color: var(--gx-muted);
+  line-height: 1.55;
+}
+.svc-light {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--gx-muted);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--gx-muted) 18%, transparent);
+}
+.svc-live.is-good .svc-light {
+  background: var(--gx-accent);
+  box-shadow: 0 0 0 5px var(--gx-accent-soft);
+}
+.svc-live.is-warn .svc-light {
+  background: var(--gx-warn);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--gx-warn) 20%, transparent);
+}
+.svc-live.is-bad .svc-light {
+  background: var(--gx-danger);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--gx-danger) 20%, transparent);
+}
+.svc-live.is-wait .svc-light {
+  animation: svc-pulse 1.2s ease-in-out infinite;
+}
+.svc-notice {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--gx-radius-sm, 12px);
+  background: var(--gx-field-strong);
+  border: 1px solid var(--gx-border);
+  line-height: 1.55;
+}
+.svc-rows {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 0;
+}
+.svc-rows > div {
+  padding: 12px;
+  border-radius: var(--gx-radius-sm, 12px);
+  background: var(--gx-field);
+  border: 1px solid var(--gx-border);
+  min-width: 0;
+}
+.svc-rows dt {
+  font-size: 12px;
+  color: var(--gx-muted);
+  margin-bottom: 4px;
+}
+.svc-rows dd {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.svc-rows dd.is-good {
+  color: var(--gx-accent);
+}
+.svc-rows dd.is-warn {
+  color: var(--gx-warn);
+}
+.svc-rows dd.is-bad {
+  color: var(--gx-danger);
+}
+.svc-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--gx-muted);
+}
+.svc-foot .btn,
+.svc-steps .btn {
+  width: auto;
+  min-height: 40px;
+}
+.svc-guide {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.svc-guide > div {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 6px 18px;
+  padding: 12px 0;
+  border-top: 1px solid var(--gx-border);
+}
+.svc-guide > div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.svc-guide > div:target {
+  background: var(--gx-accent-soft);
+  border-radius: 10px;
+  padding-inline: 10px;
+}
+.svc-guide dt {
+  font-weight: 700;
+}
+.svc-guide dd {
+  margin: 0;
+}
+.svc-guide p {
+  margin: 0 0 4px;
+  line-height: 1.55;
+}
+.svc-todo {
+  color: var(--gx-muted);
+}
+.svc-todo span {
+  color: var(--gx-text);
+  font-weight: 650;
+}
+.svc-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 12px;
+  line-height: 1.55;
+}
+.svc-steps li .btn {
+  display: flex;
+  margin-top: 8px;
+}
+.svc-steps a,
+.svc-card a {
+  color: var(--gx-accent);
+  font-weight: 650;
+}
+.svc-version {
+  margin: 16px 0 0;
+  font: 12px var(--gx-mono, monospace);
+  color: var(--gx-muted);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .svc-rows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .svc-guide > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@keyframes svc-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .svc-live.is-wait .svc-light {
+    animation: none;
+  }
+}

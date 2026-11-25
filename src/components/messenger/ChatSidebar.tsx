@@ -8,6 +8,7 @@ import {
   ArchiveIcon,
   BellIcon,
   ChatsIcon,
+  ClockIcon,
   ComposeIcon,
   FolderIcon,
   GearIcon,
@@ -47,6 +48,7 @@ export default function ChatSidebar({
   onRetry,
   onNewChat,
   onSettings,
+  onSchedule,
   onNewFolder,
   onAction,
   openPeople = 0,
@@ -68,6 +70,8 @@ export default function ChatSidebar({
   onRetry: () => void;
   onNewChat: () => void;
   onSettings: () => void;
+  /** Scheduled updates (only passed for the accounts allowed to use it). */
+  onSchedule?: () => void;
   /** Pass a chat id to put that chat in the new folder. */
   onNewFolder: (assignTo?: string) => void;
   onAction: (c: ChatPreview, action: ChatAction) => void;
@@ -155,6 +159,11 @@ export default function ChatSidebar({
         <BackButton iconOnly className="mx-side-back" />
         <h1>{title}</h1>
         <div className="mx-side-actions">
+          {onSchedule && (
+            <button type="button" className="mx-round" aria-label="Scheduled updates" title="Scheduled updates" onClick={onSchedule}>
+              <ClockIcon />
+            </button>
+          )}
           <button type="button" className="mx-round" aria-label="Chat settings" title="Chat settings" onClick={onSettings}>
             <GearIcon />
           </button>
