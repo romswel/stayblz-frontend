@@ -6,6 +6,7 @@ import HorsePortrait from "../components/HorsePortrait";
 import { canUse } from "../components/account/roles";
 import ListingForm from "../components/marketplace/ListingForm";
 import ListingDetails from "../components/marketplace/ListingDetails";
+import MessageSellerDialog from "../components/marketplace/MessageSellerDialog";
 import { getListing, pictureUrl } from "../components/marketplace/media";
 import {
   AGE_FILTER,
@@ -221,8 +222,8 @@ export default function Marketplace() {
   const [form, setForm] = useState<{ editing: Listing | null } | null>(null);
   // The listing open in the photo gallery.
   const [viewing, setViewing] = useState<Listing | null>(null);
-  // Opened with a card's "Message" button: the details start in the message box.
-  const [askFirst, setAskFirst] = useState(false);
+  // The listing whose seller is being messaged (a card's "Message" button).
+  const [messaging, setMessaging] = useState<Listing | null>(null);
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [removing, setRemoving] = useState<string | null>(null);
@@ -288,7 +289,6 @@ export default function Marketplace() {
     getListing(linked, c.signal)
       .then((l) => {
         if (c.signal.aborted) return;
-        setAskFirst(false);
         setViewing(l);
       })
       .catch((e) => {
@@ -307,7 +307,6 @@ export default function Marketplace() {
 
   function closeViewing() {
     setViewing(null);
-    setAskFirst(false);
     if (params.has("listing")) {
       const next = new URLSearchParams(params);
       next.delete("listing");
@@ -718,14 +717,8 @@ export default function Marketplace() {
                       listing={l}
                       canRemove={l.mine || isAdmin}
                       busy={removing === l.id}
-                      onOpen={() => {
-                        setAskFirst(false);
-                        setViewing(l);
-                      }}
-                      onMessage={() => {
-                        setAskFirst(true);
-                        setViewing(l);
-                      }}
+                      onOpen={() => setViewing(l)}
+                      onMessage={() => setMessaging(l)}
                       onEdit={() => setForm({ editing: l })}
                       onRemove={() => void remove(l)}
                     />
@@ -739,7 +732,17 @@ export default function Marketplace() {
       </div>
 
       {viewing && !form && (
-        <ListingDetails listing={viewing} onClose={closeViewing} focusMessage={askFirst} onEdit={(l) => setForm({ editing: l })} />
+        <ListingDetails listing={viewing} onClose={closeViewing} onEdit={(l) => setForm({ editing: l })} />
+      )}
+      {messaging && !form && (
+        <MessageSellerDialog
+          listing={messaging}
+          onClose={() => setMessaging(null)}
+          onViewDetails={() => {
+            setMessaging(null);
+            setViewing(messaging);
+          }}
+        />
       )}
       {form && <ListingForm editing={form.editing} onClose={() => setForm(null)} onSaved={saved} />}
     </div>

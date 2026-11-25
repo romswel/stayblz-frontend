@@ -44,13 +44,10 @@ export default function ListingDetails({
   listing: summary,
   onClose,
   onEdit,
-  focusMessage = false,
 }: {
   listing: Listing;
   onClose: () => void;
   onEdit?: (listing: Listing) => void;
-  /** Opened with a card's "Message" button: start in the message box. */
-  focusMessage?: boolean;
 }) {
   const [state, setState] = useState<{ loading: boolean; error: string; listing: Listing }>({
     loading: true,
@@ -222,7 +219,7 @@ export default function ListingDetails({
           <p className="mkm-seller">
             {l.mine ? "Listed by you" : <>Listed by <b>{l.sellerName}</b></>}
           </p>
-          {!l.mine && !state.error && <MessageSeller listing={l} autoFocus={focusMessage} />}
+          {!l.mine && !state.error && <MessageSeller listing={l} />}
           {l.mine && onEdit && (
             <button type="button" className="btn btn-primary mkm-edit" onClick={() => onEdit(l)}>
               Edit listing
@@ -250,7 +247,7 @@ const MAX_MESSAGE = 1000;
  * "Message seller": sends the first message of a one-to-one chat with the seller, with this listing
  * shown under it, then opens that chat in Messages.
  */
-function MessageSeller({ listing, autoFocus }: { listing: Listing; autoFocus: boolean }) {
+export function MessageSeller({ listing, autoFocus = false }: { listing: Listing; autoFocus?: boolean }) {
   const navigate = useNavigate();
   const [text, setText] = useState(QUICK_REPLIES[0]);
   const [sending, setSending] = useState(false);
@@ -301,7 +298,7 @@ function MessageSeller({ listing, autoFocus }: { listing: Listing; autoFocus: bo
       </ul>
       <div className="mkm-ask-row">
         <textarea
-          // The dialog focuses this first when opened with a card's "Message" button.
+          // The card's "Message" dialog focuses this first.
           data-autofocus={autoFocus || undefined}
           value={text}
           rows={3}
