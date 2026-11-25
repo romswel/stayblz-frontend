@@ -926,6 +926,7 @@ export default function Layout() {
             <span className="gx-footer-links">
               <Link to="/updates">Updates</Link>
               <Link to="/faq">Help &amp; FAQ</Link>
+              <Link to="/status">Status</Link>
               <Link to="/terms">Terms</Link>
               <Link to="/privacy">Privacy</Link>
             </span>

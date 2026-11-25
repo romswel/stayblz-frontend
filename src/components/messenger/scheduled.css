@@ -1,0 +1,307 @@
+/* Scheduled updates dialog (ScheduledUpdates + ScheduledNoteCard). Chat tokens (--mx-*) from .mx-layer. */
+.sched-body {
+  display: grid;
+  gap: 14px;
+}
+.sched-body > .mx-hint {
+  margin: 0;
+}
+.sched-notes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .sched-notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.sched-note {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--mx-line);
+  border-radius: 16px;
+  background: var(--mx-field);
+  transition: opacity 0.16s ease;
+}
+.sched-note.is-off {
+  opacity: 0.72;
+}
+.sched-note-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sched-note-head h3 {
+  margin: 0;
+  font: 800 20px / 1.2 Archivo, system-ui, sans-serif;
+}
+.sched-note-head h3 small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mx-muted);
+}
+.sched-local {
+  display: block;
+  font-size: 12px;
+  color: var(--mx-muted);
+}
+.sched-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  position: relative;
+}
+.sched-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 40px;
+  height: 24px;
+  margin: 0;
+  cursor: pointer;
+}
+.sched-switch span {
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--mx-line-strong);
+  position: relative;
+  transition: background-color 0.16s ease;
+}
+.sched-switch span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--mx-solid);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.16s var(--mx-ease);
+}
+.sched-switch input:checked + span {
+  background: var(--mx-accent);
+}
+.sched-switch input:checked + span::after {
+  transform: translateX(16px);
+}
+.sched-switch input:focus-visible + span {
+  outline: 2px solid var(--mx-accent);
+  outline-offset: 2px;
+}
+.sched-status {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--mx-muted);
+}
+.sched-status.is-ready {
+  color: var(--mx-accent);
+  font-weight: 650;
+}
+.sched-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+/* One note per row (narrower windows): chat and time side by side again. */
+@media (min-width: 481px) and (max-width: 900px) {
+  .sched-fields {
+    grid-template-columns: minmax(0, 1fr) 8rem;
+  }
+}
+.sched-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.sched-field select,
+.sched-field input,
+.sched-field textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--mx-line-strong);
+  border-radius: 10px;
+  background: var(--mx-field-strong);
+  color: var(--mx-ink);
+  font: inherit;
+  font-weight: 500;
+}
+.sched-field textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.5;
+}
+.sched-field :is(select, input, textarea):focus-visible {
+  outline: 2px solid var(--mx-accent);
+  outline-offset: 1px;
+}
+.sched-text > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sched-count {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--mx-muted);
+}
+.sched-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: -4px;
+}
+.sched-link {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mx-accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+}
+.sched-link:hover {
+  text-decoration: underline;
+}
+.sched-link:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.sched-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+.sched-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.sched-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--mx-accent);
+}
+.sched-saved {
+  font-size: 12px;
+  color: var(--mx-muted);
+}
+.sched-saved.is-failed {
+  color: var(--mx-danger);
+  font-weight: 650;
+}
+.sched-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mx-danger);
+}
+.sched-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.sched-actions .btn {
+  width: auto;
+  min-height: 40px;
+  padding-inline: 14px;
+}
+.sched-history {
+  border-top: 1px solid var(--mx-line);
+  padding-top: 12px;
+}
+.sched-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sched-history h3 {
+  margin: 0 0 8px;
+  font: 750 15px / 1.3 Archivo, system-ui, sans-serif;
+}
+.sched-history ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.sched-history li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.45;
+  min-width: 0;
+}
+.sched-chip {
+  flex: none;
+  min-width: 7.2rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+  background: var(--mx-hover);
+  color: var(--mx-muted);
+}
+.sched-history li.is-sent .sched-chip {
+  background: var(--mx-accent-soft);
+  color: var(--mx-accent);
+}
+.sched-history li.is-missed .sched-chip {
+  background: color-mix(in srgb, var(--gx-warn, #d97706) 16%, transparent);
+  color: var(--gx-warn, #d97706);
+}
+.sched-history li.is-failed .sched-chip {
+  background: color-mix(in srgb, var(--mx-danger) 14%, transparent);
+  color: var(--mx-danger);
+}
+.sched-history-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sched-preview,
+.sched-detail {
+  display: block;
+  color: var(--mx-muted);
+}
+@media (max-width: 480px) {
+  .sched-history li {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sched-chip {
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sched-switch span,
+  .sched-switch span::after,
+  .sched-note {
+    transition: none;
+  }
+}

@@ -77,33 +77,62 @@
   width: auto;
 }
 
-/* Connection notice: bottom toast, never covers the whole page. */
+/* Connection notice: bottom toast, never covers the whole page (glass tokens, old ones as fallback). */
 .net-notice {
   position: fixed;
   left: 50%;
   bottom: max(16px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 1000;
-  width: min(calc(100% - 32px), 520px);
+  width: min(calc(100% - 32px), 560px);
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 12px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--gold-dim);
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  border-radius: var(--gx-radius-sm, 12px);
+  border: 1px solid var(--gx-border-strong, var(--gold-dim));
+  background: var(--gx-surface-strong, var(--surface));
+  -webkit-backdrop-filter: var(--gx-blur, none);
+  backdrop-filter: var(--gx-blur, none);
+  color: var(--gx-text, var(--ink));
+  box-shadow: var(--gx-shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.25));
   font-size: 13.5px;
   line-height: 1.5;
   animation: net-in 180ms ease-out;
 }
 .net-notice.is-offline,
 .net-notice.is-down {
-  border-color: var(--danger-line);
+  border-color: color-mix(in srgb, var(--gx-danger, #e11d48) 45%, transparent);
+}
+/* While a dialog or the phone menu is open, the notice steps aside: people are tapping there, the dialog traps focus
+   (the notice couldn't be reached anyway) and shows its own errors. Dialogs aren't portalled, so z-index can't help. */
+body:has([aria-modal="true"]) .net-notice {
+  display: none;
+}
+/* Words only, gone in a few seconds: never in the way of a tap. */
+.net-notice.is-back {
+  border-color: color-mix(in srgb, var(--gx-accent, #0d9f74) 50%, transparent);
+  pointer-events: none;
 }
 .net-notice strong {
   display: block;
+}
+.net-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.net-more {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--gx-accent, var(--gold-ink));
+  font-weight: 700;
+}
+.net-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 .net-dot {
   flex: 0 0 auto;
@@ -111,23 +140,60 @@
   height: 10px;
   margin-top: 5px;
   border-radius: 50%;
-  background: var(--gold);
+  background: var(--gx-warn, var(--gold));
   animation: net-pulse 1.4s ease-in-out infinite;
 }
 .net-notice.is-offline .net-dot,
 .net-notice.is-down .net-dot {
-  background: var(--danger);
+  background: var(--gx-danger, var(--danger));
+}
+.net-notice.is-back .net-dot {
+  background: var(--gx-accent, #0d9f74);
+  animation: none;
 }
 .net-notice button {
-  margin-left: auto;
-  flex: 0 0 auto;
   min-height: 36px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  color: var(--ink);
+  padding: 6px 12px;
+  border: 1px solid var(--gx-border-strong, var(--line));
+  border-radius: 999px;
+  color: inherit;
   background: transparent;
+  font: inherit;
   font-weight: 650;
+  cursor: pointer;
+}
+.net-notice button:hover {
+  background: var(--gx-hover, var(--surface-2));
+}
+.net-notice button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+/* Phones: one compact line (title, "What's going on?", Hide) so it covers as little as possible. The status page has the
+   explanation and its own "Check again"; the notice keeps re-checking by itself. */
+@media (max-width: 600px) {
+  .net-notice {
+    align-items: center;
+    padding: 8px 10px 8px 12px;
+    font-size: 13px;
+  }
+  .net-dot {
+    margin-top: 0;
+  }
+  .net-notice strong {
+    display: inline;
+  }
+  .net-detail,
+  .net-try {
+    display: none;
+  }
+  .net-notice.is-back .net-detail {
+    display: inline;
+    margin-left: 4px;
+  }
+  .net-actions {
+    flex-direction: row;
+  }
 }
 @keyframes net-in {
   from { opacity: 0; transform: translate(-50%, 8px); }
@@ -199,4 +265,23 @@
 }
 .ws-main > .dev-notice {
   margin-bottom: 14px;
+}
+
+/* "Check Stayblz status" on the first-load screen (startup.css is cached by the service worker, so it lives here). */
+.sb-startup-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 12px;
+  padding: 0 14px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  opacity: 0.85;
+}
+.sb-startup-status:hover {
+  opacity: 1;
 }

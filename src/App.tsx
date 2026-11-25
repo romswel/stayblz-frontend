@@ -39,6 +39,7 @@ import PublishedRacing from "./pages/PublishedRacing";
 import PastPerformances from "./pages/PastPerformances";
 import StartupLoader from "./components/StartupLoader";
 import FAQ from "./pages/FAQ";
+import ServiceStatus from "./pages/ServiceStatus";
 import Stables from "./pages/Stables";
 import Administration from "./pages/Administration";
 import Marketplace from "./pages/Marketplace";
@@ -116,7 +117,10 @@ function SignedOutFallback() {
 
 export default function App() {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
 
+  // The status page must open even while sign-in is still waiting for a server that doesn't answer.
+  if (loading && pathname === "/status") return <ServiceStatus />;
   if (loading) {
     return <StartupLoader />;
   }
@@ -133,6 +137,7 @@ export default function App() {
           element={<InvitationEntry kind="conversation" />}
         />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/status" element={<ServiceStatus />} />
         <Route path="/terms" element={<Legal kind="terms" />} />
         <Route path="/privacy" element={<Legal kind="privacy" />} />
         <Route path="/legal" element={<Legal kind="all" />} />
@@ -185,6 +190,7 @@ export default function App() {
       <Route path="/login" element={<SignedInHome />} />
       <Route path="/signup" element={<SignedInHome />} />
       <Route path="/faq" element={<FAQ />} />
+      <Route path="/status" element={<ServiceStatus />} />
       <Route path="/terms" element={<Legal kind="terms" />} />
       <Route path="/privacy" element={<Legal kind="privacy" />} />
       <Route path="/legal" element={<Legal kind="all" />} />

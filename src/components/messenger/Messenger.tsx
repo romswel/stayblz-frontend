@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { createRequestId } from "../../requestId";
@@ -32,6 +32,9 @@ import "./thread.css";
 import "./panels.css";
 import "./chat-identity.css";
 import "./chat-extras.css";
+
+// Only a few accounts can open it, so its code loads on first use.
+const ScheduledUpdates = lazy(() => import("./ScheduledUpdates"));
 
 /** The app fills the window under the site header, so the message box is always on screen. */
 function useFitToWindow() {
@@ -81,7 +84,7 @@ const readInfoPref = () => {
 
 type Dialog =
   | null
-  | { kind: "new" | "settings" | "about" | "add" | "rename" }
+  | { kind: "new" | "settings" | "about" | "add" | "rename" | "schedule" }
   | { kind: "mute"; chat: Pick<ChatPreview, "id" | "title"> }
   | { kind: "folder"; folder?: ChatFolder; assignTo?: string }
   | { kind: "forward"; message: ChatMessage };
@@ -126,6 +129,8 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
   stagedAll.current = stagedByChat;
   useEffect(() => () => Object.values(stagedAll.current).forEach((files) => files.forEach((s) => s.url && URL.revokeObjectURL(s.url))), []);
   const [dialog, setDialog] = useState<Dialog>(null);
+  // Scheduled updates: the server only says yes for the few accounts allowed to use it.
+  const [canSchedule, setCanSchedule] = useState(false);
   const [infoOpen, setInfoOpen] = useState(readInfoPref);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -174,7 +179,11 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
     // The real file limits (bigger when the server stores files in Cloudflare R2).
     peopleApi
       .profile(c.signal)
-      .then((d) => !c.signal.aborted && setChatLimits(d?.limits))
+      .then((d) => {
+        if (c.signal.aborted) return;
+        setChatLimits(d?.limits);
+        setCanSchedule(d?.scheduledUpdates === true);
+      })
       .catch(() => undefined);
     return () => c.abort();
   }, []);
@@ -549,6 +558,7 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
           onRetry={list.retry}
           onNewChat={() => setDialog({ kind: "new" })}
           onSettings={() => setDialog({ kind: "settings" })}
+          onSchedule={canSchedule ? () => setDialog({ kind: "schedule" }) : undefined}
           onNewFolder={(assignTo) => setDialog({ kind: "folder", assignTo })}
           onAction={onAction}
           openPeople={peopleSignal}
@@ -724,6 +734,16 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
           />
         )}
         {dialog?.kind === "about" && <FreePlanDialog onClose={() => setDialog(null)} />}
+        {dialog?.kind === "schedule" && (
+          <Suspense fallback={null}>
+            <ScheduledUpdates
+              openChat={
+                chatId ? { kind: team ? "team" : "personal", id: chatId, stableId: team ? (stable?.id ?? null) : null } : null
+              }
+              onClose={() => setDialog(null)}
+            />
+          </Suspense>
+        )}
         {viewer && (
           <MediaViewer
             items={mediaItems(viewer.list)}
