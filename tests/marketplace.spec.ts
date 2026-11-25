@@ -507,12 +507,38 @@ test("message seller: a quick reply goes to the seller and opens the chat", asyn
   expect(state.messages[0].clientId).toMatch(/^[0-9a-f-]{36}$/);
 });
 
-test("message seller: the card's Message button starts in the message box; own listings have none", async ({ page }) => {
-  await mockApp(page, { listings: [row(SELLER, "Northern Ledger"), row("mine-1", "My Own Horse", { mine: true })] });
+test("message seller: the card's Message button opens the message box at once; own listings have none", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 740 });
+  const state = await mockApp(page, { listings: [row(SELLER, "Northern Ledger"), row("mine-1", "My Own Horse", { mine: true })] });
+  const detailLoads: string[] = [];
+  page.on("request", (r) => {
+    if (/\/api\/marketplace\/listings\/[^/]+$/.test(new URL(r.url()).pathname)) detailLoads.push(r.url());
+  });
   await page.goto("/marketplace");
   await page.getByRole("button", { name: "Message Alice Seller about Northern Ledger" }).click();
-  await expect(page.getByRole("dialog").getByRole("textbox", { name: "Your message" })).toBeFocused();
+  const dialog = page.getByRole("dialog");
+  const box = dialog.getByRole("textbox", { name: "Your message" });
+  // The box is ready and on screen right away: no gallery, nothing loaded first.
+  await expect(box).toBeFocused();
+  await expect(box).toBeInViewport({ ratio: 1 });
+  await expect(dialog.getByRole("button", { name: "Send" })).toBeInViewport({ ratio: 1 });
+  await expect(dialog.getByRole("region", { name: "Photos and videos" })).toHaveCount(0);
+  expect(detailLoads).toHaveLength(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  // The full listing is one tap away.
+  await dialog.getByRole("button", { name: "View listing" }).click();
+  await expect(page.getByRole("dialog").getByRole("region", { name: "Photos and videos" })).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: /close/i }).first().click();
+
+  // Sending from the quick dialog opens the chat.
+  await page.getByRole("button", { name: "Message Alice Seller about Northern Ledger" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Send" }).click();
+  await expect(page).toHaveURL(/\/messages\/c0ffee00-0000-4000-8000-000000000001$/);
+  expect(state.messages).toHaveLength(1);
+  expect(state.messages[0].body).toBe("Hi, is this still available?");
+
+  await page.goto("/marketplace");
   await page.getByRole("button", { name: "My Own Horse", exact: true }).click();
   await expect(page.getByRole("dialog").getByRole("form", { name: /^Message/ })).toHaveCount(0);
 });
