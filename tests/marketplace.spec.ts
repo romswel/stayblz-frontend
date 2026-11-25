@@ -209,6 +209,33 @@ test("listings show every field and filters go to the server in the address", as
   await expect(page).not.toHaveURL(/breed=/);
 });
 
+test("the price can be changed in the middle and cleared with the keyboard (the commas don't get in the way)", async ({ page }) => {
+  await mockApp(page, { listings: [] });
+  await page.goto("/marketplace");
+  await page.getByRole("button", { name: "List a horse" }).first().click();
+  const price = page.getByRole("dialog", { name: "List a horse" }).getByLabel("Price (USD)");
+  await price.click();
+  await page.keyboard.type("25000");
+  await expect(price).toHaveValue("25,000");
+  // Cursor just after the comma: Backspace removes the 5 (the comma used to come straight back, so nothing changed).
+  await price.evaluate((el: HTMLInputElement) => el.setSelectionRange(3, 3));
+  await page.keyboard.press("Backspace");
+  await expect(price).toHaveValue("2,000");
+  // Typing goes where the cursor is (it used to jump to the end).
+  await page.keyboard.type("7");
+  await expect(price).toHaveValue("27,000");
+  // A 10th digit is refused (it used to push the last digit off the end, silently changing the price).
+  await price.fill("123,456,789");
+  await price.evaluate((el: HTMLInputElement) => el.setSelectionRange(1, 1));
+  await page.keyboard.type("0");
+  await expect(price).toHaveValue("123,456,789");
+  await price.fill("27,000");
+  // Clearing it completely works too.
+  await page.keyboard.press("End");
+  for (let i = 0; i < 6; i++) await page.keyboard.press("Backspace");
+  await expect(price).toHaveValue("");
+});
+
 test("members list a horse with dropdowns, then edit and remove it", async ({ page }) => {
   const state = await mockApp(page, { listings: [row("a", "Northern Ledger")] });
   await page.goto("/marketplace");

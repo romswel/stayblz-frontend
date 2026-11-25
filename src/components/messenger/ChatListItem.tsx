@@ -1,7 +1,7 @@
 import { memo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import ChatAvatar from "./ChatAvatar";
-import { muteLabel, previewLine, shortTime } from "./format";
+import { activityAt, muteLabel, previewLine, shortTime } from "./format";
 import { MoreIcon, MuteIcon, PinIcon, StatusMark } from "./icons";
 import Menu, { type MenuEntry } from "./Menu";
 import type { ChatPreview } from "./types";
@@ -15,6 +15,8 @@ function ChatListItem({
   c,
   to,
   active,
+  replace,
+  linkState = { fromList: true },
   now,
   index,
   menu,
@@ -22,6 +24,9 @@ function ChatListItem({
   c: ChatPreview;
   to: string;
   active: boolean;
+  /** A chat is already open: switching replaces it in the history, so Back goes to the list (not through every chat). */
+  replace: boolean;
+  linkState?: unknown;
   now: number;
   /** Position in the list, for a quick staggered entrance on first load. */
   index: number;
@@ -30,12 +35,13 @@ function ChatListItem({
   const [open, setOpen] = useState(false);
   const more = useRef<HTMLButtonElement>(null);
   const line = c.request ? "Wants to message you" : c.waiting && !c.lastMessage ? "Say hello 👋" : previewLine(c);
-  const time = shortTime(c.lastMessageAt, now);
+  const time = shortTime(activityAt(c), now);
   return (
     <li className={`mx-item-wrap${open ? " is-menu" : ""}`} style={{ animationDelay: `${Math.min(index, 12) * 18}ms` }}>
       <Link
         to={to}
-        state={{ fromList: true }}
+        replace={replace}
+        state={linkState}
         className={`mx-item${active ? " is-active" : ""}${c.unread ? " is-unread" : ""}`}
         aria-current={active ? "page" : undefined}
         aria-label={`${c.title}${c.unread ? ", unread" : ""}${c.request ? ", message request" : ""}${c.pinned ? ", pinned" : ""}${c.muted ? ", muted" : ""}`}

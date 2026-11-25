@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useConfirm } from "../ui/Confirm";
 import { downloadFile } from "./AttachmentView";
 import ChatAvatar from "./ChatAvatar";
+import { plainText } from "./chatFormat";
 import type { CommandResult } from "./commands";
 import Composer from "./Composer";
+import { fileProblem, stageFile, type StagedFile } from "./files";
 import { buildTimeline, mentionPattern, muteLabel, presenceLabel, presenceOf, toMs } from "./format";
 import { ArrowLeftIcon, Avatar, ChevronIcon, CloseIcon, DownIcon, InfoIcon, MuteIcon, PinIcon, VideoIcon } from "./icons";
 import MediaViewer, { mediaItems } from "./MediaViewer";
@@ -17,6 +19,9 @@ import type { ThreadState } from "./useThread";
 
 const NEAR_BOTTOM_PX = 140;
 const SHOW_JUMP_PX = 480;
+/** Files that can wait in the message box at once (the outbox sends at most 10 in one go). */
+const MAX_STAGED = 10;
+const hasFiles = (e: { dataTransfer: DataTransfer | null }) => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes("Files");
 
 /** The chat's loaded photos, videos and GIFs; one opened from further back (pinned list) still shows on its own. */
 function viewerItems(messages: ChatMessage[], open: ChatMessage) {
@@ -31,6 +36,8 @@ export default function ChatThread({
   meId,
   draft,
   onDraft,
+  staged,
+  onStaged,
   onBack,
   onInfo,
   infoOpen,
@@ -52,6 +59,9 @@ export default function ChatThread({
   meId: string;
   draft: string;
   onDraft: (text: string) => void;
+  /** This chat's files waiting in the box, and a way to change them (kept per chat, like drafts). */
+  staged: StagedFile[];
+  onStaged: (update: (old: StagedFile[]) => StagedFile[]) => void;
   onBack: () => void;
   onInfo: () => void;
   infoOpen: boolean;
@@ -85,6 +95,9 @@ export default function ChatThread({
   const [searchStart, setSearchStart] = useState("");
   const [highlight, setHighlight] = useState("");
   const [dragging, setDragging] = useState(false);
+  /** Files dragged in, pasted or picked: they wait in the message box until you press Send (kept per chat by Messenger). */
+  const stagedRef = useRef(staged);
+  stagedRef.current = staged;
   /** The photo / video / GIF open in the viewer (it steps through all of the chat's loaded media). */
   const [viewer, setViewer] = useState<ChatMessage | null>(null);
   const [sheet, setSheet] = useState<ChatMessage | null>(null);
@@ -104,7 +117,26 @@ export default function ChatThread({
   const stick = useRef(true);
   const group = head?.kind === "group";
   const canAct = !!thread && !thread.request;
-  const timeline = useMemo(() => buildTimeline(messages), [messages]);
+  /**
+   * Where you'd read up to when the chat opened (your read time; newer servers send it), fixed at opening: the chat
+   * opens at the first message after it, under an "Unread messages" line, instead of at the bottom. NaN = no line.
+   */
+  const readMark = useRef<number | undefined>(undefined);
+  if (thread && readMark.current === undefined) {
+    const at = thread.readAt === undefined ? NaN : thread.readAt === null ? 0 : toMs(thread.readAt);
+    readMark.current = thread.unread && !thread.request && Number.isFinite(at) ? at : NaN;
+  }
+  const loadedAll = !state.before;
+  const unreadFrom = useMemo(() => {
+    const mark = readMark.current;
+    if (mark === undefined || !Number.isFinite(mark)) return null;
+    // Only once the spot where you stopped reading is loaded: with more unread than one page, older pages hold unread
+    // messages too, and a line above the oldest loaded one would wrongly mark those as read.
+    if (!loadedAll && !messages.some((m) => !m.status && toMs(m.sentAt) <= mark)) return null;
+    return messages.find((m) => !m.mine && !m.system && !m.status && toMs(m.sentAt) > mark)?.id ?? null;
+  }, [messages, loadedAll]);
+  // The line starts a new group, so the first unread message shows who sent it.
+  const timeline = useMemo(() => buildTimeline(messages, new Date(), unreadFrom), [messages, unreadFrom]);
   const viewerList = useMemo(() => (viewer ? viewerItems(messages, viewer) : []), [messages, viewer]);
   // Groups: @mentions of members (shown as chips), and the people you can mention.
   const members = thread?.members;
@@ -151,7 +183,16 @@ export default function ChatThread({
       el.scrollTop = el.scrollHeight - keepFrom.current.height + keepFrom.current.top;
       keepFrom.current = null;
     } else if (lastId.current === null) {
-      el.scrollTop = el.scrollHeight;
+      // Opening: at your first unread message when there is one (with a little room above it); when even the oldest
+      // loaded message is unread, at the top (older pages load above it); else the newest.
+      const line = unreadFrom ? el.querySelector<HTMLElement>(".mx-unread-line") : null;
+      const mark = readMark.current;
+      const allUnread = !line && mark !== undefined && Number.isFinite(mark) && !loadedAll;
+      el.scrollTop = line
+        ? Math.max(0, line.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 12)
+        : allUnread
+          ? 0
+          : el.scrollHeight;
     } else if (newest.id !== lastId.current) {
       if (newest.mine || nearBottom()) el.scrollTop = el.scrollHeight;
       else setNewBelow((n) => n + 1);
@@ -294,8 +335,22 @@ export default function ChatThread({
     } else if (action === "unsend") void askUnsend(m);
   }
 
+  /**
+   * Send: the words first (they carry the reply), then the files waiting in the box. Words arrive in a moment while
+   * files still upload, so this is also the order everyone sees them in. Only Send from the box takes the waiting files
+   * (picking a GIF sends just the GIF).
+   */
   function onSend(text: string, fromBox: boolean) {
-    send(text, reply);
+    const files = canAct && fromBox ? stagedRef.current : [];
+    if (text) send(text, reply);
+    if (files.length) {
+      sendFiles(
+        files.map((s) => s.file),
+        text ? null : reply,
+      );
+      files.forEach((s) => s.url && URL.revokeObjectURL(s.url));
+      onStaged(() => []);
+    }
     if (fromBox) onDraft("");
     setReply(null);
     requestAnimationFrame(() => toBottom());
@@ -313,11 +368,38 @@ export default function ChatThread({
     } else if (command.kind === "paddock") onCall(true);
     else onChatCommand(command);
   }
-  function onFiles(files: File[]) {
-    if (!canAct || !files.length) return;
-    sendFiles(files, reply);
-    setReply(null);
-    requestAnimationFrame(() => toBottom());
+  /**
+   * Files dragged in (from the computer or from Stayblz itself), pasted, or picked with Attach: they wait in the
+   * message box with a preview until you press Send. Files that can't be sent are said at once instead.
+   */
+  function addFiles(list: File[]) {
+    if (!canAct || !list.length) return;
+    if (editing) return setNotice("Finish or cancel your edit first, then add the files.");
+    const problems: string[] = [];
+    const added: StagedFile[] = [];
+    let room = MAX_STAGED - stagedRef.current.length;
+    for (const file of list) {
+      const problem = fileProblem(file);
+      if (problem) problems.push(problem);
+      else if (room <= 0) {
+        problems.push(`Up to ${MAX_STAGED} files in one message. Send these first, then add more.`);
+        break;
+      } else {
+        added.push(stageFile(file));
+        room--;
+      }
+    }
+    if (added.length) {
+      onStaged((old) => [...old, ...added]);
+      // On a computer, Enter now sends them; phones keep their keyboard down.
+      if (!window.matchMedia?.("(pointer: coarse)").matches) requestAnimationFrame(() => input.current?.focus());
+    }
+    if (problems.length) setNotice(problems[0] + (problems.length > 1 ? ` (and ${problems.length - 1} more)` : ""));
+  }
+  function removeStaged(id: string) {
+    const gone = stagedRef.current.find((s) => s.id === id);
+    if (gone?.url) URL.revokeObjectURL(gone.url);
+    onStaged((old) => old.filter((s) => s.id !== id));
   }
   function editLast() {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -374,20 +456,22 @@ export default function ChatThread({
     <section
       className={`mx-thread mx-card${group ? " is-group" : ""}${dragging ? " is-dragging" : ""}`}
       aria-label={head ? `Chat with ${head.title}` : "Chat"}
+      // Dropped files (from the computer, or a photo dragged from Stayblz itself) wait in the message box: never sent
+      // until you press Send. Over a chat you can't write in, the drop does nothing (the browser doesn't open it).
       onDragOver={(e) => {
-        if (canAct && e.dataTransfer.types.includes("Files")) {
-          e.preventDefault();
-          setDragging(true);
-        }
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = canAct && !editing ? "copy" : "none";
+        if (canAct && !editing) setDragging(true);
       }}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
       }}
       onDrop={(e) => {
-        if (!canAct) return;
+        if (!hasFiles(e)) return;
         e.preventDefault();
         setDragging(false);
-        onFiles(Array.from(e.dataTransfer.files ?? []));
+        addFiles(Array.from(e.dataTransfer.files ?? []));
       }}
     >
       <header className="mx-thread-head">
@@ -477,7 +561,7 @@ export default function ChatThread({
               {pinShown.from}
               {pins.length > 1 ? ` · ${(pinIndex % pins.length) + 1} of ${pins.length}` : ""}
             </small>
-            <span>{pinShown.body || (pinShown.attachment ? `📎 ${pinShown.attachment}` : "Attachment")}</span>
+            <span>{pinShown.body ? plainText(pinShown.body) : pinShown.attachment ? `📎 ${pinShown.attachment}` : "Attachment"}</span>
           </button>
           <button type="button" className="mx-icon-btn" aria-label={`See all ${pins.length} pinned messages`} title="All pinned messages" onClick={() => setPinsOpen(true)}>
             <ChevronIcon />
@@ -560,8 +644,13 @@ export default function ChatThread({
                       {item.label}
                     </div>
                   ) : (
+                    <Fragment key={item.key}>
+                      {item.message.id === unreadFrom && (
+                        <div className="mx-unread-line" role="separator">
+                          <span>Unread messages</span>
+                        </div>
+                      )}
                     <MessageRow
-                      key={item.key}
                       m={item.message}
                       first={item.first}
                       last={item.last}
@@ -585,6 +674,7 @@ export default function ChatThread({
                       meName={meName}
                       h={handlers}
                     />
+                    </Fragment>
                   ),
                 )}
                 {!!typingNames.length && (
@@ -611,7 +701,7 @@ export default function ChatThread({
 
       {dragging && (
         <div className="mx-dropzone" aria-hidden="true">
-          Drop photos, videos or files to send
+          Drop to add to your message
         </div>
       )}
       {(newBelow > 0 || farUp) && (
@@ -661,7 +751,11 @@ export default function ChatThread({
             value={draft}
             onChange={onDraft}
             onSend={onSend}
-            onFiles={onFiles}
+            onAddFiles={addFiles}
+            files={staged}
+            onRemoveFile={removeStaged}
+            mentions={mentions}
+            meName={meName}
             onVoice={(file, duration) => {
               if (!canAct) return;
               sendFiles([file], reply, { duration });

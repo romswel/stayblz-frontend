@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import Modal from "../Modal";
@@ -56,6 +56,37 @@ const fromListing = (l: Listing): Fields => ({
   description: l.description ?? "",
 });
 const digits = (value: string) => value.replace(/[^\d]/g, "");
+
+/**
+ * The price box shows "25,000" while you type. Re-writing the commas used to throw the cursor to the end and made a
+ * comma impossible to delete (it came straight back), so changing a price in the middle didn't work. Now the cursor
+ * stays after the same digit, and Backspace/Delete next to a comma remove the digit beside it.
+ */
+function priceInput(input: HTMLInputElement, set: (value: string) => void, previous: string) {
+  const raw = input.value;
+  let before = digits(raw.slice(0, input.selectionStart ?? raw.length)).length;
+  let d = digits(raw).replace(/^0+(?=\d)/, "");
+  // Already 9 digits (the most a price can have): a 10th is refused, never pushing a digit off the end.
+  if (d.length > 9) {
+    d = digits(previous);
+    before = Math.max(0, before - 1);
+  }
+  const next = d ? Number(d).toLocaleString("en-US") : "";
+  set(next);
+  requestAnimationFrame(() => {
+    if (document.activeElement !== input) return;
+    let at = 0;
+    for (let seen = 0; at < next.length && seen < before; at++) if (/\d/.test(next[at])) seen++;
+    input.setSelectionRange(at, at);
+  });
+}
+function priceKey(e: KeyboardEvent<HTMLInputElement>) {
+  const el = e.currentTarget;
+  const at = el.selectionStart ?? 0;
+  if (at !== el.selectionEnd) return;
+  if (e.key === "Backspace" && el.value[at - 1] === ",") el.setSelectionRange(at - 1, at - 1);
+  if (e.key === "Delete" && el.value[at] === ",") el.setSelectionRange(at + 1, at + 1);
+}
 
 /** Turns the form into what the server expects, or says what to fix. */
 function check(f: Fields): Basics | string {
@@ -281,10 +312,8 @@ export default function ListingForm({
                 maxLength={13}
                 value={fields.price}
                 disabled={busy}
-                onChange={(e) => {
-                  const d = digits(e.target.value).slice(0, 9);
-                  set("price")(d ? Number(d).toLocaleString("en-US") : "");
-                }}
+                onKeyDown={priceKey}
+                onChange={(e) => priceInput(e.target, set("price"), fields.price)}
               />
             </span>
           </label>

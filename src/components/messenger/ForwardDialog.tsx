@@ -3,6 +3,7 @@ import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import type { ChatApi } from "./chatApi";
 import ChatAvatar from "./ChatAvatar";
+import { plainText } from "./chatFormat";
 import { SearchIcon } from "./icons";
 import type { ChatMessage, ChatPreview } from "./types";
 
@@ -30,7 +31,7 @@ export default function ForwardDialog({
     () => chats.filter((c) => !c.request && (!q.trim() || c.title.toLowerCase().includes(q.trim().toLowerCase()))),
     [chats, q],
   );
-  const preview = message.body || (message.attachment ? `📎 ${message.attachment.name}` : "");
+  const preview = message.body ? plainText(message.body) : message.attachment ? `📎 ${message.attachment.name}` : "";
 
   async function send() {
     if (!picked.length || busy) return;

@@ -387,3 +387,163 @@ video.mx-viewer-media { opacity: 1; }
   .mx-viewer-slide,
   img.mx-viewer-media { transition: none !important; }
 }
+
+/* ---------- Files waiting in the message box (dragged in, pasted or picked; sent only with Send) ---------- */
+.mx-staged {
+  margin: 0 0 8px;
+  animation: mx-rise 0.18s var(--mx-ease) both;
+}
+.mx-staged ul {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 2px 4px;
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+.mx-staged-item {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border: 1px solid var(--mx-line-strong);
+  border-radius: 12px;
+  background: var(--mx-field);
+  overflow: hidden;
+}
+.mx-staged-item img,
+.mx-staged-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+.mx-staged-item.is-file,
+.mx-staged-item.is-audio {
+  width: 148px;
+  place-items: stretch;
+}
+.mx-staged-doc {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: 8px;
+  padding: 8px 28px 8px 10px;
+  color: var(--mx-ink);
+  font-size: 12.5px;
+}
+.mx-staged-doc > svg {
+  grid-row: 1 / 3;
+  align-self: center;
+  color: var(--mx-accent);
+}
+.mx-staged-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+}
+.mx-staged-doc small {
+  color: var(--mx-muted);
+  font-size: 11px;
+}
+.mx-staged-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 15px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.mx-staged-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(8, 15, 12, 0.72);
+  color: #fff;
+  cursor: pointer;
+}
+/* A bigger invisible touch area than the visible dot. */
+.mx-staged-remove::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+.mx-staged-remove:hover,
+.mx-staged-remove:focus-visible {
+  background: var(--mx-danger);
+}
+
+/* ---------- Formatting preview: how the message will look once sent ---------- */
+.mx-format-preview {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 6px 12px 8px;
+  border-left: 3px solid var(--mx-accent);
+  border-radius: 8px;
+  background: var(--mx-field);
+  animation: mx-rise 0.16s var(--mx-ease) both;
+}
+.mx-format-label {
+  color: var(--mx-muted);
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.mx-format-text {
+  max-height: 96px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--mx-ink);
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 800px) {
+  /* Room is short with the keyboard up. */
+  .mx-format-text { max-height: 66px; }
+  .mx-staged-item { width: 60px; height: 60px; }
+  .mx-staged-item.is-file,
+  .mx-staged-item.is-audio { width: 136px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mx-staged,
+  .mx-format-preview { animation: none; }
+}
+
+/* ---------- "Unread messages": where you stopped reading (the chat opens here) ---------- */
+.mx-unread-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 2px 8px;
+  color: var(--mx-accent);
+  font-size: 11.5px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+.mx-unread-line::before,
+.mx-unread-line::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--mx-accent) 55%, transparent);
+}

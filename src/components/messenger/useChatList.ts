@@ -1,23 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { notifyChatsChanged, type ChatApi } from "./chatApi";
-import { toMs } from "./format";
+import { activityAt, toMs } from "./format";
 import type { ChatPreview } from "./types";
 
 const LIST_POLL_MS = 25_000;
+/** Newest activity first: a reaction moves a chat up like a message does. */
 const byNewest = (list: ChatPreview[]) =>
-  [...list].sort((a, b) => toMs(b.lastMessageAt) - toMs(a.lastMessageAt) || a.id.localeCompare(b.id));
+  [...list].sort((a, b) => toMs(activityAt(b)) - toMs(activityAt(a)) || a.id.localeCompare(b.id));
 
 /**
  * The chat list. Refreshes every 25 s while the tab is visible (no live connection on the free
  * plan). A failed refresh keeps what's already on screen and only reports `stale`.
+ * `isOpenAndRead(id)`: the chat you're looking at. A refresh that lands before the server has recorded that you read
+ * it (or a thread answer from just before) must not bring its unread highlight back.
  */
-export function useChatList(chatApi: ChatApi) {
+export function useChatList(chatApi: ChatApi, isOpenAndRead: (id: string) => boolean = () => false) {
   const [items, setItems] = useState<ChatPreview[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [stale, setStale] = useState(false);
   const loaded = useRef(false);
   const unreadKey = useRef("");
+  const openRef = useRef(isOpenAndRead);
+  openRef.current = isOpenAndRead;
+  const keepRead = (c: ChatPreview) => (c.unread && !c.request && openRef.current(c.id) ? { ...c, unread: false } : c);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -25,7 +31,7 @@ export function useChatList(chatApi: ChatApi) {
         const data = await chatApi.list(signal);
         if (signal?.aborted) return;
         loaded.current = true;
-        const rows = Array.isArray(data?.conversations) ? data.conversations : [];
+        const rows = (Array.isArray(data?.conversations) ? data.conversations : []).map(keepRead);
         setItems(byNewest(rows));
         setStatus("ready");
         setError("");
@@ -48,6 +54,8 @@ export function useChatList(chatApi: ChatApi) {
         }
       }
     },
+    // keepRead reads the latest choice through a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [chatApi],
   );
 
@@ -87,8 +95,9 @@ export function useChatList(chatApi: ChatApi) {
     (preview: ChatPreview) =>
       setItems((old) => {
         const before = old.find((c) => c.id === preview.id);
-        return byNewest([{ ...before, ...preview }, ...old.filter((c) => c.id !== preview.id)]);
+        return byNewest([keepRead({ ...before, ...preview }), ...old.filter((c) => c.id !== preview.id)]);
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
   const patch = useCallback(

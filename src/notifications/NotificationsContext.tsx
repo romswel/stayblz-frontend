@@ -120,6 +120,18 @@ function sameKey(sub: PushSubscription, publicKey: string) {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
+const CHAT_PAGE = /^\/(messages|team-messages)\/[^/?#]+/;
+/**
+ * Opening a chat from inside another chat (a notification, the bell, a corner card) replaces it in this tab's history,
+ * so Back — or a phone's back gesture — goes to the chat list in one step instead of through every chat opened.
+ */
+function openOptions(url: string) {
+  const here = CHAT_PAGE.exec(window.location.pathname);
+  const there = CHAT_PAGE.exec(url);
+  if (!here || !there || here[1] !== there[1]) return undefined;
+  return { replace: true, state: (window.history.state as { usr?: unknown } | null)?.usr ?? null };
+}
+
 function chatAppAlert(a: ChatAlert, previews: boolean): AppAlert {
   const view = viewOf(a, previews);
   return {
@@ -294,7 +306,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const n = new Notification(alert.title, options);
       n.onclick = () => {
         window.focus();
-        navigateRef.current(alert.url);
+        navigateRef.current(alert.url, openOptions(alert.url));
         n.close();
       };
     } catch {
@@ -344,6 +356,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     let uv: number | null = null;
     let failures = 0;
     let inflight: AbortController | null = null;
+    // Something changed here (you read a chat, muted one, accepted a request…): the next check answers straight away
+    // instead of waiting on the server for something new — or the badge would keep its old number for up to 15 s.
+    let answerNow = false;
     const seen = new Set<string>();
     const watchHidden = () => !!settingsRef.current?.enabled && readPermission() === "granted" && !pushOnRef.current;
     const schedule = (ms?: number) => {
@@ -357,7 +372,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const controller = new AbortController();
       inflight = controller;
       const started = Date.now();
-      const longPoll = !document.hidden && uv !== null && since !== null;
+      const longPoll = !answerNow && !document.hidden && uv !== null && since !== null;
+      answerNow = false;
       try {
         const query =
           `since=${encodeURIComponent(since ?? new Date().toISOString())}&racing=1&presence=${presenceState()}` +
@@ -366,6 +382,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         if (stopped || controller.signal.aborted) return;
         if (!data || typeof data.personal !== "number") return schedule();
         failures = 0;
+        // The server answered a held check early: something changed for you (a reaction in a group, a chat read on
+        // another device…) even if it brought no alert.
+        const woke = longPoll && typeof data.uv === "number" && data.uv !== uv;
         uv = typeof data.uv === "number" ? data.uv : null;
         setCounts({ personal: data.personal, requests: data.requests, team: data.team });
         const items = Array.isArray(data.alerts) ? data.alerts : (data.incoming ?? []).map(fromIncoming);
@@ -385,8 +404,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }
         // The first answer only sets the starting point: nothing that arrived before you opened Stayblz pops up.
         if (since !== null) handleIncoming(fresh);
-        // Something new arrived: the chat list (if open) refreshes now instead of on its next round.
-        if (since !== null && fresh.length) window.dispatchEvent(new Event("stayblz:chat-activity"));
+        // Something new arrived or changed: the chat list (if open) refreshes now instead of on its next round.
+        if (since !== null && (fresh.length || woke)) window.dispatchEvent(new Event("stayblz:chat-activity"));
         since = data.now ?? since;
       } catch {
         if (controller.signal.aborted || stopped) return; // replaced by a newer poll
@@ -402,11 +421,18 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       else schedule();
     }
     const soon = () => {
+      answerNow = true;
       window.clearTimeout(soonTimer);
-      soonTimer = window.setTimeout(load, 900);
+      soonTimer = window.setTimeout(load, 250);
     };
     pollSoon.current = soon;
     void load();
+    // Opening an unread chat: one fewer straight away (the check that follows brings the server's exact numbers).
+    const onRead = (e: Event) => {
+      const team = (e as CustomEvent<{ mode?: string }>).detail?.mode === "team";
+      setCounts((c) => (team ? { ...c, team: Math.max(0, c.team - 1) } : { ...c, personal: Math.max(0, c.personal - 1) }));
+    };
+    window.addEventListener("stayblz:chat-read", onRead);
     const onVisible = () => {
       if (!document.hidden) return soon();
       // Going to the background: stop waiting, and tell the server once that you're away.
@@ -425,6 +451,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(timer);
       window.clearTimeout(soonTimer);
       window.removeEventListener("stayblz:chats-changed", soon);
+      window.removeEventListener("stayblz:chat-read", onRead);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [signedIn, user?.id, handleIncoming]);
@@ -433,7 +460,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onOpen = (e: Event) => {
       const url = (e as CustomEvent<string>).detail;
-      if (typeof url === "string" && url.startsWith("/")) navigateRef.current(url);
+      if (typeof url === "string" && url.startsWith("/")) navigateRef.current(url, openOptions(url));
     };
     window.addEventListener("stayblz:open", onOpen);
     return () => window.removeEventListener("stayblz:open", onOpen);
@@ -449,7 +476,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (data?.type === "stayblz:open" && data.url) {
         try {
           const url = new URL(data.url, window.location.origin);
-          if (url.origin === window.location.origin) navigateRef.current(url.pathname + url.search);
+          if (url.origin === window.location.origin) navigateRef.current(url.pathname + url.search, openOptions(url.pathname));
           e.ports?.[0]?.postMessage("opened");
         } catch {
           /* ignore */
@@ -610,7 +637,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         setToasts((old) => old.filter((t) => t.id !== alert.id));
         if (alert.chatAlertId) markRead([alert.chatAlertId]);
         else setRecent((old) => old.map((a) => (a.id === alert.id ? { ...a, read: true } : a)));
-        navigate(alert.url);
+        navigate(alert.url, openOptions(alert.url));
       },
       markAllRead: () => {
         markRead("all");

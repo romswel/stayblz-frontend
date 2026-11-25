@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { createRequestId } from "../../requestId";
@@ -17,7 +17,7 @@ import ChatSettingsDialog from "./ChatSettingsDialog";
 import ChatSidebar, { type ChatAction } from "./ChatSidebar";
 import ChatThread from "./ChatThread";
 import { notifyChatsChanged, peopleApi, useChatApi } from "./chatApi";
-import { setChatLimits } from "./files";
+import { setChatLimits, type StagedFile } from "./files";
 import ForwardDialog from "./ForwardDialog";
 import { FreePlanBanner, FreePlanDialog } from "./FreePlanNotice";
 import InviteAccept from "./InviteAccept";
@@ -60,6 +60,14 @@ function useFitToWindow() {
   return ref;
 }
 
+/** This tab's place in its history (react-router keeps it in history.state), or null when unknown. */
+const historyIdx = () => {
+  const idx = (window.history.state as { idx?: unknown } | null)?.idx;
+  return typeof idx === "number" ? idx : null;
+};
+const fileDrag = (e: { dataTransfer: DataTransfer | null }) => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes("Files");
+const NO_FILES: StagedFile[] = [];
+
 const INFO_KEY = "stayblz.chat.infoOpen";
 /** Below this width Chat info covers the conversation instead of being a third column (see messenger.css). */
 const INFO_OVERLAY = "(max-width: 1499px)";
@@ -94,7 +102,13 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
   const name = mode === "team" ? TEAM_CHAT_NAME : CHAT_NAME;
   const basePath = mode === "team" ? "/team-messages" : "/messages";
   const chatApi = useChatApi(mode);
-  const list = useChatList(chatApi);
+  // The chat you're looking at counts as read in the list (unless you just marked it unread yourself).
+  const openChat = useRef<{ id?: string; markedUnread: boolean }>({ markedUnread: false });
+  if (openChat.current.id !== chatId) openChat.current = { id: chatId, markedUnread: false };
+  const list = useChatList(
+    chatApi,
+    (id) => id === openChat.current.id && !openChat.current.markedUnread && document.visibilityState === "visible",
+  );
   const thread = useThread(chatApi, chatId, {
     userId: user?.id ?? "",
     displayName: user?.displayName ?? "You",
@@ -105,6 +119,12 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
   const [drafts, setDrafts] = useDraft<Record<string, string>>(accountDraftKey(user?.id, `messages.${mode}`), {}, {
     isEmpty: (all) => Object.values(all).every((text) => !text.trim()),
   });
+  // Files waiting in each chat's message box (dragged in, pasted or picked): kept while you switch chats, like the
+  // drafts, until they're sent or taken out. In memory only (files can't be saved on the device).
+  const [stagedByChat, setStagedByChat] = useState<Record<string, StagedFile[]>>({});
+  const stagedAll = useRef(stagedByChat);
+  stagedAll.current = stagedByChat;
+  useEffect(() => () => Object.values(stagedAll.current).forEach((files) => files.forEach((s) => s.url && URL.revokeObjectURL(s.url))), []);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [infoOpen, setInfoOpen] = useState(readInfoPref);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -172,11 +192,49 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
     }
   };
 
-  const open = useCallback((id: string) => navigate(`${basePath}/${id}`, { state: { fromList: true } }), [basePath, navigate]);
+  // Opening a chat from inside another one replaces it in the history: Back (or a phone's back gesture) then goes to
+  // the chat list in one step, instead of back through every chat you looked at.
+  // The replaced entry keeps its own marker: "opened from the list" only when the chat it replaces was.
+  const linkState = useMemo(() => (chatId ? (location.state ?? null) : { fromList: true }), [chatId, location.state]);
+  const open = useCallback(
+    (id: string) => navigate(`${basePath}/${id}`, { state: linkState, replace: !!chatId }),
+    [basePath, chatId, linkState, navigate],
+  );
+  // Where the chat list sits in this tab's history, so Back from a chat goes straight there even when other chats
+  // were opened on top of it (from notifications, links or Chat info).
+  const listAt = useRef<{ base: string; idx: number } | null>(null);
+  useEffect(() => {
+    if (chatId) return;
+    const idx = historyIdx();
+    listAt.current = idx === null ? null : { base: basePath, idx };
+  }, [chatId, basePath, location.key]);
   const back = () => {
-    if ((location.state as { fromList?: boolean } | null)?.fromList) navigate(-1);
+    const idx = historyIdx();
+    const at = listAt.current;
+    if (at && at.base === basePath && idx !== null && at.idx < idx) navigate(at.idx - idx);
+    // The list wasn't seen in this visit to Chat (e.g. you came back from another page), but this chat was opened from
+    // it: it's the entry just before.
+    else if ((location.state as { fromList?: boolean } | null)?.fromList) navigate(-1);
     else navigate(basePath, { replace: true });
   };
+
+  // Opening an unread chat: its highlight, the dot and the menu badge clear straight away instead of after the chat has
+  // loaded. The server is told once the chat has loaded (useThread), so the chat can still open at your first unread
+  // message (its answer carries where you'd read up to before this visit).
+  const readOnOpen = useRef<string | null>(null);
+  useEffect(() => {
+    if (!chatId) {
+      readOnOpen.current = null;
+      return;
+    }
+    if (readOnOpen.current === chatId) return;
+    const c = list.items.find((x) => x.id === chatId);
+    if (!c) return; // not in the list yet: the thread reads it once it has loaded
+    readOnOpen.current = chatId;
+    if (!c.unread || c.request || document.visibilityState !== "visible") return;
+    list.patch(chatId, { unread: false });
+    if (!c.muted) window.dispatchEvent(new CustomEvent("stayblz:chat-read", { detail: { mode } }));
+  }, [chatId, list.items, list.patch, mode]);
   function opened(data: ThreadResponse, { invite }: { invite: boolean }) {
     list.upsert(previewOf(normalizeThread(data.conversation)));
     setInviteOpen(invite);
@@ -201,7 +259,10 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
       local.mutedUntil = new Date(Date.now() + changes.muteMinutes * 60_000).toISOString();
     }
     if ("archived" in changes) local.archived = changes.archived;
-    if ("unread" in changes) local.unread = changes.unread;
+    if ("unread" in changes) {
+      local.unread = changes.unread;
+      if (c.id === chatId) openChat.current.markedUnread = !!changes.unread;
+    }
     if ("folder" in changes) local.folderId = changes.folder ?? null;
     const before = list.items.find((x) => x.id === c.id);
     list.patch(c.id, local);
@@ -242,6 +303,8 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
     try {
       await chatApi.leave(c.id);
       list.remove(c.id);
+      stagedAll.current[c.id]?.forEach((s) => s.url && URL.revokeObjectURL(s.url));
+      setStagedByChat(({ [c.id]: _gone, ...rest }) => rest);
       setDialog(null);
       notifyChatsChanged();
       if (c.id === chatId) navigate(basePath, { replace: true });
@@ -256,6 +319,7 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
     if (action === "delete") return void leave(c);
     if (action === "mute") return setDialog({ kind: "mute", chat: c });
     if (action === "read") {
+      if (c.id === chatId) openChat.current.markedUnread = false;
       list.patch(c.id, { unread: false });
       return void chatApi.read(c.id).then(notifyChatsChanged, () => undefined);
     }
@@ -457,7 +521,20 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
   const narrowInfo = () => window.matchMedia(INFO_OVERLAY).matches;
   return (
     <ChatApiContext.Provider value={chatApi}>
-      <div ref={appRef} className={`mx${chatId ? " mx-has-thread" : ""}${showInfo ? " mx-has-info" : ""}`}>
+      <div
+        ref={appRef}
+        className={`mx${chatId ? " mx-has-thread" : ""}${showInfo ? " mx-has-info" : ""}`}
+        // Files dropped anywhere but an open conversation do nothing (the browser would otherwise open them and leave
+        // Stayblz). The conversation handles its own drops first (ChatThread).
+        onDragOver={(e) => {
+          if (!fileDrag(e) || e.defaultPrevented) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "none";
+        }}
+        onDrop={(e) => {
+          if (fileDrag(e)) e.preventDefault();
+        }}
+      >
         <ChatSidebar
           mode={mode}
           title={name}
@@ -467,6 +544,7 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
           error={list.error}
           stale={list.stale}
           activeId={chatId}
+          linkState={linkState}
           folders={folders}
           onRetry={list.retry}
           onNewChat={() => setDialog({ kind: "new" })}
@@ -493,6 +571,8 @@ export default function Messenger({ mode }: { mode: ChatMode }) {
               meId={user?.id ?? ""}
               draft={drafts[chatId] ?? ""}
               onDraft={(text) => setDrafts((old) => ({ ...old, [chatId]: text }))}
+              staged={stagedByChat[chatId] ?? NO_FILES}
+              onStaged={(update) => setStagedByChat((all) => ({ ...all, [chatId]: update(all[chatId] ?? []) }))}
               onBack={back}
               onInfo={() => toggleInfo()}
               infoOpen={showInfo}

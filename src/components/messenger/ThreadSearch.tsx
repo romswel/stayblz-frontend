@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { plainText } from "./chatFormat";
 import { dayLabel, clock } from "./format";
 import { CloseIcon, SearchIcon } from "./icons";
 import type { ChatMessage } from "./types";
@@ -83,7 +84,7 @@ export default function ThreadSearch({
                 <span className="mx-tsearch-meta">
                   <strong>{m.mine ? "You" : m.from}</strong> · {dayLabel(m.sentAt)} {clock(m.sentAt)}
                 </span>
-                <span className="mx-tsearch-text">{m.body || (m.attachment ? `📎 ${m.attachment.name}` : "")}</span>
+                <span className="mx-tsearch-text">{m.body ? plainText(m.body) : m.attachment ? `📎 ${m.attachment.name}` : ""}</span>
               </button>
             </li>
           ))}

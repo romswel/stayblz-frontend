@@ -4,7 +4,7 @@ import AttachmentView from "./AttachmentView";
 import LinkCards from "./LinkCards";
 import ListingMessageCard from "./ListingMessageCard";
 import EmojiPicker from "./EmojiPicker";
-import { chatMarks, gifUrl, renderChat } from "./chatMarkdown";
+import { chatMarks, gifUrl, plainText, renderChat } from "./chatMarkdown";
 import { clock, dayLabel, firstName, fullTime, tone } from "./format";
 import {
   Avatar,
@@ -241,7 +241,15 @@ function MessageRow({ m, first, last, group, meId, canAct, canEdit, pickerOpen, 
               <ReplyIcon size={12} /> {replyLabel}
             </div>
             <button type="button" className="mx-quote" onClick={() => h.onJump(m.replyTo!.id)}>
-              {m.replyTo.removed ? <em>Message removed</em> : m.replyTo.body || (m.replyTo.attachment ? `📎 ${m.replyTo.attachment}` : "")}
+              {m.replyTo.removed ? (
+                <em>Message removed</em>
+              ) : m.replyTo.body ? (
+                plainText(m.replyTo.body)
+              ) : m.replyTo.attachment ? (
+                `📎 ${m.replyTo.attachment}`
+              ) : (
+                ""
+              )}
             </button>
           </>
         )}

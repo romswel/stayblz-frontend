@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { plainText } from "./chatMarkdown";
-import type { ChatMessage, Presence } from "./types";
+import { plainText } from "./chatFormat";
+import type { ChatMessage, LastReaction, Presence } from "./types";
 
 /** Postgres sends microseconds; trim to milliseconds so every browser parses it. */
 export function toMs(iso: string | null | undefined): number {
@@ -116,9 +116,10 @@ const TIME_GAP = 30 * 60 * 1000;
 
 /**
  * Messages laid out like a messenger: a day line when the date changes, a time line after a
- * 30-minute pause, and same-sender messages within 5 minutes stacked as one group.
+ * 30-minute pause, and same-sender messages within 5 minutes stacked as one group. `breakBefore`: a message that
+ * starts a new group anyway (the first unread one, under its line).
  */
-export function buildTimeline(messages: ChatMessage[], now = new Date()): TimelineItem[] {
+export function buildTimeline(messages: ChatMessage[], now = new Date(), breakBefore?: string | null): TimelineItem[] {
   const items: TimelineItem[] = [];
   let previous: ChatMessage | null = null;
   messages.forEach((message, index) => {
@@ -131,7 +132,7 @@ export function buildTimeline(messages: ChatMessage[], now = new Date()): Timeli
     const next = messages[index + 1];
     const breaks = (a: ChatMessage, b: ChatMessage) =>
       a.system || b.system || a.senderId !== b.senderId || toMs(b.sentAt) - toMs(a.sentAt) > GROUP_GAP ||
-      !sameDay(new Date(toMs(a.sentAt)), new Date(toMs(b.sentAt)));
+      !sameDay(new Date(toMs(a.sentAt)), new Date(toMs(b.sentAt))) || (!!breakBefore && b.id === breakBefore);
     const first = newDay || pause || !previous || breaks(previous, message);
     const last = !next || breaks(message, next) || toMs(next.sentAt) - at > TIME_GAP;
     items.push({ type: "message", key: message.clientId ? `c-${message.clientId}` : message.id, message, first, last });
@@ -140,6 +141,7 @@ export function buildTimeline(messages: ChatMessage[], now = new Date()): Timeli
   return items;
 }
 
+/** A web link (never ending in punctuation). Formatting marks around a link are set aside first (chatFormat holdUrls). */
 const URL_PATTERN = /\bhttps?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]]/gi;
 
 const escapeRe = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -220,16 +222,45 @@ export function linkify(text: string, highlight?: string, mentions?: RegExp | nu
 
 export const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
 
+/** When something last happened in a chat: its last message, or a newer reaction. Sorts the list and dates its row. */
+export function activityAt(c: { lastMessageAt: string; lastReaction?: LastReaction | null }): string {
+  const reacted = c.lastReaction?.at;
+  return reacted && toMs(reacted) > toMs(c.lastMessageAt) ? reacted : c.lastMessageAt;
+}
+
+/** "You reacted ❤️ to “Gallops at six?”", "Ann reacted 👍 to your message", "Bo reacted 😂 to a photo". */
+function reactionLine(r: LastReaction): string {
+  const words = r.body ? plainText(r.body).replace(/\s+/g, " ").trim() : "";
+  const type = r.attachment ?? "";
+  const what = words
+    ? `“${words.length > 40 ? words.slice(0, 39).trimEnd() + "…" : words}”`
+    : type.startsWith("image/")
+      ? "a photo"
+      : type.startsWith("video/")
+        ? "a video"
+        : type.startsWith("audio/")
+          ? "a voice message"
+          : type
+            ? "a file"
+            : "a message";
+  if (r.mine) return `You reacted ${r.emoji} to ${what}`;
+  const who = r.byName ? firstName(r.byName) : "Someone";
+  return r.toMe ? `${who} reacted ${r.emoji} to your message` : `${who} reacted ${r.emoji} to ${what}`;
+}
+
 /**
  * The one-line preview under a chat's name: "You: on my way", "Bo: on my way" (groups),
- * "Ann sent a photo.", "You sent a voice message."
+ * "Ann sent a photo.", "You sent a voice message.", or a newer reaction ("You reacted ❤️ to “on my way”").
  */
 export function previewLine(c: {
   lastMessage: string;
   lastMessageMine: boolean;
   lastSenderName?: string | null;
   kind?: "direct" | "group";
+  lastMessageAt?: string;
+  lastReaction?: LastReaction | null;
 }): string {
+  if (c.lastReaction && (!c.lastMessageAt || toMs(c.lastReaction.at) > toMs(c.lastMessageAt))) return reactionLine(c.lastReaction);
   const text = plainText(c.lastMessage);
   if (!text) return "No messages yet";
   const who = c.lastMessageMine ? "You" : c.lastSenderName ? firstName(c.lastSenderName) : "";

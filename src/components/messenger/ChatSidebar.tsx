@@ -40,6 +40,7 @@ export default function ChatSidebar({
   error,
   stale,
   activeId,
+  linkState,
   folders,
   people,
   notice,
@@ -58,6 +59,8 @@ export default function ChatSidebar({
   error: string;
   stale: boolean;
   activeId?: string;
+  /** History marker for chat links (see Messenger: "opened from the list" only when it really was). */
+  linkState?: unknown;
   folders: ChatFolder[];
   /** The People tab (personal chat only). */
   people?: ReactNode;
@@ -280,13 +283,13 @@ export default function ChatSidebar({
             {pinned.length > 0 && <p className="mx-list-label">Pinned</p>}
             <ul className="mx-items">
               {pinned.map((c, i) => (
-                <ChatListItem key={c.id} c={c} to={`${basePath}/${c.id}`} active={c.id === activeId} now={now} index={i} menu={menu} />
+                <ChatListItem key={c.id} c={c} to={`${basePath}/${c.id}`} active={c.id === activeId} replace={!!activeId} linkState={linkState} now={now} index={i} menu={menu} />
               ))}
             </ul>
             {pinned.length > 0 && rest.length > 0 && <p className="mx-list-label">All chats</p>}
             <ul className="mx-items">
               {rest.map((c, i) => (
-                <ChatListItem key={c.id} c={c} to={`${basePath}/${c.id}`} active={c.id === activeId} now={now} index={i + pinned.length} menu={menu} />
+                <ChatListItem key={c.id} c={c} to={`${basePath}/${c.id}`} active={c.id === activeId} replace={!!activeId} linkState={linkState} now={now} index={i + pinned.length} menu={menu} />
               ))}
             </ul>
           </div>

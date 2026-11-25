@@ -108,6 +108,25 @@ export interface ChatPreview {
   presence?: Presence | null;
   /** Group photo version (members-only file), or null. */
   photo?: string | null;
+  /** When you last read this chat (newer servers): the chat opens at the first message after it. */
+  readAt?: string | null;
+  /** The newest reaction, while it's newer than the last message (newer servers): shown in the chat list. */
+  lastReaction?: LastReaction | null;
+}
+export interface LastReaction {
+  emoji: string;
+  /** You reacted. */
+  mine: boolean;
+  /** Who reacted (null when it was you). */
+  byName?: string | null;
+  /** It was on your message. */
+  toMe: boolean;
+  message?: string | null;
+  /** The start of the message reacted to (raw; shown as plain words). */
+  body?: string | null;
+  /** Its attachment's type when it had no words. */
+  attachment?: string | null;
+  at: string;
 }
 export interface ChatMember {
   id: string;

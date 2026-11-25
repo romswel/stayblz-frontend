@@ -3,7 +3,7 @@
     {"source":"/:path*","has":[{"type":"host","value":"stayblz-frontend.vercel.app"}],"destination":"https://stayblz-app.com/:path*","permanent":true}
   ],
   "rewrites": [
-    {"source":"/api/:path*","destination":"https://stayblz-backend.onrender.com/api/:path*"},
+    {"source":"/api/:path*","destination":"https://stayblz-host.taile56555.ts.net/api/:path*"},
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

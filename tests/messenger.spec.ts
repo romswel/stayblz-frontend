@@ -141,6 +141,13 @@ test("emoji button, photos and files: send, preview, and open large", async ({ p
     { name: "paddock.png", mimeType: "image/png", buffer: PNG },
     { name: "card.csv", mimeType: "", buffer: Buffer.from("Odds,Horse\n3-1,Ridge\n") },
   ]);
+  // Picked files wait in the box (with a preview) until Send.
+  const waiting = page.getByRole("group", { name: "2 files ready to send" });
+  await expect(waiting.locator("img")).toHaveCount(1);
+  await expect(waiting).toContainText("card.csv");
+  expect(server.posts.filter((p) => p.path.includes("/attachments?"))).toHaveLength(0);
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(waiting).toHaveCount(0);
   const photo = page.getByRole("button", { name: "Photo: paddock.png. Open larger" });
   await expect(photo).toBeEnabled();
   await expect(page.getByRole("button", { name: /Download card\.csv/ })).toBeVisible();

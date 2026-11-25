@@ -1413,3 +1413,13 @@ section + section .league-label { margin-top: 22px; }
 .bet-amounts { text-align: right; font-family: var(--mono); font-size: 12px; white-space: nowrap; }
 .bet-amounts .s { display: block; color: var(--ink-soft); }
 .bet-amounts .p { display: block; color: var(--gold-ink); font-weight: 700; }
+
+/* Phones and tablets: iPhone zooms the whole page into any field smaller than 16px when you tap it, and leaves the
+   page zoomed after you're done (it then looks stuck at a fixed size, cut off at the sides). 16px fields never zoom. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="image"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

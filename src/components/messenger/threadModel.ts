@@ -60,6 +60,9 @@ export function normalizeThread(c: Partial<ChatThread> & { id: string }): ChatTh
     muted: !!c.muted,
     folderId: c.folderId ?? null,
     active: !!c.active,
+    // Newer servers only: left out (not null) when missing, so an older answer doesn't wipe what the list has.
+    ...(c.readAt !== undefined ? { readAt: c.readAt } : {}),
+    ...(c.lastReaction !== undefined ? { lastReaction: c.lastReaction } : {}),
     members: c.members ?? [],
     reads: c.reads ?? [],
     delivered: c.delivered ?? [],
