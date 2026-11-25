@@ -210,6 +210,20 @@ export function HorseCard({
           )}
         </div>
         <p className="cm-horse-meta">{[horse.breed, age, horse.color].filter(Boolean).join(" · ") || "Details not added yet"}</p>
+        {showOwnerTools && (horse.role === "coowner" || !!horse.coOwners || !!horse.pendingChanges) && (
+          <p className="cm-horse-owners">
+            {(horse.role === "coowner" || !!horse.coOwners) && (
+              <span className="cm-tag is-muted">
+                <Icon.Users /> {horse.role === "coowner" ? "Co-owned" : `Shared with ${horse.coOwners}`}
+              </span>
+            )}
+            {!!horse.pendingChanges && (
+              <button type="button" className="cm-tag cm-tag-btn" onClick={onEdit}>
+                {horse.pendingChanges} to approve
+              </button>
+            )}
+          </p>
+        )}
         <dl className="cm-horse-stats">
           <div><dt>Starts</dt><dd>{horse.stats.starts}</dd></div>
           <div><dt>Wins</dt><dd>{horse.stats.wins}</dd></div>

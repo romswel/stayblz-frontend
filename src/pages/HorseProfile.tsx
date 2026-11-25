@@ -86,6 +86,8 @@ export default function HorseProfile() {
       </div>
     );
 
+  // Owners are listed for everyone; shares stay private to the owners (not shown here).
+  const coOwners = (horse.owners ?? []).filter((o) => !o.lead && (o.status ?? "accepted") === "accepted");
   const urls = horse.images.map((i) => horseImageUrl(i.id));
   const current = horse.images[active];
   const age = horse.foaledYear ? new Date().getFullYear() - horse.foaledYear : null;
@@ -133,7 +135,9 @@ export default function HorseProfile() {
           <div className="cm-horse-identity-top">
             <StatusBadge status={horse.status} />
             {horse.mine && (
-              <Link className="cm-btn cm-btn-sm" to={`/account/horses?edit=${horse.id}`}><Icon.Edit /> Edit horse</Link>
+              <Link className="cm-btn cm-btn-sm" to={`/account/horses?edit=${horse.id}${horse.pendingChanges ? "&tab=owners" : ""}`}>
+                <Icon.Edit /> {horse.pendingChanges ? `Edit horse · ${horse.pendingChanges} to approve` : "Edit horse"}
+              </Link>
             )}
           </div>
           <h1>{horse.name}</h1>
@@ -155,12 +159,27 @@ export default function HorseProfile() {
             <Link to={`/community/people/${horse.owner.id}`} className="cm-owner-id">
               <Avatar id={horse.owner.id} name={horse.owner.name} size={40} />
               <span>
-                <small>Owned by</small>
+                <small>{coOwners.length ? "Lead owner" : "Owned by"}</small>
                 <strong>{horse.owner.name}{horse.owner.me && " (you)"}</strong>
               </span>
             </Link>
             {!horse.owner.me && <FollowButton personId={horse.owner.id} isFollowing={horse.owner.isFollowing} size="sm" />}
           </div>
+          {coOwners.length > 0 && (
+            <ul className="cm-coowners" aria-label="Co-owners">
+              {coOwners.map((o) => (
+                <li key={o.id}>
+                  <Link to={`/community/people/${o.id}`} className="cm-owner-id">
+                    <Avatar id={o.id} name={o.name} size={32} />
+                    <span>
+                      <small>Co-owner</small>
+                      <strong>{o.name}{o.me && " (you)"}</strong>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
           {!horse.mine && <AddToVirtualButton target={{ communityHorseId: horse.id }} name={horse.name} />}
         </div>
       </section>

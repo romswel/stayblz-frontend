@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import AccountHeader from "./account/AccountNav";
 import HorseEditor from "../components/community/HorseEditor";
 import ShareHorseDialog from "../components/community/ShareHorseDialog";
+import HorseInvites from "../components/community/HorseInvites";
 import { HorseCard, Icon, Skeletons, Empty } from "../components/community/ui";
 import {
   community,
@@ -34,7 +35,7 @@ export default function MyHorses() {
   const [filter, setFilter] = useState("");
   const [sharing, setSharing] = useState<Horse | null>(null);
   const editing = params.get("edit");
-  const editTab = (params.get("tab") as "details" | "photos" | "records" | null) ?? "details";
+  const editTab = (params.get("tab") as "details" | "photos" | "records" | "owners" | null) ?? "details";
 
   const load = useCallback(async () => {
     try {
@@ -75,10 +76,16 @@ export default function MyHorses() {
   }
 
   const openEditor = (id: string | null, tab = "details") => setParams(id ? { edit: id, tab } : { edit: "new" });
+  // Alerts link to /account/horses#invites: bring the invitations into view.
+  useEffect(() => {
+    if (window.location.hash === "#invites") document.getElementById("invites")?.scrollIntoView({ block: "start" });
+  }, [horses]);
   const closeEditor = useCallback(() => setParams({}), [setParams]);
   const onChanged = useCallback((h: HorseDetail) => {
     setHorses((list) => {
       const card: Horse = { ...h, imageCount: h.images.length };
+      // The profile and list both carry pendingChanges; keep the list's when the editor didn't send one.
+      if (card.pendingChanges === undefined) card.pendingChanges = list?.find((x) => x.id === h.id)?.pendingChanges;
       if (!list) return [card];
       return list.some((x) => x.id === h.id) ? list.map((x) => (x.id === h.id ? card : x)) : [card, ...list];
     });
@@ -118,6 +125,8 @@ export default function MyHorses() {
 
       {error && <p className="cm-error" role="alert">{error}</p>}
 
+      <HorseInvites onAccepted={() => void load()} />
+
       <div className="cm-my-layout">
         <section className="cm-my-main" aria-labelledby="cm-inventory-title">
           <header className="cm-section-head">
@@ -138,12 +147,19 @@ export default function MyHorses() {
           ) : !horses.length ? (
             <Empty icon={<Icon.Horse />} title="Add your first horse">
               <p>Give each horse its own profile with photos, pedigree, status and race history. You decide who sees them.</p>
+              <p>Own a horse with someone? Add it once and invite them as a co-owner from its Owners tab.</p>
               <button type="button" className="cm-btn cm-btn-primary" onClick={() => openEditor(null)}><Icon.Plus /> Add a horse</button>
             </Empty>
           ) : (
             <div className="cm-grid">
               {shown.map((h) => (
-                <HorseCard key={h.id} horse={h} showOwnerTools onEdit={() => openEditor(h.id)} onShare={() => setSharing(h)} />
+                <HorseCard
+                  key={h.id}
+                  horse={h}
+                  showOwnerTools
+                  onEdit={() => openEditor(h.id, h.pendingChanges ? "owners" : "details")}
+                  onShare={() => setSharing(h)}
+                />
               ))}
             </div>
           )}

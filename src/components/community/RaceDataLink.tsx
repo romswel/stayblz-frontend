@@ -19,7 +19,9 @@ export default function RaceDataLink({ horse, onChange }: { horse: HorseDetail; 
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const link = horse.raceData ?? null;
-  if (!horse.mine && !link) return null;
+  // Only the lead owner links and unlinks race data; co-owners see the link and get its alerts too.
+  const lead = horse.mine && horse.role !== "coowner";
+  if (!lead && !link) return null;
 
   async function unlink() {
     const ok = await confirm({
@@ -74,10 +76,10 @@ export default function RaceDataLink({ horse, onChange }: { horse: HorseDetail; 
       ) : (
         <>
           <p>
-            {horse.mine ? "Linked to " : "Race data linked by the owner: "}
+            {lead ? "Linked to " : horse.mine ? "Race data linked by the lead owner: " : "Race data linked by the owner: "}
             <strong>{link.name}</strong> · {CODE_LABEL[link.code] ?? link.code}
           </p>
-          {horse.mine && (
+          {lead && (
             <>
               <p className="cm-muted">
                 Breed, year foaled, sex, sire, dam and trainer update from race data, and each result is added to the performance

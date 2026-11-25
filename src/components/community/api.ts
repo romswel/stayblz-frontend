@@ -74,7 +74,16 @@ export type Horse = {
   coverImageId: string | null;
   imageCount?: number;
   stats: HorseStats;
+  /** The viewer owns it: as its lead owner or as a co-owner. */
   mine: boolean;
+  /** Owners only: lead owner (added the horse) or co-owner. */
+  role?: HorseRole | null;
+  /** Owners only: co-owners' edits to details and races wait for another owner's OK. */
+  requireApproval?: boolean;
+  /** Owners only: how many accepted co-owners besides the lead owner. */
+  coOwners?: number;
+  /** Owners only (My horses list and profile): co-owners' changes waiting for approval. */
+  pendingChanges?: number;
   /** Linked by the owner to a race-data horse (US/Canada race cards): details and records update from it. */
   raceData?: {
     name: string;
@@ -114,10 +123,43 @@ export type RaceRecord = {
   /** Added from race data: race details stay as race data has them while the horse is linked. */
   fromRaceData?: boolean;
 };
+export type HorseRole = "lead" | "coowner";
+/** An owner of a horse. Status and share are only sent to the horse's owners. */
+export type HorseOwner = {
+  id: string;
+  name: string;
+  lead: boolean;
+  me: boolean;
+  status?: "accepted" | "pending";
+  /** Basis points: 5000 = 50%. */
+  shareBps?: number | null;
+};
+export type HorseInvite = {
+  horse: { id: string; name: string; breed: string; coverImageId: string | null };
+  invitedBy: { id: string; name: string };
+  invitedAt: string;
+  shareBps: number | null;
+};
+export type HorseChange = {
+  id: string;
+  kind: "details" | "record_add" | "record_update" | "record_remove";
+  createdAt: string;
+  mine: boolean;
+  proposedBy: { id: string; name: string };
+  fields?: { field: string; from: unknown; to: unknown }[];
+  /** The race as it is now (update / remove). */
+  record: RaceRecord | null;
+  /** The race as proposed (add / update). */
+  proposed: Omit<RaceRecord, "id"> | null;
+};
+/** Sent instead of the saved result when a co-owner's change waits for approval (HTTP 202). */
+export type PendingChange = { id: string; kind: HorseChange["kind"]; createdAt: string };
+
 export type HorseDetail = Horse & {
   images: HorseImage[];
   records: RaceRecord[];
   owner: { id: string; name: string; headline: string; isFollowing: boolean; me: boolean };
+  owners?: HorseOwner[];
 };
 
 /** A horse in the Public horses list, with its owner. */
@@ -250,7 +292,7 @@ export const community = {
   horsePosts: (id: string, before?: string | null) => api.get<FeedPage>(`${BASE}/horses/${id}/posts${q({ before })}`),
   createHorse: (input: HorseInput & { share?: boolean; shareText?: string }) =>
     api.post<{ horse: Horse; shared: boolean }>(`${BASE}/horses`, input),
-  updateHorse: (id: string, input: HorseInput) => api.patch<{ horse: Horse }>(`${BASE}/horses/${id}`, input),
+  updateHorse: (id: string, input: HorseInput) => api.patch<{ horse: Horse; pending?: PendingChange }>(`${BASE}/horses/${id}`, input),
   removeHorse: (id: string) => api.post<{ ok: true }>(`${BASE}/horses/${id}/remove`, {}),
   removeHorseImage: (horseId: string, imageId: string) =>
     api.post<{ ok: true; coverImageId: string | null }>(`${BASE}/horses/${horseId}/images/${imageId}/remove`, {}),
@@ -260,10 +302,32 @@ export const community = {
   shareHorse: (horseId: string, input: { body: string; visibility: "members" | "followers"; makeVisible?: boolean }) =>
     api.post<{ post: Post | null }>(`${BASE}/horses/${horseId}/share`, input),
 
+  /** With approval on, a co-owner gets `{pending}` back instead (nothing changes until another owner accepts). */
   addRecord: (horseId: string, input: RecordInput & { share?: boolean; shareText?: string }) =>
-    api.post<{ record: RaceRecord; stats: HorseStats; shared: boolean }>(`${BASE}/horses/${horseId}/records`, input),
-  updateRecord: (id: string, input: RecordInput) => api.patch<{ record: RaceRecord; stats: HorseStats | null }>(`${BASE}/records/${id}`, input),
-  removeRecord: (id: string) => api.post<{ ok: true; stats: HorseStats | null }>(`${BASE}/records/${id}/remove`, {}),
+    api.post<{ record: RaceRecord; stats: HorseStats; shared: boolean } | { pending: PendingChange }>(`${BASE}/horses/${horseId}/records`, input),
+  updateRecord: (id: string, input: RecordInput) =>
+    api.patch<{ record: RaceRecord; stats: HorseStats | null } | { pending: PendingChange }>(`${BASE}/records/${id}`, input),
+  removeRecord: (id: string) => api.post<{ ok: true; stats: HorseStats | null } | { pending: PendingChange }>(`${BASE}/records/${id}/remove`, {}),
+
+  /** Co-owners: the lead owner invites members, sets shares and whether co-owners' edits need approval. */
+  owners: (horseId: string) =>
+    api.get<{ owners: HorseOwner[]; role: HorseRole; requireApproval: boolean }>(`${BASE}/horses/${horseId}/owners`),
+  inviteOwner: (horseId: string, accountId: string, shareBps?: number | null) =>
+    api.post<{ owners: HorseOwner[] }>(`${BASE}/horses/${horseId}/owners`, { accountId, shareBps: shareBps ?? null }),
+  setOwnerShare: (horseId: string, accountId: string, shareBps: number | null) =>
+    api.patch<{ owners: HorseOwner[] }>(`${BASE}/horses/${horseId}/owners/${accountId}`, { shareBps }),
+  /** The lead owner removes a co-owner or cancels an invite; with your own id, you leave. */
+  removeOwner: (horseId: string, accountId: string) =>
+    api.post<{ owners?: HorseOwner[]; ok?: true }>(`${BASE}/horses/${horseId}/owners/${accountId}/remove`, {}),
+  setApproval: (horseId: string, requireApproval: boolean) =>
+    api.patch<{ requireApproval: boolean }>(`${BASE}/horses/${horseId}/approval`, { requireApproval }),
+  horseInvites: () => api.get<{ invites: HorseInvite[] }>(`${BASE}/horse-invites`),
+  answerInvite: (horseId: string, accept: boolean) =>
+    api.post<{ horse?: HorseDetail; ok?: true }>(`${BASE}/horse-invites/${horseId}/${accept ? "accept" : "decline"}`, {}),
+  changes: (horseId: string) => api.get<{ changes: HorseChange[] }>(`${BASE}/horses/${horseId}/changes`),
+  /** Accept or decline a co-owner's change (declining your own withdraws it). */
+  answerChange: (changeId: string, accept: boolean) =>
+    api.post<{ ok: true; horse?: HorseDetail }>(`${BASE}/changes/${changeId}/${accept ? "accept" : "decline"}`, {}),
   /** Race data: link your horse to a racing horse (one owner each), unlink it, or turn its alerts on/off. */
   linkRaceData: (horseId: string, target: { name: string; code: "gallops" | "harness" }) =>
     api.post<{ horse: HorseDetail }>(`${BASE}/horses/${horseId}/formfav`, target),

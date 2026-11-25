@@ -276,3 +276,9 @@ Final follow-up: all seven Harness checks passed after the sidebar visibility im
   - **Elsewhere:** Public horses show "N following" (order comes from the server). The Stayblz Data horse dialog has "Track in Virtual Stayblz" (`AddToVirtualButton` takes a `formfav` target). Alert kind `race_change` (⇄). `/workspace/virtual?stable=<id>` selects that stable (alert links).
   - Bundle: FormFav UI kept in lazy chunks (main +9 kB vs +44 kB when imported eagerly).
   - Checks: build OK; new tests/virtual-racing-horses.spec.ts 5/5 (mocked APIs, includes 375 px no-overflow). FULL_SUITE_RESULT. Not checked: the real backend in the browser, Vercel, real push.
+
+2026-11-25: Co-owned horses (needs backend migration `202611250001_horse_coowners.sql` first).
+  - My horses: `community/HorseInvites.tsx` (accept/decline invitations, `#invites` anchor from alerts); cards show "Co-owned" / "Shared with N" and "N to approve" (opens the Owners tab). Editor step **04 Owners** (`community/HorseOwners.tsx`): owners list (lead, pending, private share %), invite by member search (`community.search`), leave/remove, lead-only "Changes need approval" toggle, pending changes with diff and Accept/Decline/Withdraw. Co-owner: no Remove, visibility disabled, "Send for approval" buttons, 202 `{pending}` shows "Sent to the other owners…".
+  - Profile lists co-owners (no %); race-data controls lead-only (`RaceDataLink`). Alert kind `horse` (🐎, server-worded).
+  - Not done: sidebar badge for invites (bell alert covers it).
+  - Checks: build OK; new tests/community-horse-coowners.spec.ts 2/2 (mocked APIs, 320 px no-overflow); community-horse-share, my-racing, virtual-racing-horses specs 15/15. Full suite not run. Not checked: real backend in the browser, Vercel.

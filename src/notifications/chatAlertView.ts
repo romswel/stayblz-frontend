@@ -46,6 +46,13 @@ const sameSitePath = (link: string | null | undefined) => (link && /^\/[A-Za-z0-
 export function viewOf(a: ChatAlert, previews: boolean): AlertView {
   if (a.kind === "billing")
     return { title: a.title || "Stayblz Billing", body: a.body, url: a.link && /^\/[A-Za-z0-9]/.test(a.link) ? a.link : "/billing", badge: "$" };
+  if (a.kind === "horse")
+    return {
+      title: a.title || "My horses",
+      body: a.actorName ? `${a.actorName}: ${a.body}` : a.body,
+      url: a.link && /^\/[A-Za-z0-9]/.test(a.link) ? a.link : "/account/horses",
+      badge: "🐎",
+    };
   if (isRacingAlert(a.kind))
     return { title: a.title || a.actorName || "Racing update", body: a.body, url: sameSitePath(a.link), badge: RACING_BADGE[a.kind] };
   const who = a.actorName || "Stayblz member";

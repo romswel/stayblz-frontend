@@ -126,7 +126,7 @@ function chatAppAlert(a: ChatAlert, previews: boolean): AppAlert {
     id: `${a.id}:${a.at}`,
     chatAlertId: a.id,
     alertKind: a.kind,
-    kind: a.kind === "billing" ? "billing" : isRacingAlert(a.kind) ? "racing" : "chat",
+    kind: a.kind === "billing" ? "billing" : isRacingAlert(a.kind) || a.kind === "horse" ? "racing" : "chat",
     title: view.title,
     body: view.body,
     url: view.url,
