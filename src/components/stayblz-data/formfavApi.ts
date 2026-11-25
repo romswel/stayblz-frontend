@@ -240,9 +240,13 @@ export interface HorseStart {
   country: string;
   raceNumber: number | null;
   raceName: string | null;
+  /** As FormFav writes it, e.g. "1308m" (newer servers). */
+  distance?: string | null;
   startTime: string | null;
   status: string | null;
   position: number | null;
+  /** Runners not scratched (newer servers). */
+  fieldSize?: number | null;
   scratched: boolean;
   jockey: string | null;
   trainer: string | null;

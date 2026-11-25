@@ -1255,3 +1255,59 @@
 .cm-ed-video-tag { position: absolute; left: 8px; bottom: 44px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 650; color: #fff; background: rgba(0, 0, 0, 0.6); }
 .cm-gallery-main.is-video { cursor: default; background: #000; }
 .cm-gallery-main.is-video video { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* ---------- Race data link (horse profile / editor) ---------- */
+.cm-race-data { display: grid; gap: 10px; }
+.cm-race-data .cm-check { white-space: normal; align-items: flex-start; }
+.cm-race-data-tag {
+  display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid currentColor; border-radius: 999px;
+  font-size: 0.68rem; font-style: normal; font-weight: 700; color: var(--amber); vertical-align: middle;
+}
+.cm-ed-locked { margin: 0 0 8px; }
+.cm-ed-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.cm-ed-fieldset:disabled { opacity: 0.7; }
+
+/* ============================== Co-owned horses (My horses → Owners) ============================== */
+.cm-owners { display: flex; flex-direction: column; gap: 22px; }
+.cm-owner-list, .cm-change-list, .cm-invite-list, .cm-owner-results, .cm-coowners { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cm-owner-list li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--gx-border); background: var(--gx-field); min-width: 0; }
+.cm-owner-list li.is-pending { border-style: dashed; }
+.cm-owner-name { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.cm-owner-name strong { font-size: 0.92rem; overflow-wrap: anywhere; }
+.cm-owner-name small { font-size: 0.74rem; color: var(--gx-muted); }
+.cm-owner-share { width: 84px; flex: none; }
+.cm-owner-share input { width: 100%; min-width: 0; }
+.cm-owner-invite { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 14px; border: 1px dashed var(--gx-border-strong); }
+.cm-owner-invite-title { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gx-muted); }
+.cm-owner-picked { display: flex; align-items: center; gap: 10px; }
+.cm-owner-picked strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cm-owner-results button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--gx-border); background: var(--gx-field); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.cm-owner-results button:hover:not(:disabled) { border-color: var(--gx-border-strong); background: var(--gx-hover); }
+.cm-owner-results button:disabled { opacity: 0.55; cursor: not-allowed; }
+.cm-owner-results span { display: flex; flex-direction: column; min-width: 0; }
+.cm-owner-results small { font-size: 0.74rem; color: var(--gx-muted); }
+.cm-owner-invite-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.cm-owner-invite-row .cm-field { flex: 0 1 auto; }
+.cm-change-list li { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px; border: 1px solid var(--gx-border); background: var(--gx-field); }
+.cm-change-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.cm-change-head small { font-size: 0.74rem; color: var(--gx-muted); }
+.cm-change-diff { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.cm-change-diff div { display: grid; grid-template-columns: minmax(80px, 110px) 1fr; gap: 10px; font-size: 0.86rem; }
+.cm-change-diff dt { color: var(--gx-muted); }
+.cm-change-diff dd { margin: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; overflow-wrap: anywhere; min-width: 0; }
+.cm-change-diff dd svg { width: 14px; height: 14px; flex: none; color: var(--gx-muted); }
+.cm-change-diff s, .cm-change-race s { color: var(--gx-muted); }
+.cm-change-race { margin: 0; font-size: 0.86rem; overflow-wrap: anywhere; }
+.cm-change-race p { margin: 0; }
+.cm-change-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.cm-invites { margin-bottom: 18px; }
+.cm-invite-list li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--gx-border); background: var(--gx-field); }
+.cm-invite-text { display: flex; flex-direction: column; flex: 1 1 180px; min-width: 0; }
+.cm-invite-text small { font-size: 0.8rem; color: var(--gx-muted); }
+.cm-invite-actions { display: flex; gap: 8px; margin-left: auto; }
+.cm-horse-owners { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.cm-horse-owners .cm-tag svg { width: 13px; height: 13px; margin-right: 4px; }
+.cm-tag-btn { border: 0; font: inherit; font-size: 0.72rem; cursor: pointer; }
+.cm-coowners { gap: 6px; margin-top: 8px; }
+.cm-coowners li { padding: 8px 12px; border-radius: 14px; border: 1px solid var(--gx-border); background: var(--gx-field); }
+.cm-owner-share input { padding-right: 28px; }

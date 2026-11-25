@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useWorkspace } from "../../workspace";
 import { horseImageUrl, money } from "../community/api";
 import PublicHorsesPanel from "./PublicHorsesPanel";
+// Race data (Stayblz Data's FormFav code) loads only when the tab is opened.
+const RacingHorsesPanel = lazy(() => import("./RacingHorsesPanel"));
 import AddVirtualHorseDialog, { initials } from "./AddVirtualHorseDialog";
 import VirtualHorseDetail from "./VirtualHorseDetail";
 import { SOURCE_LABELS, dayLabel, useVirtualApis, type VirtualApi, type VirtualListHorse, type VirtualMode } from "./api";
@@ -10,7 +12,8 @@ import "./virtual.css";
 
 /**
  * Virtual Stayblz: horses you (personal) or your stable (stable) track without owning them.
- * Search params: `vtab=public` for the Public horses tab, `horse=<id>` to open a tracked horse.
+ * Search params: `vtab=public` for the Public horses tab, `vtab=racing` for Racing horses (race-data horses, kept
+ * apart from the list), `horse=<id>` to open a tracked horse (in either the list or Racing horses).
  * Other params (like My racing's `tab`) are kept.
  */
 export default function VirtualStayblz({ mode }: { mode: VirtualMode }) {
@@ -18,7 +21,8 @@ export default function VirtualStayblz({ mode }: { mode: VirtualMode }) {
   const client = apis[mode];
   const { active } = useWorkspace();
   const [params, setParams] = useSearchParams();
-  const vtab = params.get("vtab") === "public" ? "public" : "tracked";
+  const rawTab = params.get("vtab");
+  const vtab = rawTab === "public" ? "public" : rawTab === "racing" ? "racing" : "tracked";
   const horseId = params.get("horse");
   const [listVersion, setListVersion] = useState(0);
 
@@ -62,10 +66,32 @@ export default function VirtualStayblz({ mode }: { mode: VirtualMode }) {
         <button type="button" role="tab" aria-selected={vtab === "public"} className="vs-seg-btn" onClick={() => update({ vtab: "public", horse: null })}>
           Public horses
         </button>
+        <button type="button" role="tab" aria-selected={vtab === "racing"} className="vs-seg-btn" onClick={() => update({ vtab: "racing", horse: null })}>
+          Racing horses
+        </button>
       </div>
 
       {vtab === "public" ? (
         <PublicHorsesPanel />
+      ) : vtab === "racing" && horseId ? (
+        <VirtualHorseDetail
+          key={`${stableId}:${horseId}`}
+          client={client}
+          mode={mode}
+          id={horseId}
+          backLabel="← Racing horses"
+          onBack={() => update({ horse: null })}
+          onChanged={() => setListVersion((v) => v + 1)}
+        />
+      ) : vtab === "racing" ? (
+        <Suspense fallback={<p className="vs-muted" aria-busy="true">Loading racing horses…</p>}>
+          <RacingHorsesPanel
+            key={mode === "stable" ? stableId ?? "none" : "me"}
+            client={client}
+            mode={mode}
+            onOpenTracked={(id) => update({ horse: id })}
+          />
+        </Suspense>
       ) : horseId ? (
         <VirtualHorseDetail
           key={`${stableId}:${horseId}`}
@@ -82,7 +108,7 @@ export default function VirtualStayblz({ mode }: { mode: VirtualMode }) {
           mode={mode}
           listName={listName}
           version={listVersion}
-          onOpen={(id) => update({ horse: id })}
+          onOpen={(id, racing) => update({ horse: id, vtab: racing ? "racing" : null })}
         />
       )}
     </div>
@@ -100,7 +126,8 @@ function VirtualHorseList({
   mode: VirtualMode;
   listName: string;
   version: number;
-  onOpen: (id: string) => void;
+  /** `racing`: a horse from race data, which opens under Racing horses. */
+  onOpen: (id: string, racing?: boolean) => void;
 }) {
   const [horses, setHorses] = useState<VirtualListHorse[] | null>(null);
   const [error, setError] = useState("");
@@ -122,10 +149,15 @@ function VirtualHorseList({
     return () => c.abort();
   }, [client, version, reload]);
 
-  const shown = useMemo(() => {
+  // Racing horses (tracked from the Racing horses tab) get their own section under the list's own horses.
+  const own = useMemo(() => (horses ?? []).filter((h) => h.source !== "formfav"), [horses]);
+  const racing = useMemo(() => (horses ?? []).filter((h) => h.source === "formfav"), [horses]);
+  const match = (h: VirtualListHorse) => {
     const f = filter.trim().toLowerCase();
-    return (horses ?? []).filter((h) => !f || h.name.toLowerCase().includes(f));
-  }, [horses, filter]);
+    return !f || h.name.toLowerCase().includes(f);
+  };
+  const shown = own.filter(match);
+  const shownRacing = racing.filter(match);
 
   return (
     <section className="vs-list" aria-label={listName}>
@@ -151,12 +183,18 @@ function VirtualHorseList({
           <h3>No horses tracked yet</h3>
           <p>
             Add a horse from the <strong>Public horses</strong> tab, from a horse shared in Feeds, from racing data, or type one in by hand.
+            Racehorses from US and Canada race cards are tracked from the <strong>Racing horses</strong> tab and show up here too.
           </p>
         </div>
-      ) : shown.length === 0 ? (
+      ) : shown.length === 0 && shownRacing.length === 0 ? (
         <p className="vs-muted">No tracked horses match “{filter.trim()}”.</p>
       ) : (
-        <ul className="vs-cards">
+        <>
+        {shown.length > 0 && racing.length > 0 && <h3 className="vs-list-head">{mode === "personal" ? "Your horses" : "Team horses"}</h3>}
+        {shown.length === 0 && racing.length > 0 && !filter.trim() && (
+          <p className="vs-muted">Only racing horses so far. Use + Add horse to track other horses here.</p>
+        )}
+        {shown.length > 0 && <ul className="vs-cards">
           {shown.map((h) => {
             const total = h.counts.workouts + h.counts.races + h.counts.sales + h.counts.notes;
             return (
@@ -188,9 +226,49 @@ function VirtualHorseList({
               </li>
             );
           })}
-        </ul>
+        </ul>}
+        {shownRacing.length > 0 && (
+          <section className="vs-racing-section" aria-label="Racing horses you track">
+            <h3 className="vs-list-head">
+              Racing horses <small>US and Canada race data · also in the Racing horses tab</small>
+            </h3>
+            <ul className="vs-cards">
+              {shownRacing.map((h) => (
+                <li key={h.id}>
+                  <button type="button" className="vs-card" onClick={() => onOpen(h.id)}>
+                    <span className="vs-avatar" aria-hidden="true">{initials(h.name)}</span>
+                    <span className="vs-card-body">
+                      <span className="vs-badge is-formfav">{SOURCE_LABELS.formfav}</span>
+                      <strong>{h.name}</strong>
+                      <small>
+                        {[h.formfav?.code === "harness" ? "Harness" : "Thoroughbred", h.race?.trainer ?? h.trainer].filter(Boolean).join(" · ")}
+                      </small>
+                      {h.race ? (
+                        <small className="vs-card-stats">
+                          Last 30 days: {h.race.starts} start{h.race.starts === 1 ? "" : "s"} · {h.race.wins} win{h.race.wins === 1 ? "" : "s"} · {h.race.places} top 3
+                        </small>
+                      ) : (
+                        <small className="vs-muted">No runs in the last 30 days</small>
+                      )}
+                      {h.race?.nextEntry && (
+                        <span className="vs-chips">
+                          <span>
+                            Entered: {h.race.nextEntry.track ?? h.race.nextEntry.slug}
+                            {h.race.nextEntry.raceNumber ? ` R${h.race.nextEntry.raceNumber}` : ""} · {dayLabel(h.race.nextEntry.date)}
+                          </span>
+                        </span>
+                      )}
+                      {h.counts.races > 0 && <small className="vs-muted">{h.counts.races} race{h.counts.races === 1 ? "" : "s"} in the log</small>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        </>
       )}
-      {horses && horses.length >= 300 && <p className="vs-muted">This list is full (300 horses). Remove some to add more.</p>}
+      {own.length >= 300 && <p className="vs-muted">This list is full (300 horses). Remove some to add more.</p>}
 
       {adding && (
         <AddVirtualHorseDialog
@@ -200,7 +278,7 @@ function VirtualHorseList({
           onAdded={(h) => {
             setAdding(false);
             setReload((v) => v + 1);
-            onOpen(h.id);
+            onOpen(h.id, h.source === "formfav");
           }}
         />
       )}

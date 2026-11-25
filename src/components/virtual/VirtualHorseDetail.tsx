@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useConfirm } from "../ui/Confirm";
 import Modal from "../Modal";
@@ -7,9 +7,12 @@ import { TopLayer } from "../community/HorseShare";
 import { STATUS_LABELS, horseImageUrl, money, ordinal, type HorseDetail, type HorseStatus } from "../community/api";
 import { EarlierStarts, StartsTable, StatTiles, WorkoutTable } from "../../pages/racing/ProfilePages";
 import EntryDialog from "./EntryDialog";
+import type { StatsTarget } from "../stayblz-data/formfavUi";
+import type { RaceWhere } from "../stayblz-data/formfavApi";
 import { ManualHorseForm, initials } from "./AddVirtualHorseDialog";
 import {
   KIND_LABELS,
+  LOCKED_BY_RACE_DATA,
   SALE_LABELS,
   SOURCE_LABELS,
   dayLabel,
@@ -23,6 +26,13 @@ import {
   type VirtualEntry,
   type VirtualMode,
 } from "./api";
+
+// Race data pieces (Stayblz Data's FormFav code) load only for linked horses / when opened.
+const RaceDataPanel = lazy(() => import("./RaceDataPanel"));
+const LinkRacingHorseDialog = lazy(() => import("./LinkRacingHorseDialog"));
+const RaceDialog = lazy(() => import("../stayblz-data/formfavDialogs").then((m) => ({ default: m.RaceDialog })));
+const StatsDialog = lazy(() => import("../stayblz-data/formfavDialogs").then((m) => ({ default: m.StatsDialog })));
+const loadingRaceData = <p className="vs-muted" aria-busy="true">Loading race data…</p>;
 
 const SECTIONS = [
   { key: "performance", label: "Performance" },
@@ -40,12 +50,14 @@ export default function VirtualHorseDetail({
   id,
   onBack,
   onChanged,
+  backLabel = "← All tracked horses",
 }: {
   client: VirtualApi;
   mode: VirtualMode;
   id: string;
   onBack: () => void;
   onChanged: () => void;
+  backLabel?: string;
 }) {
   const confirm = useConfirm();
   const [data, setData] = useState<VirtualDetail | null>(null);
@@ -57,6 +69,10 @@ export default function VirtualHorseDetail({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
+  const [linking, setLinking] = useState(false);
+  const [alertsBusy, setAlertsBusy] = useState(false);
+  const [race, setRace] = useState<RaceWhere | null>(null);
+  const [stats, setStats] = useState<StatsTarget | null>(null);
 
   useEffect(() => {
     const c = new AbortController();
@@ -71,7 +87,7 @@ export default function VirtualHorseDetail({
   if (error)
     return (
       <div className="vs-detail">
-        <button type="button" className="vs-back" onClick={onBack}>← All tracked horses</button>
+        <button type="button" className="vs-back" onClick={onBack}>{backLabel}</button>
         <p className="form-error" role="alert">{error}</p>
         <button type="button" className="vs-btn" onClick={() => setVersion((v) => v + 1)}>Try again</button>
       </div>
@@ -79,7 +95,7 @@ export default function VirtualHorseDetail({
   if (!data)
     return (
       <div className="vs-detail" aria-busy="true">
-        <button type="button" className="vs-back" onClick={onBack}>← All tracked horses</button>
+        <button type="button" className="vs-back" onClick={onBack}>{backLabel}</button>
         <p className="vs-muted">Loading horse…</p>
       </div>
     );
@@ -155,6 +171,43 @@ export default function VirtualHorseDetail({
     }
   }
 
+  async function unlink() {
+    const ok = await confirm({
+      title: `Unlink ${horse.name} from race data?`,
+      message: "Its details and logged races stay, but they stop updating and there are no more race alerts for it.",
+      confirmLabel: "Unlink",
+    });
+    if (!ok) return;
+    setBusy(true);
+    setActionError("");
+    try {
+      await client.unlink(horse.id);
+      setNotice("Unlinked from race data.");
+      setVersion((v) => v + 1);
+      onChanged();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "This horse couldn't be unlinked.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setAlerts(on: boolean) {
+    setAlertsBusy(true);
+    setActionError("");
+    try {
+      const r = await client.setAlerts(horse.id, on);
+      setData((d) => (d && d.raceData ? { ...d, raceData: { ...d.raceData, alertsOn: r.alertsOn } } : d));
+      setNotice(r.alertsOn ? "Race alerts on for you." : "Race alerts off for you.");
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Your alert setting couldn't be saved.");
+    } finally {
+      setAlertsBusy(false);
+    }
+  }
+
+  const raceData = data.raceData ?? null;
+  const linked = !!horse.formfav;
   const age = horse.foaledYear ? new Date().getFullYear() - horse.foaledYear : null;
   const facts = [horse.breed, horse.sex && cap(horse.sex), age !== null ? `${age} yrs (${horse.foaledYear})` : "", horse.color].filter(Boolean);
   const cover = community?.coverImageId;
@@ -162,7 +215,7 @@ export default function VirtualHorseDetail({
 
   return (
     <div className="vs-detail">
-      <button type="button" className="vs-back" onClick={onBack}>← All tracked horses</button>
+      <button type="button" className="vs-back" onClick={onBack}>{backLabel}</button>
 
       <header className="vs-detail-head">
         <span className="vs-avatar is-lg" aria-hidden="true">
@@ -170,6 +223,9 @@ export default function VirtualHorseDetail({
         </span>
         <div className="vs-detail-title">
           <span className={`vs-badge is-${horse.source}`}>{SOURCE_LABELS[horse.source]}</span>
+          {horse.source === "manual" && horse.formfav && (
+            <span className="vs-badge is-formfav">Linked: {horse.formfav.name}</span>
+          )}
           <h2>{horse.name}</h2>
           <p>{facts.join(" · ") || "Details not added yet"}</p>
           <dl className="vs-facts">
@@ -184,6 +240,12 @@ export default function VirtualHorseDetail({
           {sourceLink && <Link className="vs-btn" to={sourceLink}>View profile</Link>}
           {horse.source === "manual" && horse.canRemove && (
             <button type="button" className="vs-btn" onClick={() => setEditing(true)}>Edit details</button>
+          )}
+          {horse.source === "manual" && horse.canRemove && !linked && (
+            <button type="button" className="vs-btn" onClick={() => setLinking(true)}>Link to a racing horse</button>
+          )}
+          {horse.source === "manual" && horse.canRemove && linked && (
+            <button type="button" className="vs-btn" disabled={busy} onClick={() => void unlink()}>Unlink race data</button>
           )}
           {horse.canRemove && (
             <button type="button" className="vs-btn is-danger" disabled={busy} onClick={() => void removeHorse()}>Remove</button>
@@ -214,11 +276,25 @@ export default function VirtualHorseDetail({
       </nav>
 
       <div className="vs-section">
-        {section === "performance" && <Performance community={community} racing={racing} entries={entries} />}
+        {section === "performance" && (
+          <>
+            {raceData && (
+              <Suspense fallback={loadingRaceData}>
+                <RaceDataPanel data={raceData} runs={false} onRace={setRace} onAlerts={(on) => void setAlerts(on)} alertsBusy={alertsBusy} />
+              </Suspense>
+            )}
+            <Performance community={community} racing={racing} entries={entries} />
+          </>
+        )}
 
         {section === "races" && (
           <>
             {community && <CommunityRecords horse={community} />}
+            {raceData && (
+              <Suspense fallback={loadingRaceData}>
+                <RaceDataPanel data={raceData} onRace={setRace} onAlerts={(on) => void setAlerts(on)} alertsBusy={alertsBusy} />
+              </Suspense>
+            )}
             {racing && (
               <section className="vs-live">
                 <h3>Official starts <small>from racing data</small></h3>
@@ -262,11 +338,38 @@ export default function VirtualHorseDetail({
       {dialog && (
         <EntryDialog horseName={horse.name} kind={dialog.kind} entry={dialog.entry} onClose={() => setDialog(null)} onSave={saveEntry} />
       )}
+      <Suspense fallback={null}>
+        {linking && (
+          <LinkRacingHorseDialog
+            horseName={horse.name}
+            note={`Its details and race log then update from race data, and ${team ? "everyone in the stable gets" : "you get"} alerts when it's entered, scratched or has run. ${LOCKED_BY_RACE_DATA}`}
+            onClose={() => setLinking(false)}
+            onPick={async (target) => {
+              await client.link(horse.id, target);
+              setLinking(false);
+              setNotice(`Linked to ${target.name}.`);
+              setVersion((v) => v + 1);
+              onChanged();
+            }}
+          />
+        )}
+        {race && (
+          <RaceDialog
+            where={race}
+            onClose={() => setRace(null)}
+            onStats={(t) => {
+              setRace(null);
+              setStats(t);
+            }}
+          />
+        )}
+        {stats && <StatsDialog target={stats} onClose={() => setStats(null)} />}
+      </Suspense>
       {editing && (
         <TopLayer>
           <Modal label={`Edit ${horse.name}`} className="gx-layer vs-dialog" onClose={() => setEditing(false)}>
             <DialogHead kicker="Virtual Stayblz" title="Edit details" onClose={() => setEditing(false)} />
-            <ManualHorseForm initial={horse} busy={busy} submitLabel="Save" onSubmit={(input) => void saveHorse(input)} />
+            <ManualHorseForm initial={horse} busy={busy} submitLabel="Save" locked={linked} onSubmit={(input) => void saveHorse(input)} />
           </Modal>
         </TopLayer>
       )}
@@ -415,6 +518,7 @@ function EntryList({
               <div className="vs-entry-main">
                 <span className="vs-entry-date">{dayLabel(e.entryDate)}</span>
                 <strong>{summary(e)}</strong>
+                {e.fromRaceData && <span className="vs-badge is-formfav">Race data</span>}
                 {kind === "race" && (e.distance || e.surface || e.amountCents != null) && (
                   <small>{[e.distance, e.surface, e.amountCents != null ? `Earned ${dollars(e.amountCents)}` : ""].filter(Boolean).join(" · ")}</small>
                 )}
@@ -426,7 +530,9 @@ function EntryList({
               {e.canEdit && (
                 <div className="vs-entry-actions">
                   <button type="button" className="vs-link" onClick={() => onEdit(e)} aria-label={`Edit ${summary(e)}`}>Edit</button>
-                  <button type="button" className="vs-link is-danger" onClick={() => onRemove(e)} aria-label={`Remove ${summary(e)}`}>Remove</button>
+                  {(e.canRemove ?? e.canEdit) && (
+                    <button type="button" className="vs-link is-danger" onClick={() => onRemove(e)} aria-label={`Remove ${summary(e)}`}>Remove</button>
+                  )}
                 </div>
               )}
             </li>

@@ -170,8 +170,8 @@ export default function PublicHorsesPanel() {
 
       <p className="vs-muted" aria-live="polite">
         {horses === null
-          ? "Horses Stayblz members have made visible to everyone."
-          : `${horses.length}${next ? "+" : ""} horse${horses.length === 1 && !next ? "" : "s"}${anything ? " match" : ""}. Open one to see its photos and record.`}
+          ? "Horses Stayblz members have made visible to everyone, most followed first."
+          : `${horses.length}${next ? "+" : ""} horse${horses.length === 1 && !next ? "" : "s"}${anything ? " match" : ""}. Most followed first. Open one to see its photos and record.`}
       </p>
       {error && <p className="form-error" role="alert">{error}</p>}
 
@@ -208,6 +208,7 @@ export default function PublicHorsesPanel() {
                     <span className="vs-result-text">
                       <strong>{h.name}</strong>
                       <small>{[h.sire, h.dam].filter(Boolean).join(" – ") || "Pedigree not added"}</small>
+                      {h.followers !== undefined && <small className="vs-followers">{h.followers} following</small>}
                     </span>
                   </button>
                 </span>

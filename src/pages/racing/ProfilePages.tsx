@@ -5,6 +5,7 @@ import { sourceLabels, type HistoryStart, type Horse, type Start, type Stats, ty
 import StatusPage from "../../components/status/StatusPage";
 import FollowButtons from "../../components/racing/FollowButtons";
 import AddToVirtualButton from "../../components/virtual/AddToVirtualButton";
+import { isNorthAmerica } from "../../components/virtual/api";
 
 export function StatTiles({ stats }: { stats: Stats }) {
   const tiles = [
@@ -125,7 +126,8 @@ export function HorsePage() {
           horse ? (
             <>
               <FollowButtons target="horse" id={horse.id} name={horse.name} />
-              <AddToVirtualButton target={{ racingHorseId: horse.id }} name={horse.name} />
+              {/* Virtual Stayblz tracks United States and Canada horses only (the server refuses the rest). */}
+              {isNorthAmerica(horse.country) && <AddToVirtualButton target={{ racingHorseId: horse.id }} name={horse.name} />}
             </>
           ) : undefined
         }

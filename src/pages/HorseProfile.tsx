@@ -14,6 +14,7 @@ import {
   type Post,
 } from "../components/community/api";
 import AddToVirtualButton from "../components/virtual/AddToVirtualButton";
+import RaceDataLink from "../components/community/RaceDataLink";
 import { Avatar, Composer, Empty, FollowButton, Icon, PostCard, Skeletons, StatusBadge } from "../components/community/ui";
 import { HorseViewer } from "../components/community/HorseShare";
 
@@ -85,6 +86,8 @@ export default function HorseProfile() {
       </div>
     );
 
+  // Owners are listed for everyone; shares stay private to the owners (not shown here).
+  const coOwners = (horse.owners ?? []).filter((o) => !o.lead && (o.status ?? "accepted") === "accepted");
   const urls = horse.images.map((i) => horseImageUrl(i.id));
   const current = horse.images[active];
   const age = horse.foaledYear ? new Date().getFullYear() - horse.foaledYear : null;
@@ -132,7 +135,9 @@ export default function HorseProfile() {
           <div className="cm-horse-identity-top">
             <StatusBadge status={horse.status} />
             {horse.mine && (
-              <Link className="cm-btn cm-btn-sm" to={`/account/horses?edit=${horse.id}`}><Icon.Edit /> Edit horse</Link>
+              <Link className="cm-btn cm-btn-sm" to={`/account/horses?edit=${horse.id}${horse.pendingChanges ? "&tab=owners" : ""}`}>
+                <Icon.Edit /> {horse.pendingChanges ? `Edit horse · ${horse.pendingChanges} to approve` : "Edit horse"}
+              </Link>
             )}
           </div>
           <h1>{horse.name}</h1>
@@ -154,12 +159,27 @@ export default function HorseProfile() {
             <Link to={`/community/people/${horse.owner.id}`} className="cm-owner-id">
               <Avatar id={horse.owner.id} name={horse.owner.name} size={40} />
               <span>
-                <small>Owned by</small>
+                <small>{coOwners.length ? "Lead owner" : "Owned by"}</small>
                 <strong>{horse.owner.name}{horse.owner.me && " (you)"}</strong>
               </span>
             </Link>
             {!horse.owner.me && <FollowButton personId={horse.owner.id} isFollowing={horse.owner.isFollowing} size="sm" />}
           </div>
+          {coOwners.length > 0 && (
+            <ul className="cm-coowners" aria-label="Co-owners">
+              {coOwners.map((o) => (
+                <li key={o.id}>
+                  <Link to={`/community/people/${o.id}`} className="cm-owner-id">
+                    <Avatar id={o.id} name={o.name} size={32} />
+                    <span>
+                      <small>Co-owner</small>
+                      <strong>{o.name}{o.me && " (you)"}</strong>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
           {!horse.mine && <AddToVirtualButton target={{ communityHorseId: horse.id }} name={horse.name} />}
         </div>
       </section>
@@ -196,7 +216,11 @@ export default function HorseProfile() {
                     {horse.records.map((r) => (
                       <tr key={r.id}>
                         <td className="is-mono">{new Date(`${r.raceDate}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" })}</td>
-                        <th scope="row">{r.raceName || "—"}{r.notes && <small>{r.notes}</small>}</th>
+                        <th scope="row">
+                          {r.raceName || "—"}
+                          {r.fromRaceData && <em className="cm-race-data-tag">Race data</em>}
+                          {r.notes && <small>{r.notes}</small>}
+                        </th>
                         <td>{r.track}</td>
                         <td>{r.distance || "—"}</td>
                         <td>{SURFACE_LABELS[r.surface]}</td>
@@ -217,6 +241,8 @@ export default function HorseProfile() {
               </p>
             )}
           </section>
+
+          <RaceDataLink horse={horse} onChange={(h) => setHorse((cur) => (cur ? { ...cur, ...h } : h))} />
 
           <section className="cm-stack" aria-labelledby="cm-horse-posts">
             <h2 id="cm-horse-posts" className="cm-section-title">Updates about {horse.name}</h2>

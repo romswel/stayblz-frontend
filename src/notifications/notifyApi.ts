@@ -36,15 +36,18 @@ export type ChatAlertKind =
   | "friend_request"
   | "friend_accepted"
   | "request_accepted"
-  // Racing you follow (My racing → Following): a published entry, a scratch, an official result, a workout.
+  // Racing you follow (My racing → Following): a published entry, a scratch, an official result, a workout;
+  // race_change: a horse linked to race data (Virtual Stayblz / your horse) has a new jockey/driver or trainer.
   | RacingAlertKind
   // Stayblz Billing: a new bill, a payment received, a failed charge, a payout (words written by the server).
-  | "billing";
-export type RacingAlertKind = "race_entry" | "race_scratch" | "race_result" | "workout";
-export const RACING_ALERT_KINDS: readonly string[] = ["race_entry", "race_scratch", "race_result", "workout"];
+  | "billing"
+  // My horses: co-owner invites, an owner's edits, changes waiting for approval (words written by the server).
+  | "horse";
+export type RacingAlertKind = "race_entry" | "race_scratch" | "race_result" | "workout" | "race_change";
+export const RACING_ALERT_KINDS: readonly string[] = ["race_entry", "race_scratch", "race_result", "workout", "race_change"];
 export const isRacingAlert = (kind: string): kind is RacingAlertKind => RACING_ALERT_KINDS.includes(kind);
 /** Alerts whose title and words come from the server (racing and billing), with a link to open. */
-export const isServerWordedAlert = (kind: string) => isRacingAlert(kind) || kind === "billing";
+export const isServerWordedAlert = (kind: string) => isRacingAlert(kind) || kind === "billing" || kind === "horse";
 
 /** One saved Stayblz Chat alert (backend chat_alerts; the bell list and on-screen alerts). */
 export interface ChatAlert {

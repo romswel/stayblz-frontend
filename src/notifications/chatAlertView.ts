@@ -40,12 +40,19 @@ export function alertUrl(a: Pick<ChatAlert, "kind" | "chatKind" | "chatId" | "me
 }
 
 /** A racing alert's words are written by the server (SQL racing_notify), same as its push. */
-const RACING_BADGE: Record<string, string> = { race_entry: "🏇", race_scratch: "✕", race_result: "🏁", workout: "⏱" };
+const RACING_BADGE: Record<string, string> = { race_entry: "🏇", race_scratch: "✕", race_result: "🏁", workout: "⏱", race_change: "⇄" };
 const sameSitePath = (link: string | null | undefined) => (link && /^\/[A-Za-z0-9]/.test(link) ? link : "/my-racing");
 
 export function viewOf(a: ChatAlert, previews: boolean): AlertView {
   if (a.kind === "billing")
     return { title: a.title || "Stayblz Billing", body: a.body, url: a.link && /^\/[A-Za-z0-9]/.test(a.link) ? a.link : "/billing", badge: "$" };
+  if (a.kind === "horse")
+    return {
+      title: a.title || "My horses",
+      body: a.actorName ? `${a.actorName}: ${a.body}` : a.body,
+      url: a.link && /^\/[A-Za-z0-9]/.test(a.link) ? a.link : "/account/horses",
+      badge: "🐎",
+    };
   if (isRacingAlert(a.kind))
     return { title: a.title || a.actorName || "Racing update", body: a.body, url: sameSitePath(a.link), badge: RACING_BADGE[a.kind] };
   const who = a.actorName || "Stayblz member";

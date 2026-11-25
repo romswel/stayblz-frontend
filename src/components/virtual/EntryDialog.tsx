@@ -99,7 +99,8 @@ export default function EntryDialog({
               ))}
             </div>
           )}
-          <div className="vs-grid">
+          {entry?.fromRaceData && <p className="vs-muted">This race comes from race data: only the notes can be changed.</p>}
+          <fieldset className="vs-grid vs-fieldset" disabled={!!entry?.fromRaceData}>
             {input("entryDate", "Date *", 10, { type: "date", required: true })}
             {kind === "workout" && (
               <>
@@ -138,7 +139,7 @@ export default function EntryDialog({
               </>
             )}
             {kind === "note" && input("title", "Title", 120)}
-          </div>
+          </fieldset>
           <label className="vs-field">
             <span>{kind === "note" ? "Note *" : "Notes"}</span>
             <textarea value={f.notes} onChange={set("notes")} maxLength={2000} rows={kind === "note" ? 5 : 3} required={kind === "note"} />

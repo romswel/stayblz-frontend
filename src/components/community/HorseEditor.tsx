@@ -23,9 +23,12 @@ import {
   type RecordInput,
   type Surface,
 } from "./api";
+import HorseOwners from "./HorseOwners";
 import { Icon, StatusBadge } from "./ui";
 
-type Tab = "details" | "photos" | "records";
+type Tab = "details" | "photos" | "records" | "owners";
+
+const SENT_FOR_APPROVAL = "Sent to the other owners. It shows once one of them accepts it.";
 
 const blankHorse: HorseInput = {
   name: "",
@@ -173,6 +176,14 @@ export default function HorseEditor({
     { key: "details", n: "01", label: "Details", short: "Details", icon: <Icon.Edit /> },
     { key: "photos", n: "02", label: "Photos", short: "Photos", icon: <Icon.Photo />, meta: horse ? `${horse.images.length}/12` : undefined },
     { key: "records", n: "03", label: "Race records", short: "Races", icon: <Icon.Flag />, meta: horse ? String(horse.records.length) : undefined },
+    {
+      key: "owners",
+      n: "04",
+      label: "Owners",
+      short: "Owners",
+      icon: <Icon.Users />,
+      meta: horse ? (horse.pendingChanges ? `${horse.pendingChanges} to approve` : String(1 + (horse.coOwners ?? 0))) : undefined,
+    },
   ];
   const cover = horse?.coverImageId ? horseImageUrl(horse.coverImageId) : null;
 
@@ -188,7 +199,7 @@ export default function HorseEditor({
           <div className="cm-ed-title">
             <span className="cm-ed-kicker">
               <span className="cm-ed-led" aria-hidden="true" />
-              {id ? "Edit horse" : "New horse"}
+              {id ? (horse?.role === "coowner" ? "Edit co-owned horse" : "Edit horse") : "New horse"}
               {horse && <span className="cm-ed-id">#{horse.id.slice(0, 6).toUpperCase()}</span>}
             </span>
             <h2 id="cm-editor-title">{horse?.name || (id ? "Loading…" : "Add a horse")}</h2>
@@ -246,11 +257,21 @@ export default function HorseEditor({
                   setTab("photos");
                 } else changed(saved);
               }}
-              onRemove={id ? remove : undefined}
+              onRemove={id && horse?.role !== "coowner" ? remove : undefined}
             />
           )}
           {tab === "photos" && horse && <PhotosPanel horse={horse} onChange={changed} />}
           {tab === "records" && horse && <RecordsPanel horse={horse} onChange={changed} />}
+          {tab === "owners" && horse && (
+            <HorseOwners
+              horse={horse}
+              onChange={changed}
+              onLeft={(left) => {
+                onRemoved(left);
+                onClose();
+              }}
+            />
+          )}
           {id && !horse && !loadError && (
             <div className="cm-ed-loading" role="status"><span className="cm-spinner" /> Loading horse…</div>
           )}
@@ -324,11 +345,14 @@ function DetailsForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [sent, setSent] = useState(false);
+  const coOwner = horse?.role === "coowner";
   const dirty = !same(f, base) || (isNew && !!f.name.trim());
   useEffect(() => onDirty(!same(f, base)), [f, base, onDirty]);
   const set = <K extends keyof HorseInput>(k: K, v: HorseInput[K]) => {
     setF((x) => ({ ...x, [k]: v }));
     setSaved(false);
+    setSent(false);
   };
   const thisYear = new Date().getFullYear();
 
@@ -343,9 +367,16 @@ function DetailsForm({
         onSaved({ ...r.horse, images: [], records: [], owner: { id: r.horse.ownerId, name: "", headline: "", isFollowing: false, me: true } }, true);
       } else if (horse) {
         const r = await community.updateHorse(horse.id, f);
-        setBase(f);
-        onSaved({ ...horse, ...r.horse }, false);
-        setSaved(true);
+        if (r.pending) {
+          // Nothing changed yet: the form goes back to the horse as it is.
+          setF(base);
+          setSent(true);
+          onSaved({ ...horse, ...r.horse }, false);
+        } else {
+          setBase(f);
+          onSaved({ ...horse, ...r.horse }, false);
+          setSaved(true);
+        }
       }
     } catch (err) {
       setError(errorText(err, "The horse couldn't be saved."));
@@ -354,8 +385,15 @@ function DetailsForm({
     }
   }
 
+  // Linked to race data: those details update from it (the server keeps them as they are).
+  const locked = !!horse?.raceData;
   return (
     <form className="cm-ed-form" onSubmit={submit} noValidate>
+      {locked && (
+        <p className="cm-muted cm-ed-locked" role="note">
+          Linked to race data ({horse!.raceData!.name}): breed, year foaled, sex, sire, dam and trainer update from it.
+        </p>
+      )}
       <Section n="01" title="Identity">
         <div className="cm-ed-grid">
           <label className="cm-field cm-span-all">
@@ -364,7 +402,7 @@ function DetailsForm({
           </label>
           <label className="cm-field">
             <span>Breed</span>
-            <input value={f.breed} maxLength={60} list="cm-breeds" onChange={(e) => set("breed", e.target.value)} placeholder="Thoroughbred" />
+            <input value={f.breed} maxLength={60} list="cm-breeds" disabled={locked} onChange={(e) => set("breed", e.target.value)} placeholder="Thoroughbred" />
             <datalist id="cm-breeds">
               {["Thoroughbred", "Quarter Horse", "Standardbred", "Arabian", "Appaloosa", "Paint", "Warmblood"].map((b) => <option key={b} value={b} />)}
             </datalist>
@@ -382,6 +420,7 @@ function DetailsForm({
                 min={1980}
                 max={thisYear}
                 value={f.foaledYear ?? ""}
+                disabled={locked}
                 onChange={(e) => set("foaledYear", e.target.value ? Number(e.target.value) : null)}
                 placeholder={String(thisYear - 3)}
               />
@@ -389,7 +428,7 @@ function DetailsForm({
             </div>
           </label>
         </div>
-        <div className="cm-field">
+        <fieldset className="cm-field cm-ed-fieldset" disabled={locked}>
           <span>Sex</span>
           <Chips
             name="Sex"
@@ -397,7 +436,7 @@ function DetailsForm({
             onChange={(v) => set("sex", v)}
             options={(Object.keys(SEX_LABELS) as HorseSex[]).map((s) => ({ value: s, label: s ? SEX_LABELS[s] : "Not set" }))}
           />
-        </div>
+        </fieldset>
       </Section>
 
       <Section n="02" title="Status">
@@ -414,15 +453,15 @@ function DetailsForm({
         <div className="cm-ed-grid">
           <label className="cm-field">
             <span>Sire</span>
-            <input value={f.sire} maxLength={80} onChange={(e) => set("sire", e.target.value)} />
+            <input value={f.sire} maxLength={80} disabled={locked} onChange={(e) => set("sire", e.target.value)} />
           </label>
           <label className="cm-field">
             <span>Dam</span>
-            <input value={f.dam} maxLength={80} onChange={(e) => set("dam", e.target.value)} />
+            <input value={f.dam} maxLength={80} disabled={locked} onChange={(e) => set("dam", e.target.value)} />
           </label>
           <label className="cm-field">
             <span>Trainer</span>
-            <input value={f.trainer} maxLength={80} onChange={(e) => set("trainer", e.target.value)} />
+            <input value={f.trainer} maxLength={80} disabled={locked} onChange={(e) => set("trainer", e.target.value)} />
           </label>
           <label className="cm-field">
             <span>Location</span>
@@ -442,11 +481,11 @@ function DetailsForm({
         </div>
       </Section>
 
-      <Section n="05" title="Who can see this horse">
+      <Section n="05" title="Who can see this horse" hint={coOwner ? "Set by the lead owner" : undefined}>
         <div className="cm-vis" role="radiogroup" aria-label="Who can see this horse">
           {VISIBILITY.map((v) => (
             <label key={v.value} className={`cm-vis-opt${f.visibility === v.value ? " is-on" : ""}`}>
-              <input type="radio" name="visibility" checked={f.visibility === v.value} onChange={() => set("visibility", v.value)} />
+              <input type="radio" name="visibility" disabled={coOwner} checked={f.visibility === v.value} onChange={() => set("visibility", v.value)} />
               <span className="cm-vis-icon" aria-hidden="true">{v.icon}</span>
               <strong>{v.label}</strong>
               <small>{v.hint}</small>
@@ -478,10 +517,10 @@ function DetailsForm({
           </button>
         )}
         <span className="cm-foot-state" role="status">
-          {busy ? "Saving…" : saved ? <><span className="cm-dot is-ok" /> Saved</> : dirty && !isNew ? <><span className="cm-dot is-warn" /> Unsaved changes</> : null}
+          {busy ? "Saving…" : saved ? <><span className="cm-dot is-ok" /> Saved</> : sent ? <><span className="cm-dot is-warn" /> {SENT_FOR_APPROVAL}</> : dirty && !isNew ? <><span className="cm-dot is-warn" /> Unsaved changes</> : null}
         </span>
         <button type="submit" className="cm-btn cm-btn-primary" disabled={busy || !f.name.trim() || (!isNew && !dirty)}>
-          {busy ? "Saving…" : isNew ? <>Save &amp; add photos <Icon.Right /></> : "Save changes"}
+          {busy ? "Saving…" : isNew ? <>Save &amp; add photos <Icon.Right /></> : coOwner && horse?.requireApproval ? "Send for approval" : "Save changes"}
         </button>
       </div>
     </form>
@@ -674,14 +713,28 @@ function RecordsPanel({ horse, onChange }: { horse: HorseDetail; onChange: (h: H
   const confirm = useConfirm();
   const [editing, setEditing] = useState<RaceRecord | "new" | null>(horse.records.length ? null : "new");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const approval = horse.role === "coowner" && !!horse.requireApproval;
   const withStats = (records: RaceRecord[], stats: HorseStats | null) =>
     onChange({ ...horse, records: [...records].sort((a, b) => b.raceDate.localeCompare(a.raceDate)), stats: stats ?? horse.stats });
 
   async function remove(r: RaceRecord) {
-    const sure = await confirm({ title: "Remove this race record?", message: `${r.track} on ${r.raceDate}. Totals are recalculated.`, confirmLabel: "Remove record", cancelLabel: "Keep", tone: "danger" });
+    const sure = await confirm({
+      title: "Remove this race record?",
+      message: `${r.track} on ${r.raceDate}. ${approval ? "The other owners are asked to accept this first." : "Totals are recalculated."}`,
+      confirmLabel: approval ? "Ask to remove" : "Remove record",
+      cancelLabel: "Keep",
+      tone: "danger",
+    });
     if (!sure) return;
+    setNotice("");
     try {
       const res = await community.removeRecord(r.id);
+      if ("pending" in res) {
+        setNotice(SENT_FOR_APPROVAL);
+        onChange({ ...horse, pendingChanges: (horse.pendingChanges ?? 0) + 1 });
+        return;
+      }
       withStats(horse.records.filter((x) => x.id !== r.id), res.stats);
     } catch (e) {
       setError(errorText(e, "The record couldn't be removed."));
@@ -699,13 +752,20 @@ function RecordsPanel({ horse, onChange }: { horse: HorseDetail; onChange: (h: H
         <div className="is-wide"><dt>Earnings</dt><dd className="is-money">{money(s.earningsCents)}</dd></div>
       </dl>
       {error && <p className="cm-error" role="alert">{error}</p>}
+      {notice && <p className="cm-muted cm-ed-locked" role="status">{notice}</p>}
 
       {editing ? (
         <RecordForm
           horseId={horse.id}
           record={editing === "new" ? null : editing}
+          approval={approval}
           canCancel={editing !== "new" || horse.records.length > 0}
           onCancel={() => setEditing(null)}
+          onPending={() => {
+            setNotice(SENT_FOR_APPROVAL);
+            setEditing(null);
+            onChange({ ...horse, pendingChanges: (horse.pendingChanges ?? 0) + 1 });
+          }}
           onSaved={(record, stats, isNew) => {
             withStats(isNew ? [record, ...horse.records] : horse.records.map((x) => (x.id === record.id ? record : x)), stats);
             setEditing(null);
@@ -723,12 +783,15 @@ function RecordsPanel({ horse, onChange }: { horse: HorseDetail; onChange: (h: H
                 </span>
                 <span className="cm-record-text">
                   <strong>{r.raceName || r.track}</strong>
+                  {r.fromRaceData && <em className="cm-race-data-tag">Race data</em>}
                   <small>{[r.raceName ? r.track : "", r.distance, r.surface ? SURFACE_LABELS[r.surface] : "", r.fieldSize ? `${r.fieldSize} ran` : ""].filter(Boolean).join(" · ")}</small>
                 </span>
                 <span className="cm-record-money">{r.earningsCents ? money(r.earningsCents) : ""}</span>
                 <span className="cm-ed-race-tools">
                   <button type="button" className="cm-icon-btn" aria-label={`Edit ${r.raceName || r.track}`} onClick={() => setEditing(r)}><Icon.Edit /></button>
-                  <button type="button" className="cm-icon-btn cm-danger" aria-label={`Remove ${r.raceName || r.track}`} onClick={() => remove(r)}><Icon.Trash /></button>
+                  {!(r.fromRaceData && horse.raceData) && (
+                    <button type="button" className="cm-icon-btn cm-danger" aria-label={`Remove ${r.raceName || r.track}`} onClick={() => remove(r)}><Icon.Trash /></button>
+                  )}
                 </span>
               </li>
             ))}
@@ -746,15 +809,20 @@ function RecordsPanel({ horse, onChange }: { horse: HorseDetail; onChange: (h: H
 function RecordForm({
   horseId,
   record,
+  approval,
   canCancel,
   onCancel,
   onSaved,
+  onPending,
 }: {
   horseId: string;
   record: RaceRecord | null;
+  /** A co-owner's change that the other owners accept first. */
+  approval: boolean;
   canCancel: boolean;
   onCancel: () => void;
   onSaved: (record: RaceRecord, stats: HorseStats | null, isNew: boolean) => void;
+  onPending: () => void;
 }) {
   const [f, setF] = useState<RecordInput>(record ? recordToInput(record) : blankRecord());
   const [share, setShare] = useState(!record);
@@ -772,10 +840,12 @@ function RecordForm({
     try {
       if (record) {
         const r = await community.updateRecord(record.id, f);
-        onSaved(r.record, r.stats, false);
+        if ("pending" in r) onPending();
+        else onSaved(r.record, r.stats, false);
       } else {
         const r = await community.addRecord(horseId, { ...f, share, shareText });
-        onSaved(r.record, r.stats, true);
+        if ("pending" in r) onPending();
+        else onSaved(r.record, r.stats, true);
       }
     } catch (err) {
       setError(errorText(err, "The race couldn't be saved."));
@@ -787,6 +857,9 @@ function RecordForm({
   return (
     <form className="cm-ed-form" onSubmit={submit} noValidate>
       <Section n={record ? "✎" : "+"} title={record ? "Edit race" : "New race"}>
+        {record?.fromRaceData && (
+          <p className="cm-muted" role="note">This race comes from race data: while the horse is linked, only earnings and notes change.</p>
+        )}
         <div className="cm-ed-grid">
           <label className="cm-field">
             <span>Date <em>*</em></span>
@@ -857,7 +930,7 @@ function RecordForm({
         {canCancel && <button type="button" className="cm-btn cm-btn-ghost" onClick={onCancel}>Cancel</button>}
         <span className="cm-grow" />
         <button type="submit" className="cm-btn cm-btn-primary" disabled={busy || !f.track.trim() || !f.raceDate}>
-          {busy ? "Saving…" : record ? "Save race" : "Add race"}
+          {busy ? "Saving…" : approval ? "Send for approval" : record ? "Save race" : "Add race"}
         </button>
       </div>
     </form>
