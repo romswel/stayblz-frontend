@@ -1,5 +1,5 @@
 import { firstName } from "../components/messenger/format";
-import { plainText } from "../components/messenger/chatMarkdown";
+import { plainText } from "../components/messenger/chatFormat";
 import { isRacingAlert, isServerWordedAlert, type ChatAlert, type ChatAlertKind, type IncomingChat, type NotificationSettings } from "./notifyApi";
 
 /**

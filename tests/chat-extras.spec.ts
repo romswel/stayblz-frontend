@@ -272,12 +272,28 @@ test("phones: the chat follows the visible area above the keyboard; the tab bar 
 
   await page.goto(`/messages/${ANN}`);
   await expect(page.locator(".mx-composer")).toBeVisible();
+  const pane = page.locator(".mx-thread-pane");
+  // Keyboard down: the chat fills the whole screen by itself, even when the reported visible area is shorter
+  // (iPhone Home Screen apps) — the old measured height left a band under the message box.
   await page.evaluate(() => {
+    const root = document.documentElement.style;
+    root.setProperty("--vvh", "790px");
+    root.setProperty("--vv-offset", "0px");
+  });
+  await expect.poll(async () => Math.round((await pane.boundingBox())!.height)).toBe(844);
+  await expect
+    .poll(async () => {
+      const composer = (await page.locator(".mx-composer").boundingBox())!;
+      return Math.round(composer.y + composer.height);
+    })
+    .toBe(844);
+  // Keyboard up (what src/viewport.ts sets on an iPhone): the chat follows the visible area above it.
+  await page.evaluate(() => {
+    document.documentElement.classList.add("kb-open");
     const root = document.documentElement.style;
     root.setProperty("--vvh", "420px");
     root.setProperty("--vv-offset", "0px");
   });
-  const pane = page.locator(".mx-thread-pane");
   await expect.poll(async () => Math.round((await pane.boundingBox())!.height)).toBe(420);
   // The message box sits at the bottom of that visible area, not behind the keyboard.
   await expect
@@ -286,6 +302,10 @@ test("phones: the chat follows the visible area above the keyboard; the tab bar 
       return Math.round(composer.y + composer.height);
     })
     .toBeLessThanOrEqual(421);
+
+  // Keyboard down again: back to the whole screen.
+  await page.evaluate(() => document.documentElement.classList.remove("kb-open"));
+  await expect.poll(async () => Math.round((await pane.boundingBox())!.height)).toBe(844);
 
   // Tapping anywhere in the box (not only the words) puts the cursor in it.
   await page.evaluate(() => document.documentElement.style.removeProperty("--vvh"));

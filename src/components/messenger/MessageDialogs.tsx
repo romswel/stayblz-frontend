@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import AttachmentView from "./AttachmentView";
+import { plainText } from "./chatFormat";
 import EmojiPicker from "./EmojiPicker";
 import { dayLabel, clock } from "./format";
 import { Avatar, CopyIcon, DownloadIcon, EditIcon, ForwardIcon, PinIcon, PlusIcon, ReplyIcon, UndoIcon } from "./icons";
@@ -36,7 +37,7 @@ export function MessageSheet({
   return (
     <Modal label="Message actions" onClose={onClose} className="modal-sm mx-dialog mx-sheet mx-layer gx-layer">
       <div className="dlg mx-sheet-body">
-        <p className="mx-sheet-preview">{m.body || (m.attachment ? `📎 ${m.attachment.name}` : "")}</p>
+        <p className="mx-sheet-preview">{m.body ? plainText(m.body) : m.attachment ? `📎 ${m.attachment.name}` : ""}</p>
         {more ? (
           <EmojiPicker label="Pick any reaction" onPick={(e) => onReact(e)} onClose={() => setMore(false)} />
         ) : (
@@ -187,7 +188,7 @@ export function PinnedDialog({
                     </div>
                   )}
                   <button type="button" className="mx-pinned-bubble" onClick={() => onJump(p.id)} aria-label={`Go to pinned message from ${p.from}`}>
-                    {full?.body || p.body || (p.attachment ? `📎 ${p.attachment}` : "Go to message")}
+                    {full?.body || p.body ? plainText(full?.body || p.body) : p.attachment ? `📎 ${p.attachment}` : "Go to message"}
                   </button>
                 </div>
                 {canAct && (

@@ -184,8 +184,11 @@
   .modal-overlay {
     place-items: end stretch;
     padding: var(--safe-top) 0 0;
-    /* Follow the visible area (src/viewport.ts): with the keyboard up the sheet sits on top of it, so the field
-       you're typing in is never hidden behind the keyboard or iOS's ^ ˅ ✓ bar. */
+  }
+  /* Keyboard up (src/viewport.ts): follow the visible area, so the sheet sits on top of the keyboard and the field
+     you're typing in is never hidden behind it or iOS's ^ ˅ ✓ bar. With the keyboard down the sheet keeps the whole
+     screen (a measured height left a gap under it in iPhone Home Screen apps). */
+  html:is(.kb-open, .vv-drift) .modal-overlay {
     inset: auto 0;
     top: var(--vv-offset, 0px);
     height: var(--vvh, 100%);

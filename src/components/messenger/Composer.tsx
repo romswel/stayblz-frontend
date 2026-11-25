@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent, type MutableRefObject } from "react";
 import type { Gif } from "./chatApi";
+import { hasFormatting, plainText } from "./chatFormat";
 import CommandHelp from "./CommandHelp";
 import { matchCommands, runCommand, type CommandResult } from "./commands";
+import { FormatPreview, StagedFiles } from "./ComposerParts";
 import EmojiPicker from "./EmojiPicker";
-import { ACCEPT_ATTR, MEDIA_ATTR } from "./files";
+import { ACCEPT_ATTR, MEDIA_ATTR, type StagedFile } from "./files";
 import { seconds } from "./format";
 import GifPicker, { gifSearchAvailable } from "./GifPicker";
 import {
@@ -44,8 +46,9 @@ const WRAPS: Record<string, string> = { b: "**", i: "_", e: "`" };
 /**
  * Message box (Stayblz's own layout). Left: one Attach button (photos, files, GIF, voice clip, Paddock). Middle:
  * "Write a message…" with emoji. Right: the mic for a voice clip while the box is empty, Send once you type.
- * Enter sends on a keyboard (Shift+Enter = new line); on phones Enter adds a line. Paste or drop files to send them;
- * pasting formatted text keeps its formatting; ↑ edits your last message; Escape cancels a reply or edit.
+ * Enter sends on a keyboard (Shift+Enter = new line); on phones Enter adds a line. Files you pick, paste or drag in
+ * wait above the box (StagedFiles) until you press Send; pasting formatted text keeps its formatting, and a preview
+ * shows how formatting will look; ↑ edits your last message; Escape cancels a reply or edit.
  * "/" lists commands (commands.ts); "@" suggests people, @everyone and @highlight; Ctrl/⌘+B / I / E and
  * Ctrl/⌘+Shift+X format the selection.
  */
@@ -53,7 +56,9 @@ export default function Composer({
   value,
   onChange,
   onSend,
-  onFiles,
+  onAddFiles,
+  files,
+  onRemoveFile,
   onVoice,
   onPaddock,
   onCommand,
@@ -67,13 +72,18 @@ export default function Composer({
   onEditLast,
   inputRef,
   mentionable,
+  mentions,
+  meName,
   group = false,
 }: {
   value: string;
   onChange: (text: string) => void;
-  /** `fromBox`: it's what was typed (or a command made from it), so the saved draft can go. */
+  /** `fromBox`: it's what was typed (or a command made from it), so the saved draft can go. Waiting files go after it. */
   onSend: (text: string, fromBox: boolean) => void;
-  onFiles: (files: File[]) => void;
+  /** Picked or pasted files: they wait in the box (they aren't sent yet). */
+  onAddFiles: (files: File[]) => void;
+  files: StagedFile[];
+  onRemoveFile: (id: string) => void;
   onVoice: (file: File, duration: number) => void;
   /** Start a Stayblz Paddock for this chat (omitted where it isn't offered). */
   onPaddock?: () => void;
@@ -90,6 +100,9 @@ export default function Composer({
   inputRef: MutableRefObject<HTMLTextAreaElement | null>;
   /** Group chats: people you can @mention (everyone but you). */
   mentionable?: { id: string; name: string }[];
+  /** For the formatting preview: @Names shown as chips, and your name for "/me". */
+  mentions?: RegExp | null;
+  meName?: string;
   group?: boolean;
 }) {
   const local = useRef<HTMLTextAreaElement | null>(null);
@@ -168,7 +181,15 @@ export default function Composer({
   }
   function submit(e?: FormEvent) {
     e?.preventDefault();
-    if (!text || text.length > MAX_MESSAGE) return;
+    if (text.length > MAX_MESSAGE) return;
+    // Only files waiting (no words): they go on their own.
+    if (!text) {
+      if (files.length && !editing) {
+        onTyping(false);
+        onSend("", true);
+      }
+      return;
+    }
     if (editing) {
       if (text !== editing.body.trim()) onSaveEdit(text);
       else onCancelEdit();
@@ -231,12 +252,17 @@ export default function Composer({
     change(next);
     placeCaret(next.length);
   }
-  /** Ctrl/⌘+B etc.: wrap the selection (or put the marks around the caret). */
+  /**
+   * Ctrl/⌘+B etc.: wrap the selection (or put the marks around the caret). Spaces at the edges of the selection
+   * (a double-click on Windows picks the word *and* the space after it) stay outside, or the marks wouldn't work.
+   */
   function wrapSelection(mark: string) {
     const el = local.current;
     if (!el) return;
-    const start = el.selectionStart ?? shown.length;
-    const end = el.selectionEnd ?? shown.length;
+    let start = el.selectionStart ?? shown.length;
+    let end = el.selectionEnd ?? shown.length;
+    while (start < end && /\s/.test(shown[start])) start++;
+    while (end > start && /\s/.test(shown[end - 1])) end--;
     const picked = shown.slice(start, end);
     const next = shown.slice(0, start) + mark + picked + mark + shown.slice(end);
     if (next.length > MAX_MESSAGE) return;
@@ -319,10 +345,10 @@ export default function Composer({
     placeCaret(start + add.length);
   }
   function onPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
-    const files = Array.from(e.clipboardData.files ?? []);
-    if (files.length && !editing) {
+    const pasted = Array.from(e.clipboardData.files ?? []);
+    if (pasted.length && !editing) {
       e.preventDefault();
-      onFiles(files);
+      onAddFiles(pasted); // waits in the box until Send
       return;
     }
     // Formatted text from another site, Word or Google Docs: keep its formatting and line breaks.
@@ -362,11 +388,14 @@ export default function Composer({
   ];
 
   const pick = (input: HTMLInputElement | null) => {
-    const files = Array.from(input?.files ?? []);
+    const picked = Array.from(input?.files ?? []);
     if (input) input.value = "";
-    if (files.length) onFiles(files);
+    if (picked.length) onAddFiles(picked); // waits in the box until Send
   };
   const activeIndex = Math.min(pickAt, Math.max(0, listSize - 1));
+  const canSend = !!text || (!editing && files.length > 0);
+  // While what you type has formatting, a preview shows how it will look (the box keeps the marks).
+  const preview = !recording && hasFormatting(shown);
 
   return (
     <form className={`mx-composer${recording ? " is-recording" : ""}`} onSubmit={submit}>
@@ -375,7 +404,7 @@ export default function Composer({
           <EditIcon />
           <span>
             <strong>Editing message</strong>
-            <span className="mx-replying-text">{editing.body}</span>
+            <span className="mx-replying-text">{plainText(editing.body)}</span>
           </span>
           <button type="button" className="mx-icon-btn" aria-label="Cancel editing" onClick={onCancelEdit}>
             <CloseIcon size={16} />
@@ -389,7 +418,7 @@ export default function Composer({
               <span>
                 Replying to <strong>{replyTo.from}</strong>
               </span>
-              <span className="mx-replying-text">{replyTo.body || (replyTo.attachment ? `📎 ${replyTo.attachment}` : "")}</span>
+              <span className="mx-replying-text">{replyTo.body ? plainText(replyTo.body) : replyTo.attachment ? `📎 ${replyTo.attachment}` : ""}</span>
             </span>
             <button type="button" className="mx-icon-btn" aria-label="Cancel reply" onClick={onCancelReply}>
               <CloseIcon size={16} />
@@ -397,6 +426,8 @@ export default function Composer({
           </div>
         )
       )}
+      {!editing && !recording && <StagedFiles files={files} onRemove={onRemoveFile} />}
+      {preview && <FormatPreview text={shown} mentions={mentions} meName={meName} />}
       <input ref={fileInput} type="file" multiple accept={ACCEPT_ATTR} hidden aria-hidden="true" tabIndex={-1} onChange={(e) => pick(e.target)} />
       <input ref={mediaInput} type="file" multiple accept={MEDIA_ATTR} hidden aria-hidden="true" tabIndex={-1} onChange={(e) => pick(e.target)} />
 
@@ -546,8 +577,8 @@ export default function Composer({
               </div>
             )}
           </div>
-          {/* Empty box: the mic records a voice clip. Typing turns it into Send. */}
-          {!text && !editing && canRecord() ? (
+          {/* Empty box (no words, no files waiting): the mic records a voice clip. Typing turns it into Send. */}
+          {!canSend && !editing && canRecord() ? (
             <button type="button" className="mx-send is-mic" aria-label="Record a voice clip" title="Voice clip" onClick={() => void startVoice()}>
               <MicIcon />
             </button>
@@ -557,7 +588,7 @@ export default function Composer({
               className="mx-send is-go"
               aria-label={editing ? "Save edit" : "Send"}
               title={editing ? "Save (Enter)" : "Send (Enter)"}
-              disabled={!text}
+              disabled={!canSend}
             >
               {editing ? <span className="mx-send-check">✓</span> : <SendIcon />}
             </button>

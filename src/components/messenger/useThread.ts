@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "../../api";
 import { notifyChatsChanged, type ChatApi } from "./chatApi";
+import { toMs } from "./format";
 import { lastFromOthers, mergeMessages, normalizeMessage, normalizeThread, previewOf, toggleReaction } from "./threadModel";
 import type { ChatMessage, ChatPreview, ChatThread } from "./types";
 import { useOutbox } from "./useOutbox";
@@ -216,13 +217,18 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
     };
   }, [chatApi, id, status, visible]);
 
+  // Right after switching chats (before the effect above clears it) the state still holds the previous chat. It is
+  // never handed out: the new chat would open on the old one's messages, and its scroll position would treat its own
+  // newest messages as "new while you were scrolled up" (no jump to the newest message, a "New message" pill).
+  const current = thread && thread.id === id ? thread : null;
+
   // Read receipts: once per newest message from someone else, only while you can see it.
-  const lastOther = thread ? lastFromOthers(thread.messages) : undefined;
+  const lastOther = current ? lastFromOthers(current.messages) : undefined;
   useEffect(() => {
-    if (!thread || thread.request || !lastOther || !visible) return;
+    if (!current || current.request || !lastOther || !visible) return;
     if (readFor.current === lastOther.id) return;
     readFor.current = lastOther.id;
-    const chatId = thread.id;
+    const chatId = current.id;
     chatApi
       .read(chatId)
       .then(() => {
@@ -232,7 +238,7 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
       .catch(() => {
         readFor.current = null;
       });
-  }, [chatApi, thread?.id, thread?.request, lastOther?.id, visible]);
+  }, [chatApi, current?.id, current?.request, lastOther?.id, visible]);
 
   /** Optimistic change to one message, put back if the server says no. */
   const change = useCallback(
@@ -255,8 +261,31 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
   );
 
   const react = useCallback(
-    (messageId: string, emoji: string) =>
-      change(messageId, (m) => toggleReaction(m, emoji), () => chatApi.react(idRef.current!, messageId, emoji), "Reaction not saved. Try again."),
+    async (messageId: string, emoji: string) => {
+      // Reacting shows in the chat list at once ("You reacted ❤️ to …"); the server's answer follows on the next poll
+      // (it also clears it when you take a reaction back).
+      const chatId = idRef.current;
+      const t = threadRef.current;
+      const m = t?.messages.find((x) => x.id === messageId);
+      const showing = !!(chatId && t && m && m.reactions.find((r) => r.mine)?.emoji !== emoji);
+      if (showing)
+        callbacks.current.onPatch(chatId!, {
+          lastReaction: {
+            emoji,
+            mine: true,
+            toMe: m!.mine,
+            message: m!.id,
+            body: m!.body,
+            attachment: m!.attachment?.type ?? null,
+            // Never older than the chat's last message by the server's clock (a phone's clock can run behind).
+            at: new Date(Math.max(Date.now(), (toMs(t!.lastMessageAt) || 0) + 1)).toISOString(),
+          },
+        });
+      const ok = await change(messageId, (x) => toggleReaction(x, emoji), () => chatApi.react(idRef.current!, messageId, emoji), "Reaction not saved. Try again.");
+      // Not saved: the list goes back to what the server last said.
+      if (!ok && showing) callbacks.current.onPatch(chatId!, { lastReaction: t!.lastReaction ?? null });
+      return ok;
+    },
     [change, chatApi],
   );
   const edit = useCallback(
@@ -327,13 +356,14 @@ export function useThread(chatApi: ChatApi, id: string | undefined, options: Opt
     }
   }, [before, chatApi, id, mergeInto, olderLoading]);
 
-  const messages = useMemo(() => (thread ? [...thread.messages, ...outbox.local] : []), [thread, outbox.local]);
+  const messages = useMemo(() => (current ? [...current.messages, ...outbox.local] : []), [current, outbox.local]);
 
   return {
-    thread,
+    thread: current,
     setThread,
     messages,
-    status,
+    // The previous chat is still in state for a moment after switching: this one is loading.
+    status: id && thread && !current ? ("loading" as const) : status,
     error,
     retry: () => setReloadKey((k) => k + 1),
     before,

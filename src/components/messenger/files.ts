@@ -69,6 +69,34 @@ export function setChatLimits(next: Partial<ChatLimits> | null | undefined) {
 }
 const mb = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
 
+/**
+ * Why this file can't be sent, said at once (before anything uploads), or null. Photos are shrunk on the way, so
+ * only GIFs among them are size-checked here; prepareFile still checks everything again when it's sent.
+ */
+export function fileProblem(file: File): string | null {
+  const type = fileType(file);
+  const max = limits.fileBytes;
+  if (!ACCEPT_TYPES[type]) return `“${file.name}” can't be sent. Send photos, videos, voice clips, or PDF, Word, Excel and text files.`;
+  if (type.startsWith("image/") && type !== "image/gif") return null;
+  if (file.size > max) return type.startsWith("video/") ? `“${file.name}” is over ${mb(max)}. Videos can be up to ${mb(max)}.` : `“${file.name}” is over ${mb(max)}.`;
+  return null;
+}
+
+/** A file waiting in the message box (dragged in, pasted or picked) until you press Send. */
+export interface StagedFile {
+  id: string;
+  file: File;
+  type: string;
+  /** Photos and videos: a preview of this device's copy (revoked when it's removed or sent). */
+  url?: string;
+}
+let staged = 0;
+export function stageFile(file: File): StagedFile {
+  const type = fileType(file);
+  const visual = type.startsWith("image/") || type.startsWith("video/");
+  return { id: `staged-${++staged}`, file, type, url: visual ? URL.createObjectURL(file) : undefined };
+}
+
 export interface PreparedFile {
   blob: Blob;
   name: string;

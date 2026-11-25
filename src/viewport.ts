@@ -13,6 +13,10 @@
  *
  * When the keyboard closes, iOS sometimes leaves the layout viewport offset, which drags fixed bars up into the
  * page (the "tab bar in the middle of the screen" bug). A one-pixel scroll nudge makes it line everything up again.
+ *
+ * Size things from --vvh only under html.kb-open / html.vv-drift. With the keyboard down, full-screen parts fill the
+ * screen with plain CSS (inset: 0): iPhone Home Screen apps report a visible area that stops short of the bottom, so
+ * a measured height left a band under the chat (v0.24 fix).
  */
 const KEYBOARD_PX = 120;
 
@@ -78,6 +82,8 @@ export function startViewportWatch() {
   }
   vv.addEventListener("resize", schedule);
   vv.addEventListener("scroll", schedule);
+  // The window itself changing size (browser bars showing or hiding, split screen, a desktop window).
+  window.addEventListener("resize", schedule);
   window.addEventListener("orientationchange", schedule);
   window.addEventListener("pageshow", schedule);
   document.addEventListener("focusin", schedule);

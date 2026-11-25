@@ -832,11 +832,10 @@ html[data-theme="dark"] :is(.mx, .mx-layer) {
   .mx-has-thread .mx-thread-pane {
     display: block;
     position: fixed;
-    /* Sized to the visible area, not the whole screen: with the keyboard up the message box sits right above it
-       (and above iOS's ^ ˅ ✓ bar) instead of behind it. --vvh / --vv-offset come from src/viewport.ts. */
-    inset: auto 0;
-    top: var(--vv-offset, 0px);
-    height: var(--vvh, 100dvh);
+    /* The whole screen, sized by the browser itself. Never a measured height while the keyboard is down: iPhone
+       Home Screen apps report a visible area that stops short of the bottom, which left a band under the message
+       box and made the chat look stuck at one size. */
+    inset: 0;
     z-index: 50;
     background: var(--gx-bg-gradient, var(--gx-bg, #eef2f9));
     background-color: var(--gx-bg-solid, #f7f9fc);
@@ -851,10 +850,16 @@ html[data-theme="dark"] :is(.mx, .mx-layer) {
     padding-top: var(--safe-top, 0px);
   }
   .mx-info-pane {
+    inset: 0;
+    width: auto;
+    height: auto;
+  }
+  /* Keyboard up (or iOS left the page out of line after it closed): follow the visible area instead, so the message
+     box sits right above the keyboard and iOS's ^ ˅ ✓ bar, never behind them. --vvh / --vv-offset: src/viewport.ts. */
+  html:is(.kb-open, .vv-drift) .mx-has-thread .mx-thread-pane,
+  html:is(.kb-open, .vv-drift) .mx-info-pane {
     inset: auto 0;
-    width: 100vw;
     top: var(--vv-offset, 0px);
-    right: 0;
     height: var(--vvh, 100dvh);
   }
   .mx-info-pane .mx-info {
