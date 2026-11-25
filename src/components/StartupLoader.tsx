@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 /**
  * First-load screen. The API runs on a free server that sleeps when idle, so the first
@@ -42,6 +43,11 @@ export default function StartupLoader() {
             Stayblz is a development preview running on a free server that sleeps when nobody is using it.
             Expect some bugs and missing features while we build.
           </p>
+        )}
+        {stage > 0 && (
+          <Link className="sb-startup-status" to="/status">
+            Check Stayblz status
+          </Link>
         )}
       </div>
     </div>

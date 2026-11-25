@@ -99,7 +99,11 @@ export default function FeedPanel() {
       return;
     setBusy(true);
     try {
-      const body = await api.post<{ format: string; results: CardResult[] }>("/api/admin/racing/feed/import", { data, publish });
+      const body = await api.post<{ format: string; results: CardResult[] }>(
+        "/api/admin/racing/feed/import",
+        { data, publish },
+        { timeoutMs: 300_000 }, // a big file can take minutes
+      );
       setResults(body);
       setFile(null);
       if (input.current) input.current.value = "";

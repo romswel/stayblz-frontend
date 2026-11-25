@@ -10,6 +10,7 @@ export type StatusKind =
   | "server"
   | "unavailable"
   | "restricted"
+  | "outdated"
   | "notice"
   | "done";
 
@@ -39,6 +40,11 @@ const copy: Record<StatusKind, { code: string; title: string; message: string }>
     code: "Soon",
     title: "Not available yet",
     message: "This feature isn't switched on yet. It may need a plan or service that isn't connected during the preview.",
+  },
+  outdated: {
+    code: "New",
+    title: "A newer version of Stayblz is ready",
+    message: "Stayblz was updated while this page was open, so part of it couldn't load. Reload to get the latest version. Your account and saved work are safe.",
   },
   notice: { code: "Note", title: "Please check", message: "" },
   done: { code: "Done", title: "All done", message: "" },
@@ -77,12 +83,19 @@ export default function StatusPage({ kind, title, message, standalone, actions }
               </Link>
             ) : (
               <button type="button" className="btn btn-primary status-primary" onClick={() => window.location.reload()}>
-                Try again
+                {kind === "outdated" ? "Reload" : "Try again"}
               </button>
             )}
-            <Link className="btn btn-quiet" to="/updates">
-              Check Updates
-            </Link>
+            {/* Something failed: the status page explains what's going on. */}
+            {kind === "error" || kind === "server" || kind === "offline" ? (
+              <Link className="btn btn-quiet" to="/status">
+                Check Stayblz status
+              </Link>
+            ) : (
+              <Link className="btn btn-quiet" to="/updates">
+                Check Updates
+              </Link>
+            )}
             <Link className="btn btn-quiet" to="/faq">
               Help & FAQ
             </Link>

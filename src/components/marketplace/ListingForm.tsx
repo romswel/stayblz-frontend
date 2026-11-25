@@ -74,7 +74,8 @@ function priceInput(input: HTMLInputElement, set: (value: string) => void, previ
   const next = d ? Number(d).toLocaleString("en-US") : "";
   set(next);
   requestAnimationFrame(() => {
-    if (document.activeElement !== input) return;
+    // Text selected meanwhile (select-all to replace the price) stays selected.
+    if (document.activeElement !== input || input.selectionStart !== input.selectionEnd) return;
     let at = 0;
     for (let seen = 0; at < next.length && seen < before; at++) if (/\d/.test(next[at])) seen++;
     input.setSelectionRange(at, at);

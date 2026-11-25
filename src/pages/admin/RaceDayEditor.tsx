@@ -252,6 +252,7 @@ export default function RaceDayEditor() {
                     api.post<{ day: RaceDay; summary: { runners: number; racesCreated: number; horsesCreated: number; peopleCreated: number } }>(
                       `/api/admin/racing/days/${day.id}/import`,
                       { rows: parsed.rows },
+                      { timeoutMs: 300_000 }, // a long card file can take minutes
                     ),
                   (body) =>
                     `Imported ${body.summary.runners} runners: ${body.summary.racesCreated} new races, ${body.summary.horsesCreated} new horses, ${body.summary.peopleCreated} new people.`,
