@@ -78,13 +78,35 @@ async function mockApp(page: Page) {
       return route.fulfill({ json: { ...meta, records: [row("Lucky Star", 3)].filter((r) => r.name.toLowerCase().includes((url.searchParams.get("q") ?? "").toLowerCase())), nextOffset: null, total: 1 } });
     }
     if (path.startsWith("/api/stayblz-data/formfav/")) return route.fulfill({ status: 503, json: { error: "FormFav data isn't available right now." } });
+    // Racing pages: one horse from the (non-North-American) Racing API feed, one from the US.
+    const racing = /^\/api\/public\/racing\/horses\/(gb|us)$/.exec(path);
+    if (racing)
+      return route.fulfill({
+        json: {
+          horse: { id: racing[1], name: racing[1] === "gb" ? "Galway Girl" : "Yankee Doodle", country: racing[1] === "gb" ? "GB" : "USA", foaled: 2022, sex: "filly", color: "", sire: "", dam: "", damSire: "", breeder: "", breed: "thoroughbred" },
+          stats: { starts: 0, wins: 0, places: 0, shows: 0, earnings: 0 },
+          starts: [],
+          workouts: [],
+        },
+      });
+    if (path === "/api/my-racing/follows/state") return route.fulfill({ json: { state: { horse: false, family: false, person: false, total: 0 } } });
 
     const m = /^\/api\/my-racing\/virtual(\/.*)?$/.exec(path);
     if (m) {
       const rest = m[1] ?? "";
       if (rest === "" && method === "GET")
         return route.fulfill({
-          json: { horses: horses.filter((h) => h.source !== "formfav").map((h) => ({ ...h, counts: { workouts: 0, races: 0, sales: 0, notes: 0 }, lastEntry: null, live: null })), limit: 300 },
+          json: {
+            horses: horses.map((h) => ({
+              ...h,
+              counts: { workouts: 0, races: h.formfav ? 1 : 0, sales: 0, notes: 0 },
+              lastEntry: null,
+              live: null,
+              race: h.formfav ? { starts: 3, wins: 1, places: 2, lastStart: row(h.name, 0).lastStart, nextEntry: row(h.name, 0).nextEntry, trainer: "Bob Smith" } : null,
+            })),
+            limit: 300,
+            racingLimit: 300,
+          },
         });
       if (rest === "/racing-horses") {
         calls.racing.push(url.search);
@@ -151,9 +173,16 @@ test("Racing horses tab: most followed first with counts; Track keeps it out of 
   await expect(cards).toHaveCount(1);
   expect(calls.racing.at(-1)).toContain("tracking=1");
 
-  // The main list doesn't fill up with racing horses.
+  // My tracked horses shows it too, in its own Racing horses section (apart from the list's own horses).
   await page.getByRole("tab", { name: "My tracked horses" }).click();
-  await expect(page.getByText("No horses tracked yet")).toBeVisible();
+  const section = page.getByRole("region", { name: "Racing horses you track" });
+  await expect(section.getByRole("button", { name: /Lucky Star/ })).toBeVisible();
+  await expect(section.getByText("Last 30 days: 3 starts · 1 win · 2 top 3")).toBeVisible();
+  await expect(section.getByText(/Entered: Parx R4/)).toBeVisible();
+  await section.getByRole("button", { name: /Lucky Star/ }).click();
+  await expect(page.getByRole("heading", { name: "Lucky Star" })).toBeVisible();
+  await page.getByRole("button", { name: "← All tracked horses" }).click();
+  await expect(section).toBeVisible();
 });
 
 test("a tracked racing horse: race data, followers, own alerts switch, race-data log rows can't be removed", async ({ page }) => {
@@ -237,4 +266,31 @@ test("Racing horses fits a 375 px phone without sideways scrolling", async ({ pa
   await expect(page.locator(".vs-rcard")).toHaveCount(3);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("+ Add horse: racing horses come from US and Canada race data only and go to Racing horses", async ({ page }) => {
+  const { calls } = await mockApp(page);
+  await page.goto("/my-racing?tab=virtual");
+  await page.getByRole("button", { name: "+ Add horse" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add a horse to Virtual Stayblz" });
+  await expect(dialog.getByRole("tab", { name: "Racing data" })).toHaveCount(0);
+  await dialog.getByRole("tab", { name: "US & Canada racing" }).click();
+  await dialog.getByLabel(/Search US and Canada race cards/).fill("lucky");
+  await expect(dialog.getByText("Thoroughbred · United States · Trainer Bob Smith")).toBeVisible();
+  expect(calls.searches.at(-1)).toBe("lucky");
+  await dialog.getByRole("button", { name: "Add Lucky Star" }).click();
+  await expect(dialog).toBeHidden();
+  expect(calls.adds[0]).toEqual({ source: "formfav", formfavName: "Lucky Star", formfavCode: "gallops" });
+  await expect(page).toHaveURL(/vtab=racing/);
+  await expect(page.getByRole("button", { name: "← Racing horses" })).toBeVisible();
+});
+
+test("racing horse pages offer tracking only for US and Canada horses", async ({ page }) => {
+  await mockApp(page);
+  await page.goto("/racing/horses/gb");
+  await expect(page.getByRole("heading", { name: /Galway Girl/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Track in Virtual Stayblz" })).toHaveCount(0);
+  await page.goto("/racing/horses/us");
+  await expect(page.getByRole("heading", { name: /Yankee Doodle/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Track in Virtual Stayblz" })).toBeVisible();
 });

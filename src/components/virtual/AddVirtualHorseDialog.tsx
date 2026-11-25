@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { api, ApiError } from "../../api";
+import { ApiError } from "../../api";
+import { formFav, type HorseRow, type IndexCode } from "../stayblz-data/formfavApi";
 import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import { TopLayer } from "../community/HorseShare";
@@ -7,11 +8,11 @@ import { community, horseImageUrl, type PublicHorse } from "../community/api";
 import { LOCKED_BY_RACE_DATA, type AddInput, type ManualInput, type VirtualApi, type VirtualHorse } from "./api";
 
 type Mode = "stayblz" | "racing" | "manual";
-type RacingHit = { id: string; name: string; country: string; sire: string; dam: string };
 
 /**
- * Add a horse to a Virtual Stayblz list: search Stayblz members' public horses, search the racing data,
- * or type one in by hand. `onAdded` gets the saved horse (or the existing one when it was already there).
+ * Add a horse to a Virtual Stayblz list: search Stayblz members' public horses, search US and Canada race data
+ * (those go to the Racing horses tab), or type one in by hand. `onAdded` gets the saved horse (or the existing one
+ * when it was already there), with its source when known.
  */
 export default function AddVirtualHorseDialog({
   client,
@@ -22,7 +23,7 @@ export default function AddVirtualHorseDialog({
   client: VirtualApi;
   listName: string;
   onClose: () => void;
-  onAdded: (horse: { id: string }) => void;
+  onAdded: (horse: { id: string; source?: string }) => void;
 }) {
   const [mode, setMode] = useState<Mode>("stayblz");
   const [busy, setBusy] = useState<string | null>(null);
@@ -46,7 +47,7 @@ export default function AddVirtualHorseDialog({
                 : { racingHorseId: input.racingHorseId },
           )
           .catch(() => null);
-        if (s?.id) return onAdded({ id: s.id });
+        if (s?.id) return onAdded({ id: s.id, source: input.source });
       }
       setError(e instanceof Error ? e.message : "This horse couldn't be added.");
     } finally {
@@ -62,7 +63,7 @@ export default function AddVirtualHorseDialog({
           {(
             [
               ["stayblz", "Stayblz horses"],
-              ["racing", "Racing data"],
+              ["racing", "US & Canada racing"],
               ["manual", "Enter by hand"],
             ] as const
           ).map(([key, label]) => (
@@ -75,7 +76,7 @@ export default function AddVirtualHorseDialog({
         {mode === "stayblz" ? (
           <StayblzSearch busy={busy} onAdd={(h) => void add({ source: "community", communityHorseId: h.id }, h.id)} />
         ) : mode === "racing" ? (
-          <RacingSearch busy={busy} onAdd={(h) => void add({ source: "racing", racingHorseId: h.id }, h.id)} />
+          <RaceDataSearch busy={busy} onAdd={(h) => void add({ source: "formfav", formfavName: h.name, formfavCode: h.code }, `${h.code}|${h.name}`)} />
         ) : (
           <ManualHorseForm busy={!!busy} submitLabel="Add horse" onSubmit={(input) => void add({ source: "manual", ...input }, "manual")} />
         )}
@@ -141,10 +142,18 @@ function StayblzSearch({ busy, onAdd }: { busy: string | null; onAdd: (h: Public
   );
 }
 
-function RacingSearch({ busy, onAdd }: { busy: string | null; onAdd: (h: RacingHit) => void }) {
+const CODE_LABEL: Record<IndexCode, string> = { gallops: "Thoroughbred", harness: "Harness" };
+const COUNTRY_LABEL: Record<string, string> = { us: "United States", ca: "Canada" };
+const shortDay = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+/**
+ * US and Canada race data (FormFav race cards, about the last 30 days and the next 1–2), the same horses as the
+ * Racing horses tab. Only these racing horses can be tracked; added ones live in Racing horses.
+ */
+function RaceDataSearch({ busy, onAdd }: { busy: string | null; onAdd: (h: HorseRow) => void }) {
   const [text, setText] = useState("");
   const q = useDebounced(text.trim());
-  const [horses, setHorses] = useState<RacingHit[] | null>(null);
+  const [horses, setHorses] = useState<HorseRow[] | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     if (q.length < 2) {
@@ -154,40 +163,56 @@ function RacingSearch({ busy, onAdd }: { busy: string | null; onAdd: (h: RacingH
     }
     const c = new AbortController();
     setError("");
-    api
-      .get<{ horses: RacingHit[] }>(`/api/public/racing/search?q=${encodeURIComponent(q)}`, { signal: c.signal })
-      .then((r) => !c.signal.aborted && setHorses(Array.isArray(r.horses) ? r.horses : []))
-      .catch((e) => !c.signal.aborted && setError(e instanceof Error ? e.message : "Racing data couldn't be searched."));
+    formFav
+      .horses({ offset: 0, limit: 20, q, codes: ["gallops", "harness"], countries: ["us", "ca"] }, c.signal)
+      .then((r) => !c.signal.aborted && setHorses(Array.isArray(r.records) ? r.records : []))
+      .catch((e) => !c.signal.aborted && setError(e instanceof Error ? e.message : "Race data couldn't be searched."));
     return () => c.abort();
   }, [q]);
   return (
     <div className="vs-search">
       <label className="vs-field">
-        <span>Search horses in published racing (entries, results, workouts)</span>
+        <span>Search US and Canada race cards (last 30 days and upcoming)</span>
         <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="At least 2 letters" maxLength={60} data-autofocus />
       </label>
       {error ? (
         <p className="form-error" role="alert">{error}</p>
       ) : q.length < 2 ? (
-        <p className="vs-muted">Type a horse's name to search.</p>
+        <p className="vs-muted">Type a horse's name. Added racing horses go to the Racing horses tab, with alerts when they're entered or have run.</p>
       ) : horses === null ? (
         <p className="vs-muted" aria-busy="true">Searching…</p>
       ) : horses.length === 0 ? (
-        <p className="vs-muted">No racing horses match “{q}”. You can enter it by hand instead.</p>
+        <p className="vs-muted">No horse called “{q}” raced or was entered in the US or Canada lately. You can enter it by hand instead.</p>
       ) : (
         <ul className="vs-results">
-          {horses.map((h) => (
-            <li key={h.id}>
-              <span className="vs-thumb" aria-hidden="true">{initials(h.name)}</span>
-              <span className="vs-result-text">
-                <strong>{h.name}{h.country ? ` (${h.country})` : ""}</strong>
-                <small>{[h.sire, h.dam].filter(Boolean).join(" – ") || "Pedigree not recorded"}</small>
-              </span>
-              <button type="button" className="vs-btn vs-btn-primary" disabled={!!busy} onClick={() => onAdd(h)}>
-                {busy === h.id ? "Adding…" : "Add"}
-              </button>
-            </li>
-          ))}
+          {horses.map((h) => {
+            const key = `${h.code}|${h.name}`;
+            return (
+              <li key={key}>
+                <span className="vs-thumb" aria-hidden="true">{initials(h.name)}</span>
+                <span className="vs-result-text">
+                  <strong>{h.name}</strong>
+                  <small>
+                    {[CODE_LABEL[h.code] ?? h.code, h.countries.map((c) => COUNTRY_LABEL[c] ?? c.toUpperCase()).join(" · "), h.trainer && `Trainer ${h.trainer}`]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </small>
+                  <small>
+                    {[
+                      `${h.starts} ${h.starts === 1 ? "start" : "starts"}`,
+                      h.lastStart && `last at ${h.lastStart.track ?? h.lastStart.slug}, ${shortDay(h.lastStart.date)}`,
+                      h.nextEntry && `entered ${h.nextEntry.track ?? h.nextEntry.slug} ${shortDay(h.nextEntry.date)}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </small>
+                </span>
+                <button type="button" className="vs-btn vs-btn-primary" disabled={!!busy} onClick={() => onAdd(h)} aria-label={`Add ${h.name}`}>
+                  {busy === key ? "Adding…" : "Add"}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

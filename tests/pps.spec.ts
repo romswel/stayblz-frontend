@@ -165,6 +165,8 @@ test("track browser handles empty, loaded, filtered and unavailable records", as
 test("PP pages fit phone/tablet/desktop themes and mobile submenu navigates", async ({
   page,
 }) => {
+  // 25 full page loads (5 widths × 5 pages, about 2 s each on the dev server) need more than the 30 s default.
+  test.setTimeout(150_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   for (const width of [320, 375, 768, 1440, 2560]) {

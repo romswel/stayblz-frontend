@@ -208,7 +208,7 @@ export function HorseDialog({
   );
 }
 
-/** FormFav's career stats for a horse found by name (FormFav's search needs 3+ letters; North American matches first). */
+/** FormFav's career stats for a horse found by name (FormFav's search needs 3+ letters; US and Canada horses only). */
 export function Career({ name, code }: { name: string; code: IndexCode }) {
   const [state, setState] = useState<{ id: number | null; done: boolean; error: string }>({ id: null, done: false, error: "" });
   const [attempt, setAttempt] = useState(0);
@@ -223,9 +223,9 @@ export function Career({ name, code }: { name: string; code: IndexCode }) {
       .searchRunners(name.trim().slice(0, 100), code, ctrl.signal)
       .then((r) => {
         if (ctrl.signal.aborted) return;
-        const same = r.results.filter((x) => x.id !== null && x.name?.toLowerCase() === name.toLowerCase());
-        const home = same.filter((x) => /^(US|USA|CA|CAN)$/i.test(x.country ?? ""));
-        const pick = (home.length ? home : same).sort((a, b) => (b.lastRaceDate ?? "").localeCompare(a.lastRaceDate ?? ""))[0];
+        // US and Canada horses only (the server already drops the rest): never another country's horse of that name.
+        const home = r.results.filter((x) => x.id !== null && x.name?.toLowerCase() === name.toLowerCase() && /^(US|USA|CA|CAN)$/i.test(x.country ?? ""));
+        const pick = home.sort((a, b) => (b.lastRaceDate ?? "").localeCompare(a.lastRaceDate ?? ""))[0];
         setState({ id: pick?.id ?? null, done: true, error: "" });
       })
       .catch((e) => !ctrl.signal.aborted && setState({ id: null, done: true, error: e instanceof Error ? e.message : "FormFav couldn't be reached." }));
@@ -241,7 +241,7 @@ export function Career({ name, code }: { name: string; code: IndexCode }) {
         </button>
       </p>
     );
-  if (state.id === null) return <p className="sd-muted">FormFav has no career record under this name.</p>;
+  if (state.id === null) return <p className="sd-muted">FormFav has no US or Canada career record under this name.</p>;
   return (
     <div className="sd-ff-career">
       <RunnerStatsView id={state.id} />

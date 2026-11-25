@@ -55,6 +55,8 @@ export type VirtualListHorse = VirtualHorse & {
     shows: number;
     earningsCents: number | null;
   } | null;
+  /** Linked to race data: its numbers in the US/Canada window (null when it has no runs there now). */
+  race?: Pick<HorseRow, "starts" | "wins" | "places" | "lastStart" | "nextEntry" | "trainer"> | null;
 };
 
 export type VirtualEntry = {
@@ -207,6 +209,9 @@ export const SOURCE_LABELS: Record<VirtualSource, string> = {
   manual: "Added by hand",
   formfav: "Race data",
 };
+/** Stayblz tracks and shows race data for the United States and Canada only ("US"/"USA", "CA"/"CAN", any case). */
+export const isNorthAmerica = (country: string | null | undefined) => !!country && ["us", "ca", "usa", "can"].includes(country.trim().toLowerCase());
+
 /** Details race data keeps up to date (and locks) while a horse is linked. */
 export const LOCKED_BY_RACE_DATA = "Trainer, sire, dam, sex, foaling year and breed come from race data while the horse is linked.";
 export const KIND_LABELS: Record<EntryKind, string> = { workout: "Workout", race: "Race", sale: "Sales entry", note: "Note" };
