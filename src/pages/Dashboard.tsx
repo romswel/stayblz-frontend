@@ -1,20 +1,21 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import useRacingOverview, {
-  sectionKeys,
-  type RacingRecord,
-  type SectionKey,
-} from "../components/landing/useRacingOverview";
-import {
-  RecordDialog,
-  RecordTable,
-  sectionNames,
-} from "../components/overview/RacingSections";
+import useRacingOverview, { type RacingRecord } from "../components/landing/useRacingOverview";
+import { RecordDialog } from "../components/overview/RacingSections";
 import MyRacingPanel from "../components/overview/MyRacingPanel";
+import YourHorsesPanel from "../components/overview/YourHorsesPanel";
+import { useFormFavOverview } from "../components/overview/raceWatch";
+import type { DashOpen } from "../components/overview/DashboardDialogs";
+import type { OverviewRace, OverviewResult, RaceWhere } from "../components/stayblz-data/formfavApi";
+import { clock, pct, regionName } from "../components/stayblz-data/formfavUi";
+import { dateLabel } from "../components/racing/format";
 import ProfileNudge from "../components/account/ProfileNudge";
 import { useAuth } from "../auth";
 import "../components/overview/overview.css";
 import "../components/overview/overview-glass.css";
+
+const DashboardDialogs = lazy(() => import("../components/overview/DashboardDialogs"));
+const codeName = (c: string) => (c === "harness" ? "Harness" : "Thoroughbred");
 
 const Arrow = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -73,109 +74,280 @@ function useNow() {
 }
 
 const JUMPS = [
-  ["racing-desk", "01", "Entries & results"],
-  ["leaderboard", "02", "Leaders"],
-  ["daily-insights", "03", "Speed figures"],
-  ["stakes", "04", "Stakes"],
-  ["my-racing", "05", "My racing"],
-  ["racing-notes", "06", "Racing notes"],
+  ["your-horses", "01", "Your horses"],
+  ["racing-desk", "02", "Entries & results"],
+  ["leaderboard", "03", "Leaders"],
+  ["in-form", "04", "In form"],
+  ["stakes", "05", "Stakes"],
+  ["my-racing", "06", "My account"],
+  ["racing-notes", "07", "Racing news"],
 ] as const;
+
+type DeskView = "upcoming" | "results";
+type LeaderView = "horses" | "jockeys" | "trainers";
+const DESK_LABELS: Record<DeskView, string> = { upcoming: "Upcoming", results: "Results" };
+const LEADER_LABELS: Record<LeaderView, string> = { horses: "Horses", jockeys: "Jockeys", trainers: "Trainers" };
+
+const whereOfRace = (r: OverviewRace): RaceWhere | null =>
+  r.raceNumber === null ? null : { date: r.date, code: r.code, tz: r.timezone, track: r.slug, race: r.raceNumber, country: r.country };
+const shortDay = (iso: string) => dateLabel(iso, "short").replace(/,? \d{4}$/, "");
+const when = (r: OverviewRace) => [shortDay(r.date), clock(r.startTime)].filter(Boolean).join(" · ");
+const placeName = (r: OverviewResult, n: number) => r.placings.find((p) => p.position === n);
+/** Entries & results show this many rows; "See all" opens Stayblz Data's meetings for the matching days. */
+const DESK_LIMIT = 10;
+const shiftDay = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { data, error, refreshing, refresh } = useRacingOverview();
+  const [version, setVersion] = useState(0);
+  const [track, setTrack] = useState("");
+  const race = useFormFavOverview(track, version);
+  const { data: notesData, error: notesError, refreshing: notesRefreshing, refresh: refreshNotes } = useRacingOverview();
   const [params, setParams] = useSearchParams();
   const query = (params.get("q") ?? "").trim().toLocaleLowerCase();
-  const [track, setTrack] = useState("");
-  const [desk, setDesk] = useState<SectionKey>("racecards");
-  const [leader, setLeader] = useState<SectionKey>("horses");
-  const [stakes, setStakes] = useState<SectionKey>("stakes");
-  const [selected, setSelected] = useState<{
-    record: RacingRecord;
-    kind: SectionKey;
-  } | null>(null);
+  const [desk, setDesk] = useState<DeskView>("upcoming");
+  const [leader, setLeader] = useState<LeaderView>("horses");
+  const [stakes, setStakes] = useState<DeskView>("upcoming");
+  const [note, setNote] = useState<RacingRecord | null>(null);
+  const [dialog, setDialog] = useState<DashOpen | null>(null);
   const now = useNow();
 
-  const rows = (key: SectionKey) => data?.sections[key] ?? [];
-  const tracks = [
-    ...new Set(
-      sectionKeys.flatMap((key) =>
-        rows(key).flatMap((r) => (r.track ? [r.track] : [])),
-      ),
-    ),
-  ].sort();
-  const currentTrack = tracks.includes(track) ? track : "";
-  const filtered = (key: SectionKey) =>
-    rows(key).filter(
-      (r) =>
-        (!currentTrack || !r.track || r.track === currentTrack) &&
-        (!query ||
-          [r.name, r.track, r.detail, r.category, r.summary, r.race].some((v) =>
-            v?.toLocaleLowerCase().includes(query),
-          )),
+  const data = race.data;
+  const has = (...values: (string | null | undefined)[]) =>
+    !query || values.some((v) => v?.toLocaleLowerCase().includes(query));
+  const raceMatch = (r: OverviewRace) =>
+    has(r.track, r.raceName, r.raceClass, ...("placings" in r ? (r as OverviewResult).placings.flatMap((p) => [p.name, p.jockey, p.trainer]) : []));
+  const upcoming = (data?.upcoming ?? []).filter(raceMatch);
+  const results = (data?.results ?? []).filter(raceMatch);
+  const stakesUpcoming = (data?.stakes.upcoming ?? []).filter(raceMatch);
+  const stakesResults = (data?.stakes.results ?? []).filter(raceMatch);
+  const horseLeaders = (data?.leaders.horses ?? []).filter((h) => has(h.name, h.trainer, h.jockey));
+  const peopleLeaders = (kind: "jockeys" | "trainers") => (data?.leaders[kind] ?? []).filter((p) => has(p.name));
+  const inForm = (data?.inForm ?? []).filter((h) => has(h.name, h.trainer, h.jockey));
+  const notes = (notesData?.sections.notes ?? []).filter((r) => has(r.name, r.category, r.summary));
+  const featured = stakesUpcoming[0] ?? upcoming[0];
+  // Meetings page: upcoming = today and the next 2 days; results = the last 7 days.
+  const dayNow = data?.today ?? localToday();
+  const deskAll =
+    desk === "upcoming"
+      ? `/stayblz-data?from=${dayNow}&to=${shiftDay(dayNow, 2)}`
+      : `/stayblz-data?from=${shiftDay(dayNow, -6)}&to=${dayNow}`;
+  const deskRows = desk === "upcoming" ? upcoming : results;
+  const stakesAll =
+    stakes === "upcoming"
+      ? `/stayblz-data?from=${dayNow}&to=${shiftDay(dayNow, 2)}`
+      : `/stayblz-data?from=${shiftDay(dayNow, -6)}&to=${dayNow}`;
+  const stakesRows = stakes === "upcoming" ? stakesUpcoming : stakesResults;
+  /** "Showing 10 …" / "N …" with the See all link under a capped table. */
+  const tableFoot = (rows: unknown[], noun: [string, string], all: string, label: string) =>
+    rows.length > 0 && (
+      <div className="gd-table-foot">
+        <span>{rows.length > DESK_LIMIT ? `Showing ${DESK_LIMIT} ${noun[1]}` : `${rows.length} ${rows.length === 1 ? noun[0] : noun[1]}`}</span>
+        <Link className="gd-see-all" to={all}>
+          <span>{label}</span> <Arrow />
+        </Link>
+      </div>
     );
-  const empty =
-    !data && refreshing
-      ? "Loading published records…"
-      : !data && error
-        ? "Records are unavailable. Use Refresh to try again."
-        : query || currentTrack
-          ? "No records match your search or track."
-          : "No racing records added yet.";
-  const open = (record: RacingRecord, kind: SectionKey) =>
-    setSelected({ record, kind });
-  const leaders = [...filtered(leader)].sort((a, b) =>
-    leader === "horses"
-      ? (b.figure ?? -1) - (a.figure ?? -1)
-      : (b.wins ?? -1) - (a.wins ?? -1),
-  );
-  const featured = filtered("stakes")[0] ?? filtered("racecards")[0];
-  const featuredKind = filtered("stakes").length ? "stakes" : "racecards";
-  const insights = [...filtered("horses")]
-    .filter((r) => r.figure !== undefined)
-    .sort((a, b) => (b.figure ?? 0) - (a.figure ?? 0));
-  const topFigure = insights[0]?.figure;
-  const loading = !data && refreshing;
+  const loading = !data && race.refreshing;
+  const disabled = race.enabled === false;
 
+  const empty = loading
+    ? "Loading race data…"
+    : disabled
+      ? "Race data isn't available right now."
+      : !data && race.error
+        ? "Race data is unavailable. Use Refresh to try again."
+        : data?.building
+          ? "Race data is still loading on the server. This can take a minute."
+          : query
+            ? "Nothing matches your search."
+            : "Nothing here right now.";
+  const openRace = (r: OverviewRace) => {
+    const where = whereOfRace(r);
+    if (where) setDialog({ kind: "race", where });
+  };
+  const refresh = () => {
+    setVersion((v) => v + 1);
+    refreshNotes();
+  };
+
+  const topJockey = data?.leaders.jockeys[0];
   const stats: { label: string; value: string; hint: string }[] = [
-    { label: "Racecards", value: String(filtered("racecards").length), hint: "entries loaded" },
-    { label: "Results", value: String(filtered("results").length), hint: "charts loaded" },
-    { label: "Stakes", value: String(filtered("stakes").length), hint: "on the schedule" },
-    { label: "Top figure", value: topFigure !== undefined ? String(topFigure) : "—", hint: insights[0]?.name ?? "speed figure" },
+    { label: "Races today", value: data ? String(data.counts.racesToday) : "—", hint: data ? `${data.counts.meetingsToday} meetings` : "US & Canada" },
+    { label: "Results in", value: data ? String(data.counts.resultsToday) : "—", hint: "today" },
+    { label: "Stakes ahead", value: data ? String(data.counts.stakesAhead) : "—", hint: "next 2 days" },
+    { label: "Top jockey", value: topJockey ? String(topJockey.wins) : "—", hint: topJockey ? `${topJockey.name} · wins` : "last 30 days" },
   ];
 
-  const tabs = (
-    keys: SectionKey[],
-    active: SectionKey,
-    change: (key: SectionKey) => void,
-    label: string,
-  ) => (
+  const seg = <K extends string>(keys: K[], labels: Record<K, string>, active: K, change: (key: K) => void, label: string) => (
     <div className="gd-seg" role="group" aria-label={label}>
       {keys.map((key) => (
-        <button
-          type="button"
-          key={key}
-          aria-pressed={active === key}
-          onClick={() => change(key)}
-        >
-          {sectionNames[key]}
+        <button type="button" key={key} aria-pressed={active === key} onClick={() => change(key)}>
+          {labels[key]}
         </button>
       ))}
     </div>
   );
-  const table = (kind: SectionKey, records = filtered(kind)) => (
-    <div className="gd-table">
-      <RecordTable records={records} kind={kind} empty={empty} onOpen={open} />
+
+  const raceName = (r: OverviewRace) => (
+    <button type="button" className="ov-record-name" onClick={() => openRace(r)} disabled={r.raceNumber === null}>
+      {r.raceName ?? `Race ${r.raceNumber ?? ""}`}
+      <span>{[r.raceNumber ? `Race ${r.raceNumber}` : null, r.raceClass, r.stakes && !/stake/i.test(r.raceClass ?? "") ? "Stakes" : null].filter(Boolean).join(" · ")}</span>
+    </button>
+  );
+  const upcomingTable = (rows: OverviewRace[], label: string) => (
+    <div className="gd-table" role="region" aria-label={label} tabIndex={0}>
+      {rows.length ? (
+        <table className="ov-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Race</th>
+              <th>Track</th>
+              <th>Distance</th>
+              <th>Runners</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={`${r.code}${r.date}${r.slug}${r.raceNumber}`}>
+                <td>{when(r)}</td>
+                <th scope="row">{raceName(r)}</th>
+                <td>
+                  {r.track ?? r.slug}
+                  <small className="gd-cell-sub">{[codeName(r.code), regionName(r.country)].join(" · ")}</small>
+                </td>
+                <td>{r.distance ?? "—"}</td>
+                <td>{r.runners || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="ov-empty" role="status">{empty}</p>
+      )}
     </div>
   );
+  const resultsTable = (rows: OverviewResult[], label: string) => (
+    <div className="gd-table" role="region" aria-label={label} tabIndex={0}>
+      {rows.length ? (
+        <table className="ov-table">
+          <thead>
+            <tr>
+              <th>Race</th>
+              <th>Winner</th>
+              <th>Jockey / driver</th>
+              <th>Trainer</th>
+              <th>2nd · 3rd</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const win = placeName(r, 1);
+              return (
+                <tr key={`${r.code}${r.date}${r.slug}${r.raceNumber}`}>
+                  <th scope="row">
+                    {raceName(r)}
+                    <small className="gd-cell-sub">{[shortDay(r.date), r.track ?? r.slug].join(" · ")}</small>
+                  </th>
+                  <td>
+                    {win ? (
+                      <button type="button" className="ov-text-button gd-winner" onClick={() => setDialog({ kind: "horse", name: win.name, code: r.code })}>
+                        {win.name}
+                      </button>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td>{win?.jockey ?? "—"}</td>
+                  <td>{win?.trainer ?? "—"}</td>
+                  <td>{[placeName(r, 2)?.name, placeName(r, 3)?.name].filter(Boolean).join(" · ") || "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      ) : (
+        <p className="ov-empty" role="status">{empty}</p>
+      )}
+    </div>
+  );
+  const leaderTable = () => {
+    const horses = leader === "horses";
+    const people = horses ? [] : peopleLeaders(leader);
+    const count = horses ? horseLeaders.length : people.length;
+    return (
+      <div className="gd-table" role="region" aria-label={`${LEADER_LABELS[leader]} leaders`} tabIndex={0}>
+        {count ? (
+          <table className="ov-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Name</th>
+                <th>{horses ? "Starts" : "Rides"}</th>
+                <th>Wins</th>
+                <th>Win %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {horses
+                ? horseLeaders.map((h, i) => (
+                    <tr key={`${h.code}${h.name}`}>
+                      <td>{String(i + 1).padStart(2, "0")}</td>
+                      <th scope="row">
+                        <button type="button" className="ov-record-name" onClick={() => setDialog({ kind: "horse", name: h.name, code: h.code })}>
+                          {h.name}
+                          <span>{[codeName(h.code), h.trainer].filter(Boolean).join(" · ")}</span>
+                        </button>
+                      </th>
+                      <td>{h.starts}</td>
+                      <td>{h.wins}</td>
+                      <td>{pct(h.winRate)}</td>
+                    </tr>
+                  ))
+                : people.map((p, i) => (
+                    <tr key={p.name}>
+                      <td>{String(i + 1).padStart(2, "0")}</td>
+                      <th scope="row">
+                        <button
+                          type="button"
+                          className="ov-record-name"
+                          onClick={() => setDialog({ kind: "stats", target: { kind: p.kind, name: p.name, summary: p } })}
+                        >
+                          {p.name}
+                          <span>{p.upcoming ? `${p.upcoming} entered` : `${p.tracks} tracks`}</span>
+                        </button>
+                      </th>
+                      <td>{p.rides}</td>
+                      <td>{p.wins}</td>
+                      <td>{pct(p.winRate)}</td>
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="ov-empty" role="status">{empty}</p>
+        )}
+      </div>
+    );
+  };
 
-  const statusText = error
-    ? `${error}${data ? " Showing last loaded records." : ""}`
-    : !data
-      ? "Loading racing records…"
-      : sectionKeys.every((key) => rows(key).length === 0)
-        ? "No racing records have been added yet."
-        : `Published records · Checked ${new Date(data.fetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  const updated = data?.updatedAt ? new Date(data.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null;
+  const statusError = !!race.error || disabled;
+  const statusText = disabled
+    ? "Race data isn't available right now."
+    : race.error
+      ? `${race.error}${data ? " Showing the last race data loaded." : ""}`
+      : !data
+        ? "Loading US & Canada race data…"
+        : data.building
+          ? "Race data is loading on the server for the first time…"
+          : `US & Canada race data${updated ? ` · Updated ${updated}` : ""}`;
+  const trackOptions = data?.tracks ?? [];
 
   return (
     <div className="gd">
@@ -189,7 +361,7 @@ export default function Dashboard() {
           <h1>
             Overview<span>.</span>
           </h1>
-          <p>Racing information. Your follows. A clearer view of what’s next.</p>
+          <p>US &amp; Canada racing. Your horses. A clearer view of what’s next.</p>
         </div>
         <div className="gd-clock">
           <span>{new Intl.DateTimeFormat("en", { weekday: "long" }).format(now)}</span>
@@ -219,35 +391,33 @@ export default function Dashboard() {
 
       {/* ---------- Toolbar ---------- */}
       <div className="gd-toolbar gx-glass">
-        <div
-          className={`gd-status${error ? " is-error" : ""}`}
-          role={error ? "alert" : "status"}
-        >
+        {/* A background data load: announced politely (status), never as an alert. */}
+        <div className={`gd-status${statusError ? " is-error" : ""}`} role="status">
           <span className="gd-status-dot" aria-hidden="true" />
           <span>{statusText}</span>
         </div>
         <div className="gd-toolbar-controls">
           <label className="gd-select">
             <span>Track</span>
-            <select
-              aria-label="Filter overview by track"
-              value={currentTrack}
-              onChange={(e) => setTrack(e.target.value)}
-            >
+            <select aria-label="Filter overview by track" value={track} onChange={(e) => setTrack(e.target.value)}>
               <option value="">All tracks</option>
-              {tracks.map((t) => (
-                <option key={t}>{t}</option>
+              {track && !trackOptions.some((t) => t.slug === track) && <option value={track}>{track}</option>}
+              {trackOptions.map((t) => (
+                <option key={t.slug} value={t.slug}>
+                  {t.name ?? t.slug}
+                  {t.country ? ` (${t.country.toUpperCase()})` : ""}
+                </option>
               ))}
             </select>
           </label>
           <button
             type="button"
-            className={`gd-btn${refreshing ? " is-busy" : ""}`}
+            className={`gd-btn${race.refreshing || notesRefreshing ? " is-busy" : ""}`}
             onClick={refresh}
-            disabled={refreshing}
+            disabled={race.refreshing}
           >
             <RefreshIcon />
-            {refreshing ? "Refreshing…" : "Refresh"}
+            {race.refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>
@@ -256,9 +426,7 @@ export default function Dashboard() {
         <div className="gd-search-summary" role="status">
           <div>
             <strong>Search: “{params.get("q")}”</strong>
-            <span>
-              Search covers the records shown here. Open a section to see all records.
-            </span>
+            <span>Search covers what's shown here. Open Stayblz Data to search every horse and person.</span>
           </div>
           <button type="button" className="gd-btn gd-btn-ghost" onClick={() => setParams({})}>
             Clear search
@@ -279,46 +447,52 @@ export default function Dashboard() {
       <div className="gd-layout">
         <div className="gd-primary">
           <Section
-            id="racing-desk"
+            id="your-horses"
             number="01"
+            title="Your horses"
+            subtitle="Tracked in Virtual Stayblz and your own horses: who's entered and how they ran"
+            link="/my-racing?tab=virtual"
+          >
+            <YourHorsesPanel version={version} query={query} onRace={(where) => setDialog({ kind: "race", where })} />
+          </Section>
+
+          <Section
+            id="racing-desk"
+            number="02"
             title="Entries & results"
-            subtitle="Race entries, results and workouts"
-            link="/racing-records/racecards"
+            subtitle="US & Canada race cards and results"
+            link={deskAll}
           >
             <div className="gd-racing-top">
               <div className="gd-feature">
-                <div className="gd-kicker">Upcoming race</div>
-                <h3>{featured?.name ?? "Upcoming races"}</h3>
+                <div className="gd-kicker">{featured?.stakes ? "Next stakes race" : "Next race"}</div>
+                <h3>{featured?.raceName ?? (featured ? `Race ${featured.raceNumber}` : "Upcoming races")}</h3>
                 {featured ? (
                   <ul className="gd-meta">
-                    {[featured.track, featured.date, featured.distance, featured.surface]
+                    {[featured.track, when(featured), featured.distance, featured.raceClass, featured.runners ? `${featured.runners} runners` : null]
                       .filter(Boolean)
                       .map((m) => (
                         <li key={String(m)}>{m}</li>
                       ))}
                   </ul>
                 ) : (
-                  <p>See race entries and upcoming stakes races.</p>
+                  <p>{loading ? "Loading race data…" : "See today's meetings and race cards in Stayblz Data."}</p>
                 )}
-                {featured ? (
-                  <button
-                    type="button"
-                    className="gd-btn gd-btn-primary"
-                    onClick={() => open(featured, featuredKind)}
-                  >
-                    Race details <Arrow />
+                {featured && featured.raceNumber !== null ? (
+                  <button type="button" className="gd-btn gd-btn-primary" onClick={() => openRace(featured)}>
+                    Race card <Arrow />
                   </button>
                 ) : (
-                  <Link className="gd-btn gd-btn-primary" to="/racing-records/stakes">
-                    Explore stakes <Arrow />
+                  <Link className="gd-btn gd-btn-primary" to="/stayblz-data">
+                    See meetings <Arrow />
                   </Link>
                 )}
               </div>
               <div className="gd-race-links">
                 {[
-                  ["/racing-records/racecards", "Racecards", "Horses entered and race details"],
-                  ["/racing-records/results", "Results & charts", "Race results"],
-                  ["/racing-records/workouts", "Workouts", "Training times"],
+                  ["/stayblz-data", "Meetings", "Race cards, form and results"],
+                  ["/stayblz-data?tab=horses", "Horses", "Every US & Canada horse A–Z"],
+                  ["/stayblz-data?tab=stats", "Jockeys & trainers", "30-day stats"],
                 ].map(([to, title, sub]) => (
                   <Link key={to} to={to} className="gd-tile">
                     <span>
@@ -331,109 +505,100 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="gd-panel-toolbar">
-              {tabs(["racecards", "results", "workouts"], desk, setDesk, "Racing records view")}
-              <span>Racing records</span>
+              {seg<DeskView>(["upcoming", "results"], DESK_LABELS, desk, setDesk, "Entries and results view")}
+              <span>{desk === "upcoming" ? "Next races, soonest first" : "Latest results"}</span>
             </div>
-            {table(desk)}
+            {desk === "upcoming"
+              ? upcomingTable(upcoming.slice(0, DESK_LIMIT), "Upcoming races")
+              : resultsTable(results.slice(0, DESK_LIMIT), "Latest results")}
+            {desk === "upcoming"
+              ? tableFoot(deskRows, ["race", "next races"], deskAll, "See all entries")
+              : tableFoot(deskRows, ["result", "latest results"], deskAll, "See all results")}
           </Section>
 
-          <Section
-            id="leaderboard"
-            number="02"
-            title="Leaderboard"
-            subtitle="Horses, jockeys and trainers"
-            link="/racing-records/horses"
-          >
+          <Section id="leaderboard" number="03" title="Leaders" subtitle="Horses, jockeys and trainers" link="/stayblz-data?tab=stats">
             <div className="gd-panel-toolbar">
-              {tabs(["horses", "jockeys", "trainers"], leader, setLeader, "Leaderboard view")}
-              <span>
-                {leader === "horses" ? "By speed figure" : "By wins"} · loaded records
-              </span>
+              {seg<LeaderView>(["horses", "jockeys", "trainers"], LEADER_LABELS, leader, setLeader, "Leaderboard view")}
+              <span>By wins · US &amp; Canada, last 30 days</span>
             </div>
-            {table(leader, leaders)}
+            {leaderTable()}
           </Section>
 
-          <Section
-            id="daily-insights"
-            number="03"
-            title="Speed figures"
-            subtitle="Compare horse performance"
-            link="/racing-records/horses"
-          >
-            {insights.length ? (
-              <div className="gd-insights">
-                {insights.slice(0, 3).map((r, i) => (
-                  <button
-                    type="button"
-                    key={r.id}
-                    className={`gd-insight${i === 0 ? " is-top" : ""}`}
-                    onClick={() => open(r, "horses")}
-                  >
-                    <span className="gd-insight-label">
-                      {i === 0 ? "Highest speed figure" : `Rank ${i + 1}`}
-                    </span>
-                    <strong className="gd-insight-figure">
-                      {r.figure}
-                      <small>speed fig.</small>
-                    </strong>
-                    <span
-                      className="gd-meter"
-                      aria-hidden="true"
-                      style={{
-                        ["--gd-fill" as string]: `${topFigure ? Math.max(8, ((r.figure ?? 0) / topFigure) * 100) : 0}%`,
-                      }}
-                    />
-                    <b>
-                      {r.name} <Arrow />
-                    </b>
-                    <span className="gd-insight-meta">
-                      {r.starts ?? "—"} starts · {r.wins ?? "—"} wins
-                    </span>
-                  </button>
-                ))}
-              </div>
+          <Section id="in-form" number="04" title="In form" subtitle="Horses winning and placing most often" link="/stayblz-data?tab=horses">
+            {inForm.length ? (
+              <>
+                <div className="gd-insights">
+                  {inForm.slice(0, 3).map((h, i) => (
+                    <button
+                      type="button"
+                      key={`${h.code}${h.name}`}
+                      className={`gd-insight${i === 0 ? " is-top" : ""}`}
+                      onClick={() => setDialog({ kind: "horse", name: h.name, code: h.code })}
+                    >
+                      <span className="gd-insight-label">{i === 0 ? "Most in form" : `Rank ${i + 1}`}</span>
+                      <strong className="gd-insight-figure">
+                        {h.wins}
+                        <small>{h.wins === 1 ? "win" : "wins"} from {h.starts}</small>
+                      </strong>
+                      <span
+                        className="gd-meter"
+                        aria-hidden="true"
+                        style={{ ["--gd-fill" as string]: `${Math.max(8, Math.round(h.winRate * 100))}%` }}
+                      />
+                      <b>
+                        {h.name} <Arrow />
+                      </b>
+                      <span className="gd-insight-meta">
+                        Form {h.form || "—"} · {pct(h.winRate)} wins
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {inForm.length > 3 && (
+                  <ol className="gd-form-list" start={4}>
+                    {inForm.slice(3).map((h) => (
+                      <li key={`${h.code}${h.name}`}>
+                        <button type="button" className="ov-text-button" onClick={() => setDialog({ kind: "horse", name: h.name, code: h.code })}>
+                          {h.name}
+                        </button>
+                        <span>
+                          {h.wins}–{h.starts} · Form {h.form || "—"}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </>
             ) : (
               <p className="gd-empty">{empty}</p>
             )}
             <p className="gd-footnote">
-              Based on the records shown here. This is not a full season ranking.
+              From US &amp; Canada results over the last 30 days (two runs or more). Form shows the latest finish first.
             </p>
           </Section>
 
-          <Section
-            id="stakes"
-            number="04"
-            title="Stakes schedule"
-            subtitle="Stakes entries and results"
-            link="/racing-records/stakes"
-          >
+          <Section id="stakes" number="05" title="Stakes" subtitle="Stakes and graded races" link={stakesAll}>
             <div className="gd-panel-toolbar">
-              {tabs(["stakes", "results"], stakes, setStakes, "Stakes view")}
+              {seg<DeskView>(["upcoming", "results"], DESK_LABELS, stakes, setStakes, "Stakes view")}
             </div>
-            {table(stakes)}
+            {stakes === "upcoming"
+              ? upcomingTable(stakesUpcoming.slice(0, DESK_LIMIT), "Upcoming stakes races")
+              : resultsTable(stakesResults.slice(0, DESK_LIMIT), "Stakes results")}
+            {stakes === "upcoming"
+              ? tableFoot(stakesRows, ["stakes race", "next stakes races"], stakesAll, "See all stakes")
+              : tableFoot(stakesRows, ["stakes result", "latest stakes results"], stakesAll, "See all stakes results")}
           </Section>
 
-          {/* Section 05 renders its own markup; the wrapper gives it the glass treatment. */}
+          {/* Section 06 renders its own markup; the wrapper gives it the glass treatment. */}
           <div className="gd-legacy gx-glass">
             <MyRacingPanel />
           </div>
 
-          <Section
-            id="racing-notes"
-            number="06"
-            title="Racing news"
-            subtitle="News and race updates"
-            link="/racing-records/notes"
-          >
-            {filtered("notes").length ? (
+          <Section id="racing-notes" number="07" title="Racing news" subtitle="News and race updates" link="/racing-records/notes">
+            {notes.length ? (
               <div className="gd-notes">
-                {filtered("notes").map((r) => (
-                  <button
-                    type="button"
-                    key={r.id}
-                    className="gd-note"
-                    onClick={() => open(r, "notes")}
-                  >
+                {notes.map((r) => (
+                  <button type="button" key={r.id} className="gd-note" onClick={() => setNote(r)}>
                     <span className="gd-chip">{r.category ?? "Racing note"}</span>
                     <h3>{r.name}</h3>
                     <p>{r.summary}</p>
@@ -444,7 +609,15 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <p className="gd-empty">{empty}</p>
+              <p className="gd-empty">
+                {!notesData && notesRefreshing
+                  ? "Loading racing news…"
+                  : !notesData && notesError
+                    ? "Racing news is unavailable. Use Refresh to try again."
+                    : query
+                      ? "No news matches your search."
+                      : "No racing news yet."}
+              </p>
             )}
           </Section>
         </div>
@@ -496,11 +669,12 @@ export default function Dashboard() {
             </div>
             <div className="gd-directory">
               {[
+                ["/stayblz-data", "Today's meetings & race cards"],
+                ["/stayblz-data?tab=horses", "Horses A–Z"],
+                ["/stayblz-data?tab=stats", "Jockey statistics"],
+                ["/stayblz-data?tab=stats&kind=trainer", "Trainer statistics"],
+                ["/my-racing?tab=virtual&vtab=racing", "Track a racing horse"],
                 ["/racing-records/notes", "Race day changes & notices"],
-                ["/racing-records/workouts", "Workouts"],
-                ["/racing-records/stakes", "Upcoming stakes"],
-                ["/racing-records/jockeys", "Jockey statistics"],
-                ["/racing-records/trainers", "Trainer statistics"],
               ].map(([to, label]) => (
                 <Link key={to} to={to}>
                   {label}
@@ -532,9 +706,9 @@ export default function Dashboard() {
               <span className="gd-chip gd-chip-warn">Preview</span>
             </div>
             <p>
-              Racing records update when new data is added. Race videos,
-              past performance reports, betting pools, and paid products are
-              not available yet.
+              Race data covers the United States and Canada: about the last
+              30 days and the next 2, updated every 30 minutes. Race videos,
+              past performance reports and betting pools are not available yet.
             </p>
             <p>
               You can use follows, notes, and personal messages without joining
@@ -544,8 +718,11 @@ export default function Dashboard() {
         </aside>
       </div>
 
-      {selected && (
-        <RecordDialog {...selected} onClose={() => setSelected(null)} />
+      {note && <RecordDialog record={note} kind="notes" onClose={() => setNote(null)} />}
+      {dialog && (
+        <Suspense fallback={null}>
+          <DashboardDialogs open={dialog} onOpen={setDialog} />
+        </Suspense>
       )}
     </div>
   );

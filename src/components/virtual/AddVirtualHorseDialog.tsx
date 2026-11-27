@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ApiError } from "../../api";
-import { formFav, type HorseRow, type IndexCode } from "../stayblz-data/formfavApi";
+import { formFav, type HorseRow, type IndexCode, type OlderHorse } from "../stayblz-data/formfavApi";
+import { olderHorseFacts, useOlderHorses } from "../stayblz-data/OlderResults";
 import Modal from "../Modal";
 import DialogHead from "../ui/DialogHead";
 import { TopLayer } from "../community/HorseShare";
@@ -76,7 +77,15 @@ export default function AddVirtualHorseDialog({
         {mode === "stayblz" ? (
           <StayblzSearch busy={busy} onAdd={(h) => void add({ source: "community", communityHorseId: h.id }, h.id)} />
         ) : mode === "racing" ? (
-          <RaceDataSearch busy={busy} onAdd={(h) => void add({ source: "formfav", formfavName: h.name, formfavCode: h.code }, `${h.code}|${h.name}`)} />
+          <RaceDataSearch
+            busy={busy}
+            onAdd={(h) =>
+              void add(
+                { source: "formfav", formfavName: h.name, formfavCode: h.code, ...("runnerId" in h && h.runnerId ? { formfavRunnerId: h.runnerId } : {}) },
+                `${h.code}|${h.name}`,
+              )
+            }
+          />
         ) : (
           <ManualHorseForm busy={!!busy} submitLabel="Add horse" onSubmit={(input) => void add({ source: "manual", ...input }, "manual")} />
         )}
@@ -150,9 +159,10 @@ const shortDay = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
  * US and Canada race data (FormFav race cards, about the last 30 days and the next 1–2), the same horses as the
  * Racing horses tab. Only these racing horses can be tracked; added ones live in Racing horses.
  */
-function RaceDataSearch({ busy, onAdd }: { busy: string | null; onAdd: (h: HorseRow) => void }) {
+function RaceDataSearch({ busy, onAdd }: { busy: string | null; onAdd: (h: HorseRow | OlderHorse) => void }) {
   const [text, setText] = useState("");
   const q = useDebounced(text.trim());
+  const older = useOlderHorses(q);
   const [horses, setHorses] = useState<HorseRow[] | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -172,7 +182,7 @@ function RaceDataSearch({ busy, onAdd }: { busy: string | null; onAdd: (h: Horse
   return (
     <div className="vs-search">
       <label className="vs-field">
-        <span>Search US and Canada race cards (last 30 days and upcoming)</span>
+        <span>Search US and Canada race cards (last 30 days and upcoming; older horses too)</span>
         <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="At least 2 letters" maxLength={60} data-autofocus />
       </label>
       {error ? (
@@ -182,7 +192,10 @@ function RaceDataSearch({ busy, onAdd }: { busy: string | null; onAdd: (h: Horse
       ) : horses === null ? (
         <p className="vs-muted" aria-busy="true">Searching…</p>
       ) : horses.length === 0 ? (
-        <p className="vs-muted">No horse called “{q}” raced or was entered in the US or Canada lately. You can enter it by hand instead.</p>
+        <p className="vs-muted">
+          No horse called “{q}” raced or was entered in the US or Canada in the last 30 days.
+          {q.length >= 3 ? " Older horses are below; or enter it by hand." : " You can enter it by hand instead."}
+        </p>
       ) : (
         <ul className="vs-results">
           {horses.map((h) => {
@@ -214,6 +227,28 @@ function RaceDataSearch({ busy, onAdd }: { busy: string | null; onAdd: (h: Horse
             );
           })}
         </ul>
+      )}
+      {q.length >= 3 && older.rows && older.rows.length > 0 && (
+        <>
+          <p className="vs-muted">Older horses (not raced in the last 30 days): you'll get an alert when one is entered again.</p>
+          <ul className="vs-results" aria-label="Older horses">
+            {older.rows.map((h) => {
+              const key = `${h.code}|${h.name}`;
+              return (
+                <li key={`${h.source}|${h.key}|${h.runnerId ?? ""}`}>
+                  <span className="vs-thumb" aria-hidden="true">{initials(h.name)}</span>
+                  <span className="vs-result-text">
+                    <strong>{h.name}</strong>
+                    <small>{olderHorseFacts(h)}</small>
+                  </span>
+                  <button type="button" className="vs-btn vs-btn-primary" disabled={!!busy} onClick={() => onAdd(h)} aria-label={`Add ${h.name}`}>
+                    {busy === key ? "Adding…" : "Add"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </div>
   );

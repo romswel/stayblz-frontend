@@ -9,8 +9,9 @@ import "./virtual.css";
 type Target =
   | { communityHorseId: string; racingHorseId?: undefined; formfav?: undefined }
   | { racingHorseId: string; communityHorseId?: undefined; formfav?: undefined }
-  /** A race-data horse (Stayblz Data → Horses): added to the list's Racing horses tab. */
-  | { formfav: { name: string; code: IndexCode }; communityHorseId?: undefined; racingHorseId?: undefined };
+  /** A race-data horse (Stayblz Data → Horses): added to the list's Racing horses tab. runnerId: an older horse found by
+   * FormFav's search (picks the US/Canada one of that name). */
+  | { formfav: { name: string; code: IndexCode; runnerId?: number | null }; communityHorseId?: undefined; racingHorseId?: undefined };
 type RowState = { status: "loading" | "ready" | "saving" | "error"; added: boolean; id: string | null; error: string };
 
 const fresh: RowState = { status: "loading", added: false, id: null, error: "" };
@@ -65,7 +66,12 @@ export default function AddToVirtualButton({ target, name, compact = false }: { 
         target.communityHorseId
           ? { source: "community", communityHorseId: target.communityHorseId }
           : target.formfav
-            ? { source: "formfav", formfavName: target.formfav.name, formfavCode: target.formfav.code }
+            ? {
+                source: "formfav",
+                formfavName: target.formfav.name,
+                formfavCode: target.formfav.code,
+                ...(target.formfav.runnerId ? { formfavRunnerId: target.formfav.runnerId } : {}),
+              }
             : { source: "racing", racingHorseId: target.racingHorseId! },
       );
       if (g === generation.current) setState((s) => ({ ...s, [mode]: { status: "ready", added: true, id: r.horse.id, error: "" } }));

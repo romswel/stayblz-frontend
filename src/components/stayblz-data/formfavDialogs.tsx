@@ -192,29 +192,47 @@ export function StatsDialog({ target, onClose }: { target: StatsTarget; onClose:
 export function PersonStatsView({
   target,
 }: {
-  target: { kind: "jockey" | "trainer"; name: string; code?: RaceCode; summary?: PersonRow };
+  target: { kind: "jockey" | "trainer"; name: string; code?: RaceCode; summary?: PersonRow; older?: boolean };
 }) {
   const { data, error, retry } = useDetail(() =>
-    formFav.person(target.kind, target.name, target.code === "greyhounds" ? undefined : target.code),
+    formFav.person(target.kind, target.name, target.code === "greyhounds" ? undefined : target.code, target.older),
   );
+  const career = data && !data.noStats ? data : null;
   const s = target.summary;
   return (
     <>
       <header className="sd-detail-head">
         <span className="sd-track">{target.kind}</span>
         <h2>{data?.name ?? target.name}</h2>
-        {data && (
+        {career && (
           <p className="sd-facts">
-            Career: {n(data.totalStarts)} starts · {n(data.totalWins)} wins · {pct(data.winRate)} win · {pct(data.placeRate)} place
+            Career: {n(career.totalStarts)} starts · {n(career.totalWins)} wins · {pct(career.winRate)} win · {pct(career.placeRate)} place
           </p>
         )}
-        {data && (data.bestCondition || data.worstCondition) && (
+        {data?.noStats && <p className="sd-facts">FormFav has no career stats for this person.</p>}
+        {data?.countryConfirmed === false && <span className="sd-pill">FormFav doesn't confirm where this person rides</span>}
+        {career && (career.bestCondition || career.worstCondition) && (
           <p className="sd-facts">
-            Best on {text(data.bestCondition)} · weakest on {text(data.worstCondition)}
+            Best on {text(career.bestCondition)} · weakest on {text(career.worstCondition)}
           </p>
         )}
         {data?.ambiguous && <span className="sd-pill">Shared name: these stats may mix people</span>}
       </header>
+      {data?.history && (
+        <>
+          <h3>Stayblz history (US &amp; Canada)</h3>
+          <Facts
+            items={[
+              [target.kind === "jockey" ? "Rides" : "Runners", n(data.history.rides)],
+              ["Wins", n(data.history.wins)],
+              ["Top 3", n(data.history.places)],
+              ["Tracks", n(data.history.tracks)],
+              ["First", data.history.firstRide ? dateLabel(data.history.firstRide, "short") : "—"],
+              ["Last", data.history.lastRide ? dateLabel(data.history.lastRide, "short") : "—"],
+            ]}
+          />
+        </>
+      )}
       {s && (
         <>
           <h3>US &amp; Canada, last 30 days</h3>
@@ -236,20 +254,20 @@ export function PersonStatsView({
         ) : (
           <DetailState error={error} retry={retry} />
         )
-      ) : (
+      ) : !career ? null : (
         <>
           <h3>Career by track</h3>
           <Table
             head={["Track", "Starts", "Wins", "Win", "Place"]}
-            rows={(data.tracks ?? []).map((r, i) => ({ key: `${r.venue}-${i}`, cells: [text(r.venue), ...rateCols(r)] }))}
+            rows={(career.tracks ?? []).map((r, i) => ({ key: `${r.venue}-${i}`, cells: [text(r.venue), ...rateCols(r)] }))}
             empty="Not enough data."
           />
-          {data.conditions && data.conditions.length > 0 && (
+          {career.conditions && career.conditions.length > 0 && (
             <>
               <h3>Track conditions</h3>
               <Table
                 head={["Condition", "Starts", "Wins", "Win", "Place"]}
-                rows={data.conditions.map((r, i) => ({ key: `${r.condition}-${i}`, cells: [text(r.condition), ...rateCols(r)] }))}
+                rows={career.conditions.map((r, i) => ({ key: `${r.condition}-${i}`, cells: [text(r.condition), ...rateCols(r)] }))}
               />
             </>
           )}
