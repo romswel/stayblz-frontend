@@ -32,6 +32,8 @@ export type WatchHorse = {
     trainer: string | null;
     jockey: string | null;
     recent: { date: string; position: number | null; track: string | null; fieldSize: number | null }[];
+    /** Newer servers: no run in the last 30 days, so the last run(s) come from the Stayblz race history. */
+    fromHistory?: boolean;
   } | null;
 };
 export type RaceWatch = { horses: WatchHorse[]; building: boolean; updatedAt: string | null };

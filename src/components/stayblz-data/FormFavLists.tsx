@@ -7,6 +7,8 @@ import { RaceDialog, RunnerStatsView } from "./formfavDialogs";
 import { COUNTRIES, Table, Toggles, clock, listParam, listValue, n, pct, regionName, type StatsTarget } from "./formfavUi";
 import PagedList from "./PagedList";
 import AddToVirtualButton from "../virtual/AddToVirtualButton";
+import { OlderHorseDialog, OlderHorses, OlderPeople } from "./OlderResults";
+import type { OlderHorse } from "./formfavApi";
 
 /**
  * Stayblz Data → Horses and Stats: A–Z lists, 20 per scroll, built on our server from FormFav's US/Canada race cards
@@ -61,6 +63,7 @@ export function HorsesView({ params, set, onStats }: { params: URLSearchParams; 
   const [meta, setMeta] = useState<ListMeta | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [open, setOpen] = useState<{ name: string; code: IndexCode } | null>(null);
+  const [olderOpen, setOlderOpen] = useState<OlderHorse | null>(null);
   const [race, setRace] = useState<RaceWhere | null>(null);
 
   return (
@@ -81,9 +84,21 @@ export function HorsesView({ params, set, onStats }: { params: URLSearchParams; 
         idOf={(h) => `${h.code}|${h.name}`}
         noun="horses"
         empty={meta?.building ? "Gathering horses…" : "No horses match"}
-        emptyHint={meta?.building ? "The list fills in as the last 30 days are read. Try Refresh in a minute." : "Try another name, code or country."}
+        emptyHint={
+          meta?.building
+            ? "The list fills in as the last 30 days are read. Try Refresh in a minute."
+            : query.length >= 3
+              ? "Not in the last 30 days of US and Canada racing. Older horses are listed below."
+              : "Try another name, code or country. Type 3 letters or more to search older horses too."
+        }
         render={(h) => <HorseCard horse={h} onOpen={() => setOpen({ name: h.name, code: h.code })} />}
       />
+      <OlderHorses
+        q={query}
+        codes={codes}
+        onOpen={(h) => (h.source === "history" ? setOpen({ name: h.name, code: h.code }) : setOlderOpen(h))}
+      />
+      {olderOpen && <OlderHorseDialog horse={olderOpen} onClose={() => setOlderOpen(null)} />}
       {open && (
         <HorseDialog
           name={open.name}
@@ -166,9 +181,19 @@ export function HorseDialog({
               {horse.countries.map(regionName).join(" · ")} · {codeLabel(horse.code)}
             </span>
             <h2>{horse.name}</h2>
-            <p className="sd-facts">
-              Last 30 days in the US &amp; Canada: {horse.starts} starts · {horse.wins} wins · {horse.places} top 3
-            </p>
+            {horse.inWindow === false ? (
+              <p className="sd-facts">Not raced in the US or Canada in the last 30 days{horse.lastStart ? ` · last raced ${shortDay(horse.lastStart.date)}` : ""}</p>
+            ) : (
+              <p className="sd-facts">
+                Last 30 days in the US &amp; Canada: {horse.starts} starts · {horse.wins} wins · {horse.places} top 3
+              </p>
+            )}
+            {horse.archive && (
+              <p className="sd-facts">
+                Stayblz history since {dateLabel(horse.archive.since, "short")}: {horse.archive.starts} starts · {horse.archive.wins} wins ·{" "}
+                {horse.archive.places} top 3
+              </p>
+            )}
             {(horse.jockey || horse.trainer) && (
               <p className="sd-facts">{[horse.jockey && `Jockey ${horse.jockey}`, horse.trainer && `Trainer ${horse.trainer}`].filter(Boolean).join(" · ")}</p>
             )}
@@ -288,11 +313,18 @@ export function PeopleView({ params, set, onStats }: { params: URLSearchParams; 
         idOf={(p) => p.name}
         noun={noun}
         empty={meta?.building ? `Gathering ${noun}…` : `No ${noun} match`}
-        emptyHint={meta?.building ? "The list fills in as the last 30 days are read. Try Refresh in a minute." : "Try another name, code or country."}
+        emptyHint={
+          meta?.building
+            ? "The list fills in as the last 30 days are read. Try Refresh in a minute."
+            : query.length >= 3
+              ? `Not in the last 30 days of US and Canada racing. Older ${noun} are listed below.`
+              : `Try another name, code or country. Type 3 letters or more to search older ${noun} too.`
+        }
         render={(p) => (
           <PersonCard person={p} onOpen={() => onStats({ kind, name: p.name, summary: p, code: codes.length === 1 ? codes[0] : undefined })} />
         )}
       />
+      <OlderPeople kind={kind} q={query} onOpen={(p) => onStats({ kind, name: p.name, older: p.source === "formfav" })} />
     </>
   );
 }

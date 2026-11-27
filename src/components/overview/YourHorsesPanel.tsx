@@ -160,7 +160,8 @@ export default function YourHorsesPanel({
                       <Link to={`/account/horses?edit=${h.lists[0]?.id ?? ""}`}>Link it</Link>
                     </p>
                   )}
-                  {h.linked && !h.race && <p className="gd-yh-line gd-yh-muted">No US or Canada runs in the last 30 days.</p>}
+                  {h.race?.fromHistory && <p className="gd-yh-line gd-yh-muted">No runs in the last 30 days (last run from Stayblz history).</p>}
+                  {h.linked && !h.race && <p className="gd-yh-line gd-yh-muted">No US or Canada runs since Stayblz started keeping results.</p>}
                 </div>
                 {h.race && (
                   <div className="gd-yh-side">

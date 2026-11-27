@@ -144,3 +144,9 @@
   .sd-ff-days { grid-template-columns: 1fr; }
   .sd-ff-filter .cm-seg button { padding: 0 6px; font-size: 0.78rem; }
 }
+
+/* Older horses / people (not in the 30-day window): Stayblz race history, then FormFav's search. */
+.sd-older { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--gx-border-strong, var(--line)); }
+.sd-older-head h3 { margin: 0; font-size: 1rem; }
+.sd-older-head p { margin: 2px 0 0; font-size: 0.82rem; color: var(--gx-muted, var(--muted)); }
+.sd-older-card .sd-track { color: var(--gx-warn, var(--gold)); }

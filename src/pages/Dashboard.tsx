@@ -137,6 +137,21 @@ export default function Dashboard() {
       ? `/stayblz-data?from=${dayNow}&to=${shiftDay(dayNow, 2)}`
       : `/stayblz-data?from=${shiftDay(dayNow, -6)}&to=${dayNow}`;
   const deskRows = desk === "upcoming" ? upcoming : results;
+  const stakesAll =
+    stakes === "upcoming"
+      ? `/stayblz-data?from=${dayNow}&to=${shiftDay(dayNow, 2)}`
+      : `/stayblz-data?from=${shiftDay(dayNow, -6)}&to=${dayNow}`;
+  const stakesRows = stakes === "upcoming" ? stakesUpcoming : stakesResults;
+  /** "Showing 10 …" / "N …" with the See all link under a capped table. */
+  const tableFoot = (rows: unknown[], noun: [string, string], all: string, label: string) =>
+    rows.length > 0 && (
+      <div className="gd-table-foot">
+        <span>{rows.length > DESK_LIMIT ? `Showing ${DESK_LIMIT} ${noun[1]}` : `${rows.length} ${rows.length === 1 ? noun[0] : noun[1]}`}</span>
+        <Link className="gd-see-all" to={all}>
+          <span>{label}</span> <Arrow />
+        </Link>
+      </div>
+    );
   const loading = !data && race.refreshing;
   const disabled = race.enabled === false;
 
@@ -496,18 +511,9 @@ export default function Dashboard() {
             {desk === "upcoming"
               ? upcomingTable(upcoming.slice(0, DESK_LIMIT), "Upcoming races")
               : resultsTable(results.slice(0, DESK_LIMIT), "Latest results")}
-            {deskRows.length > 0 && (
-              <div className="gd-table-foot">
-                <span>
-                  {deskRows.length > DESK_LIMIT
-                    ? `Showing ${DESK_LIMIT} ${desk === "upcoming" ? "next races" : "latest results"}`
-                    : `${deskRows.length} ${desk === "upcoming" ? (deskRows.length === 1 ? "race" : "races") : deskRows.length === 1 ? "result" : "results"}`}
-                </span>
-                <Link className="gd-see-all" to={deskAll}>
-                  <span>{desk === "upcoming" ? "See all entries" : "See all results"}</span> <Arrow />
-                </Link>
-              </div>
-            )}
+            {desk === "upcoming"
+              ? tableFoot(deskRows, ["race", "next races"], deskAll, "See all entries")
+              : tableFoot(deskRows, ["result", "latest results"], deskAll, "See all results")}
           </Section>
 
           <Section id="leaderboard" number="03" title="Leaders" subtitle="Horses, jockeys and trainers" link="/stayblz-data?tab=stats">
@@ -571,11 +577,16 @@ export default function Dashboard() {
             </p>
           </Section>
 
-          <Section id="stakes" number="05" title="Stakes" subtitle="Stakes and graded races" link="/stayblz-data">
+          <Section id="stakes" number="05" title="Stakes" subtitle="Stakes and graded races" link={stakesAll}>
             <div className="gd-panel-toolbar">
               {seg<DeskView>(["upcoming", "results"], DESK_LABELS, stakes, setStakes, "Stakes view")}
             </div>
-            {stakes === "upcoming" ? upcomingTable(stakesUpcoming, "Upcoming stakes races") : resultsTable(stakesResults, "Stakes results")}
+            {stakes === "upcoming"
+              ? upcomingTable(stakesUpcoming.slice(0, DESK_LIMIT), "Upcoming stakes races")
+              : resultsTable(stakesResults.slice(0, DESK_LIMIT), "Stakes results")}
+            {stakes === "upcoming"
+              ? tableFoot(stakesRows, ["stakes race", "next stakes races"], stakesAll, "See all stakes")
+              : tableFoot(stakesRows, ["stakes result", "latest stakes results"], stakesAll, "See all stakes results")}
           </Section>
 
           {/* Section 06 renders its own markup; the wrapper gives it the glass treatment. */}

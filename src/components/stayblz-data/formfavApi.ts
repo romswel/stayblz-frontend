@@ -136,6 +136,12 @@ export interface PersonStats {
   worstCondition: string | null;
   tracks: StatRow[] | null;
   conditions: StatRow[] | null;
+  /** Newer servers: FormFav has no stats for this person (answered because Stayblz knows them, or ?older=1). */
+  noStats?: boolean;
+  /** False for someone only FormFav's search knows: FormFav gives no country for people. */
+  countryConfirmed?: boolean;
+  /** Their record in the Stayblz race history (US & Canada, since the history began). */
+  history?: { name: string; rides: number; wins: number; places: number; tracks: number; firstRide: string | null; lastRide: string | null } | null;
 }
 export interface RunnerStats {
   runner: StatRow | null;
@@ -264,6 +270,40 @@ export interface HorseStart {
 }
 export interface HorseDetail extends HorseRow {
   history: HorseStart[];
+  /** Newer servers: false when the horse is only in the Stayblz race history (not raced in the last 30 days). */
+  inWindow?: boolean;
+  /** Its Stayblz race-history record (window + older runs), null without older runs. */
+  archive?: { since: string; starts: number; wins: number; places: number } | null;
+}
+
+// ── Older horses and people (not in the 30-day window): Stayblz race history, then FormFav's search ─────────────────
+export interface OlderHorse {
+  kind: "horse";
+  key: string;
+  name: string;
+  code: IndexCode;
+  lastDate: string | null;
+  starts: number | null;
+  wins?: number;
+  places?: number;
+  /** FormFav results: its runner id (career stats, and the one to track), country and pedigree. */
+  runnerId?: number | null;
+  country?: string | null;
+  sire?: string | null;
+  dam?: string | null;
+  /** history = in the Stayblz race history (with its runs); formfav = FormFav's profile only. */
+  source: "history" | "formfav";
+  countryConfirmed: boolean;
+}
+export interface OlderPerson {
+  kind: "jockey" | "trainer";
+  key: string;
+  name: string;
+  lastDate: string | null;
+  rides: number | null;
+  wins?: number;
+  source: "history" | "formfav";
+  countryConfirmed: boolean;
 }
 export interface PersonRow {
   kind: "jockey" | "trainer";
@@ -335,8 +375,12 @@ export const formFav = {
     ),
   searchRunners: (q: string, code: RaceCode, signal?: AbortSignal) =>
     api.get<SearchResults<RunnerHit>>(`${base}/search?${qs({ kind: "runner", q, race_code: code })}`, { signal }),
-  person: (kind: "jockey" | "trainer", name: string, code?: RaceCode) =>
-    api.get<PersonStats>(`${base}/${kind}/${encodeURIComponent(name)}?${qs({ race_code: code })}`),
+  person: (kind: "jockey" | "trainer", name: string, code?: RaceCode, older?: boolean) =>
+    api.get<PersonStats>(`${base}/${kind}/${encodeURIComponent(name)}?${qs({ race_code: code, older: older ? 1 : undefined })}`),
+  olderHorses: (q: string, codes: IndexCode[], signal?: AbortSignal) =>
+    api.get<{ query: string; records: OlderHorse[] }>(`${base}/older?${qs({ kind: "horse", q, codes: codes.join(",") })}`, { signal }),
+  olderPeople: (kind: "jockey" | "trainer", q: string, signal?: AbortSignal) =>
+    api.get<{ query: string; records: OlderPerson[] }>(`${base}/older?${qs({ kind, q })}`, { signal }),
   horses: (p: ListParams, signal?: AbortSignal) => api.get<ListPage<HorseRow>>(`${base}/horses?${listQs(p)}`, { signal }),
   horse: (name: string, code: IndexCode) => api.get<HorseDetail>(`${base}/horse?${qs({ name, code })}`),
   people: (kind: "jockey" | "trainer", p: ListParams, signal?: AbortSignal) =>

@@ -349,7 +349,7 @@ test("Entries & results shows 10 rows and See all opens the meetings for those d
   );
   const results = Array.from({ length: 12 }, (_, i) => ({ ...gotham, raceNumber: i + 1, raceName: `Result Race ${i + 1}` }));
   await page.route("**/api/stayblz-data/formfav/overview*", (route) =>
-    route.fulfill({ json: { ...overview(null), upcoming: many, results } }),
+    route.fulfill({ json: { ...overview(null), upcoming: many, results, stakes: { upcoming: many.map((r) => ({ ...r, stakes: true })), results } } }),
   );
   await page.goto("/dashboard");
   const desk = page.locator("#racing-desk");
@@ -360,6 +360,14 @@ test("Entries & results shows 10 rows and See all opens the meetings for those d
   const all = desk.getByRole("link", { name: "See all entries" });
   await expect(all).toHaveAttribute("href", `/stayblz-data?from=${TODAY}&to=${dayOffset(2)}`);
   await expect(desk.getByRole("link", { name: "See all: Entries & results" })).toHaveAttribute("href", `/stayblz-data?from=${TODAY}&to=${dayOffset(2)}`);
+
+  const stakes = page.locator("#stakes");
+  await expect(stakes.locator("tbody tr")).toHaveCount(10);
+  await expect(stakes.locator(".gd-table-foot")).toContainText("Showing 10 next stakes races");
+  await expect(stakes.getByRole("link", { name: "See all stakes", exact: true })).toHaveAttribute("href", `/stayblz-data?from=${TODAY}&to=${dayOffset(2)}`);
+  await stakes.getByRole("button", { name: "Results", exact: true }).click();
+  await expect(stakes.locator("tbody tr")).toHaveCount(10);
+  await expect(stakes.getByRole("link", { name: "See all stakes results" })).toHaveAttribute("href", `/stayblz-data?from=${dayOffset(-6)}&to=${TODAY}`);
 
   await desk.getByRole("button", { name: "Results", exact: true }).click();
   await expect(desk.locator("tbody tr")).toHaveCount(10);

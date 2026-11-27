@@ -23,7 +23,7 @@ export const MIN_DAYS = -30;
 export const MAX_DAYS = 7;
 
 export type StatsTarget =
-  | { kind: "jockey" | "trainer"; name: string; code?: RaceCode; summary?: PersonRow }
+  | { kind: "jockey" | "trainer"; name: string; code?: RaceCode; summary?: PersonRow; older?: boolean }
   | { kind: "runner"; id: number; name: string }
   | { kind: "track"; slug: string; name: string; code: RaceCode; country: string };
 

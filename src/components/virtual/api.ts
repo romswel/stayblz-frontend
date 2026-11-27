@@ -122,7 +122,7 @@ export type AddInput =
   | { source: "community"; communityHorseId: string; notes?: string }
   | { source: "racing"; racingHorseId: string; notes?: string }
   | ({ source: "manual" } & ManualInput)
-  | { source: "formfav"; formfavName: string; formfavCode: IndexCode; notes?: string };
+  | { source: "formfav"; formfavName: string; formfavCode: IndexCode; formfavRunnerId?: number | null; notes?: string };
 export type StateTarget = { communityHorseId?: string; racingHorseId?: string; formfav?: { name: string; code: IndexCode } };
 
 export type EntryInput = {
@@ -180,7 +180,7 @@ export function virtualApi(client: Client, base: string) {
       if (p.tracking) q.set("tracking", "1");
       return client.get<ListPage<RacingHorseRow>>(`${base}/racing-horses?${q}`, { signal });
     },
-    link: (id: string, target: { name: string; code: IndexCode }) => client.post<{ horse: VirtualHorse }>(`${base}/${id}/formfav`, target),
+    link: (id: string, target: { name: string; code: IndexCode; runnerId?: number | null }) => client.post<{ horse: VirtualHorse }>(`${base}/${id}/formfav`, target),
     unlink: (id: string) => client.post<{ horse: VirtualHorse }>(`${base}/${id}/formfav/remove`, {}),
     setAlerts: (id: string, on: boolean) => client.post<{ alertsOn: boolean }>(`${base}/${id}/alerts`, { on }),
   };
