@@ -217,7 +217,18 @@ export interface HorseRow {
   starts: number;
   wins: number;
   places: number;
-  lastStart: { date: string; track: string | null; slug: string; position: number | null } | null;
+  lastStart: {
+    date: string;
+    track: string | null;
+    slug: string;
+    position: number | null;
+    /** Newer servers: enough to open the race and say "1st of 9". */
+    raceNumber?: number | null;
+    code?: IndexCode;
+    country?: string;
+    timezone?: string;
+    fieldSize?: number | null;
+  } | null;
   nextEntry: {
     date: string;
     track: string | null;
@@ -266,6 +277,42 @@ export interface PersonRow {
   lastRide: string | null;
 }
 
+// ── Dashboard overview (from the same index; no FormFav calls) ─────────────────────────────────────────────────────
+export interface OverviewRace {
+  date: string;
+  code: IndexCode;
+  timezone: string;
+  track: string | null;
+  slug: string;
+  country: string;
+  raceNumber: number | null;
+  raceName: string | null;
+  raceClass: string | null;
+  distance: string | null;
+  startTime: string | null;
+  /** Runners not scratched. */
+  runners: number;
+  stakes: boolean;
+}
+export interface OverviewResult extends OverviewRace {
+  placings: { position: number; name: string; jockey: string | null; trainer: string | null }[];
+}
+export interface OverviewHorse extends HorseRow {
+  winRate: number;
+  /** Last five finishes, newest first, e.g. "1-3-1-5-2" (0 = 10th or worse). */
+  form: string;
+}
+export interface Overview extends ListMeta {
+  today: string;
+  tracks: { slug: string; name: string | null; country: string; codes: IndexCode[] }[];
+  counts: { meetingsToday: number; racesToday: number; resultsToday: number; stakesAhead: number };
+  upcoming: OverviewRace[];
+  results: OverviewResult[];
+  stakes: { upcoming: OverviewRace[]; results: OverviewResult[] };
+  leaders: { horses: OverviewHorse[]; jockeys: PersonRow[]; trainers: PersonRow[] };
+  inForm: OverviewHorse[];
+}
+
 const base = "/api/stayblz-data/formfav";
 const listQs = (p: ListParams) =>
   qs({ offset: p.offset, limit: p.limit, q: p.q, codes: p.codes.join(","), countries: p.countries.join(",") });
@@ -294,6 +341,7 @@ export const formFav = {
   horse: (name: string, code: IndexCode) => api.get<HorseDetail>(`${base}/horse?${qs({ name, code })}`),
   people: (kind: "jockey" | "trainer", p: ListParams, signal?: AbortSignal) =>
     api.get<ListPage<PersonRow>>(`${base}/people?${qs({ kind })}&${listQs(p)}`, { signal }),
+  overview: (q: { track?: string }, signal?: AbortSignal) => api.get<Overview>(`${base}/overview?${qs({ track: q.track })}`, { signal }),
   runner: (id: number) => api.get<RunnerStats>(`${base}/runner/${id}`),
   trackBias: (slug: string, code?: RaceCode, country?: string) =>
     api.get<TrackBias>(`${base}/track-bias/${encodeURIComponent(slug)}?${qs({ race_code: code, country })}`),
