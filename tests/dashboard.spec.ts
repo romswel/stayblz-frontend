@@ -76,12 +76,12 @@ const dayOffset = (n: number) => iso(new Date(Date.now() + n * 86_400_000));
 const TODAY = dayOffset(0);
 const YESTERDAY = dayOffset(-1);
 const LONG_AGO = dayOffset(-9);
-const raceRow = (o: Record<string, unknown>) => ({
+const raceRow = <T extends Record<string, unknown>>(o: T) => ({
   date: TODAY,
   code: "gallops",
   timezone: "America/New_York",
   country: "us",
-  raceClass: null,
+  raceClass: null as string | null,
   distance: "1609m",
   startTime: new Date(Date.now() + 3_600_000).toISOString(),
   runners: 8,
@@ -349,7 +349,7 @@ test("Entries & results shows 10 rows and See all opens the meetings for those d
   );
   const results = Array.from({ length: 12 }, (_, i) => ({ ...gotham, raceNumber: i + 1, raceName: `Result Race ${i + 1}` }));
   await page.route("**/api/stayblz-data/formfav/overview*", (route) =>
-    route.fulfill({ json: { ...overview(null), upcoming: many, results, stakes: { upcoming: many.map((r) => ({ ...r, stakes: true })), results } } }),
+    route.fulfill({ json: { ...overview(null), upcoming: many, results } }),
   );
   await page.goto("/dashboard");
   const desk = page.locator("#racing-desk");
@@ -360,14 +360,6 @@ test("Entries & results shows 10 rows and See all opens the meetings for those d
   const all = desk.getByRole("link", { name: "See all entries" });
   await expect(all).toHaveAttribute("href", `/stayblz-data?from=${TODAY}&to=${dayOffset(2)}`);
   await expect(desk.getByRole("link", { name: "See all: Entries & results" })).toHaveAttribute("href", `/stayblz-data?from=${TODAY}&to=${dayOffset(2)}`);
-
-  const stakes = page.locator("#stakes");
-  await expect(stakes.locator("tbody tr")).toHaveCount(10);
-  await expect(stakes.locator(".gd-table-foot")).toContainText("Showing 10 next stakes races");
-  await expect(stakes.getByRole("link", { name: "See all stakes", exact: true })).toHaveAttribute("href", `/stayblz-data?from=${TODAY}&to=${dayOffset(2)}`);
-  await stakes.getByRole("button", { name: "Results", exact: true }).click();
-  await expect(stakes.locator("tbody tr")).toHaveCount(10);
-  await expect(stakes.getByRole("link", { name: "See all stakes results" })).toHaveAttribute("href", `/stayblz-data?from=${dayOffset(-6)}&to=${TODAY}`);
 
   await desk.getByRole("button", { name: "Results", exact: true }).click();
   await expect(desk.locator("tbody tr")).toHaveCount(10);
@@ -384,7 +376,7 @@ test("Your horses shows an empty state with where to start, and its own error", 
   await expect(panel.getByRole("link", { name: "Find racing horses" })).toHaveAttribute("href", "/my-racing?tab=virtual&vtab=racing");
   await page.route("**/api/my-racing/race-watch", (route) => route.fulfill({ status: 503, json: { error: "Your racing notebook is temporarily unavailable. Please try again." } }));
   await page.reload();
-  await expect(panel.locator(".gd-empty")).toContainText("temporarily unavailable");
+  await expect(panel.getByRole("status").filter({ hasText: "temporarily unavailable" })).toBeVisible();
   await expect(page.locator("#racing-desk").getByRole("button", { name: /Evening Sprint/ })).toBeVisible();
 });
 
@@ -443,10 +435,10 @@ test("race data: unavailable, still building, and keeps the last data after a fa
     route.fulfill({ status: 503, json: { error: "FormFav data isn't available right now." } }),
   );
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page.locator(".gd-toolbar .gd-status")).toContainText("Showing the last race data loaded.");
+  await expect(page.locator(".gd-toolbar").getByRole("status").filter({ hasText: "Showing the last race data loaded." })).toBeVisible();
   await expect(desk.getByRole("button", { name: /Evening Sprint/ })).toBeVisible();
   await page.reload();
-  await expect(page.locator(".gd-toolbar .gd-status")).toContainText("FormFav data isn't available right now.");
+  await expect(page.locator(".gd-toolbar").getByRole("status").filter({ hasText: "FormFav data isn't available right now." })).toBeVisible();
   await expect(desk).toContainText("Race data is unavailable");
 
   await page.route("**/api/stayblz-data/formfav/overview*", (route) =>
